@@ -204,11 +204,21 @@ class DataSourcesPanel(ctk.CTkFrame):
 
         browse_ei_btn = ctk.CTkButton(
             self.ei_frame,
-            text="Browse...",
+            text="Browse File...",
             command=self._browse_ei_file,
-            width=100
+            width=120
         )
-        browse_ei_btn.grid(row=0, column=2, padx=10, pady=5)
+        browse_ei_btn.grid(row=0, column=2, padx=(5, 2), pady=5)
+
+        browse_folder_btn = ctk.CTkButton(
+            self.ei_frame,
+            text="Browse Folder...",
+            command=self._browse_ei_folder,
+            width=120,
+            fg_color="green",
+            hover_color="darkgreen"
+        )
+        browse_folder_btn.grid(row=0, column=3, padx=(2, 10), pady=5)
 
         # Device info (will be populated after loading)
         self.ei_info_label = ctk.CTkLabel(
@@ -217,7 +227,7 @@ class DataSourcesPanel(ctk.CTkFrame):
             font=("Segoe UI", 10),
             text_color="gray"
         )
-        self.ei_info_label.grid(row=1, column=0, columnspan=3, padx=10, pady=5, sticky="w")
+        self.ei_info_label.grid(row=1, column=0, columnspan=4, padx=10, pady=5, sticky="w")
 
         # Database-specific options
         self.db_frame = ctk.CTkFrame(tab)
@@ -535,7 +545,7 @@ class DataSourcesPanel(ctk.CTkFrame):
 
         # Load button
         load_frame = ctk.CTkFrame(tab, fg_color="transparent")
-        load_frame.grid(row=2, column=0, pady=20)
+        load_frame.grid(row=4, column=0, pady=20)
 
         self.load_btn = ctk.CTkButton(
             load_frame,
@@ -554,7 +564,7 @@ class DataSourcesPanel(ctk.CTkFrame):
             font=("Segoe UI", 11),
             text_color="gray"
         )
-        self.load_status_label.grid(row=3, column=0, pady=5)
+        self.load_status_label.grid(row=5, column=0, pady=5)
 
     def _setup_windowing_tab(self) -> None:
         """Setup windowing configuration tab."""
@@ -745,6 +755,28 @@ class DataSourcesPanel(ctk.CTkFrame):
             self.ei_file_path_entry.insert(0, filename)
             logger.info(f"Selected Edge Impulse file: {filename}")
 
+    def _browse_ei_folder(self) -> None:
+        """Browse for folder containing Edge Impulse JSON/CBOR files (batch loading)."""
+        import os
+
+        folder_path = filedialog.askdirectory(
+            title="Select Folder with Edge Impulse Files"
+        )
+
+        if folder_path:
+            # Update the entry field to show folder path
+            self.ei_file_path_entry.delete(0, "end")
+            self.ei_file_path_entry.insert(0, folder_path)
+
+            # Count files for feedback
+            file_count = 0
+            for root, dirs, files in os.walk(folder_path):
+                for file in files:
+                    if file.endswith(('.json', '.cbor')):
+                        file_count += 1
+
+            logger.info(f"Selected folder: {folder_path} ({file_count} Edge Impulse files found)")
+
     def _on_db_type_change(self, db_type: str) -> None:
         """Handle database type change."""
         # Update port placeholder based on database type
@@ -926,10 +958,21 @@ class DataSourcesPanel(ctk.CTkFrame):
         self.loaded_data = self.current_data_source.load_data()
 
     def _load_edgeimpulse_data(self, file_path: str, source_type: str) -> None:
-        """Load Edge Impulse JSON/CBOR data."""
+        """Load Edge Impulse JSON/CBOR data (single file or batch folder)."""
+        import os
+
         # Determine format type
         format_type = "json" if source_type == "Edge Impulse JSON" else "cbor"
 
+        # Check if path is a folder (batch loading)
+        if os.path.isdir(file_path):
+            self._load_edgeimpulse_batch(file_path, format_type)
+        else:
+            # Single file loading
+            self._load_edgeimpulse_single_file(file_path, format_type)
+
+    def _load_edgeimpulse_single_file(self, file_path: str, format_type: str) -> None:
+        """Load single Edge Impulse file."""
         # Create data source
         self.current_data_source = EdgeImpulseDataSource()
         self.current_data_source.file_path = Path(file_path)
@@ -952,6 +995,79 @@ class DataSourcesPanel(ctk.CTkFrame):
         info_text += f" | Sampling: {sampling_rate:.2f} Hz | Sensors: {len(sensor_info)}"
 
         self.ei_info_label.configure(text=info_text)
+
+    def _load_edgeimpulse_batch(self, folder_path: str, format_type: str) -> None:
+        """Load all Edge Impulse files from a folder recursively."""
+        import os
+
+        # Find all matching files recursively
+        all_files = []
+        for root, dirs, files in os.walk(folder_path):
+            for file in files:
+                if file.endswith('.cbor') or file.endswith('.json'):
+                    all_files.append(os.path.join(root, file))
+
+        if not all_files:
+            raise Exception(f"No .cbor or .json files found in {folder_path}")
+
+        logger.info(f"Found {len(all_files)} Edge Impulse files in folder")
+
+        # Load all files and concatenate
+        all_dataframes = []
+        class_labels = set()
+
+        for file_path in all_files:
+            try:
+                # Create data source for this file
+                data_source = EdgeImpulseDataSource()
+                data_source.file_path = Path(file_path)
+                data_source.format_type = format_type
+
+                if not data_source.connect():
+                    logger.warning(f"Skipping {file_path}: {data_source.last_error}")
+                    continue
+
+                # Load data
+                df = data_source.load_data()
+
+                # Extract class label from filename (e.g., "idle.1.cbor" -> "idle")
+                filename = os.path.basename(file_path)
+                label = filename.split('.')[0]  # Get first part before first dot
+
+                # Add label column if in classification mode
+                task_mode = self.task_mode_var.get()
+                if task_mode == "Classification" and label:
+                    df['label'] = label
+                    class_labels.add(label)
+                    logger.info(f"Loaded {file_path}: {len(df)} rows, label='{label}'")
+                else:
+                    logger.info(f"Loaded {file_path}: {len(df)} rows")
+
+                all_dataframes.append(df)
+
+            except Exception as e:
+                logger.error(f"Failed to load {file_path}: {e}")
+                continue
+
+        if not all_dataframes:
+            raise Exception("No files could be loaded successfully")
+
+        # Concatenate all DataFrames
+        self.loaded_data = pd.concat(all_dataframes, ignore_index=True)
+
+        # Store a simple data source reference (we'll use the first file's metadata)
+        self.current_data_source = EdgeImpulseDataSource()
+        self.current_data_source.file_path = Path(all_files[0])
+        self.current_data_source.format_type = format_type
+        self.current_data_source.connect()
+
+        # Update info label
+        info_text = f"Batch Load: {len(all_files)} files, {len(self.loaded_data)} total rows"
+        if class_labels:
+            info_text += f" | Classes: {sorted(class_labels)}"
+
+        self.ei_info_label.configure(text=info_text)
+        logger.info(f"Batch loading complete: {len(all_dataframes)} files concatenated")
 
     def _load_database_data(self) -> None:
         """Load data from database."""
@@ -1127,11 +1243,18 @@ class DataSourcesPanel(ctk.CTkFrame):
             if not sensor_columns:
                 raise ValueError("No numeric sensor columns found in data")
 
+            # Check if label column exists (from batch loading)
+            label_column = None
+            if 'label' in self.loaded_data.columns:
+                label_column = 'label'
+                logger.info("Found 'label' column in data - will use for window labeling")
+
             # Segment data
             windows = self.windowing_engine.segment_data(
                 self.loaded_data,
                 sensor_columns=sensor_columns,
-                time_column=time_column
+                time_column=time_column,
+                label_column=label_column
             )
 
             # Update stats
@@ -1143,7 +1266,13 @@ Window size: {stats['window_size']} samples
 Overlap: {stats['overlap']*100:.1f}%
 Sampling rate: {stats['sampling_rate']} Hz
 Sensor columns: {len(sensor_columns)}
-            """
+"""
+
+            # Add class distribution if classification mode
+            if 'class_distribution' in stats:
+                stats_text += "\nClass Distribution:\n"
+                for class_name, count in stats['class_distribution'].items():
+                    stats_text += f"  - {class_name}: {count} windows\n"
 
             self.window_stats_label.configure(text=stats_text)
 

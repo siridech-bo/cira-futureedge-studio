@@ -651,14 +651,20 @@ class DataSourcesPanel(ctk.CTkFrame):
         """Setup data preview tab with visualization."""
         tab = self.tabview.tab("Preview")
         tab.grid_columnconfigure(0, weight=1)
-        tab.grid_rowconfigure(1, weight=1)  # Give plot the flexible space
+        tab.grid_rowconfigure(2, weight=1)  # Plot gets flexible space
 
-        # Compact info and controls in one row
+        # Navigation state
+        self.current_batch_start = 0
+        self.current_window_index = 0
+        self.view_mode = "raw"  # "raw" or "windows"
+        self.filtered_classes = []  # Empty = show all
+
+        # Top row: Info and controls
         top_frame = ctk.CTkFrame(tab, fg_color="transparent")
         top_frame.grid(row=0, column=0, sticky="ew", padx=10, pady=5)
         top_frame.grid_columnconfigure(0, weight=1)
 
-        # Info label - compact, single line
+        # Info label
         self.info_label = ctk.CTkLabel(
             top_frame,
             text="No data loaded",
@@ -668,13 +674,13 @@ class DataSourcesPanel(ctk.CTkFrame):
         )
         self.info_label.grid(row=0, column=0, sticky="w", padx=5, pady=2)
 
-        # Controls on same line
+        # Controls
         controls_frame = ctk.CTkFrame(top_frame, fg_color="transparent")
         controls_frame.grid(row=0, column=1, sticky="e", padx=5)
 
         ctk.CTkLabel(
             controls_frame,
-            text="Max samples:",
+            text="Samples:",
             font=("Segoe UI", 10)
         ).pack(side="left", padx=5)
 
@@ -682,20 +688,86 @@ class DataSourcesPanel(ctk.CTkFrame):
         ctk.CTkEntry(
             controls_frame,
             textvariable=self.max_samples_var,
-            width=80
+            width=70
         ).pack(side="left", padx=2)
 
-        ctk.CTkButton(
-            controls_frame,
-            text="Refresh",
-            command=self._refresh_plot,
-            width=80,
-            height=24
+        # Navigation row: Class filter, navigation buttons, mode selector
+        nav_frame = ctk.CTkFrame(tab)
+        nav_frame.grid(row=1, column=0, sticky="ew", padx=10, pady=5)
+        nav_frame.grid_columnconfigure(1, weight=1)
+
+        # Class filter
+        filter_frame = ctk.CTkFrame(nav_frame, fg_color="transparent")
+        filter_frame.grid(row=0, column=0, sticky="w", padx=5)
+
+        ctk.CTkLabel(
+            filter_frame,
+            text="Filter:",
+            font=("Segoe UI", 10)
         ).pack(side="left", padx=5)
 
-        # Sensor plot widget - takes all remaining space
+        self.class_filter_var = ctk.StringVar(value="All Classes")
+        self.class_filter_menu = ctk.CTkOptionMenu(
+            filter_frame,
+            variable=self.class_filter_var,
+            values=["All Classes"],
+            command=self._on_class_filter_change,
+            width=120
+        )
+        self.class_filter_menu.pack(side="left", padx=5)
+
+        # Navigation buttons (center)
+        nav_buttons_frame = ctk.CTkFrame(nav_frame, fg_color="transparent")
+        nav_buttons_frame.grid(row=0, column=1)
+
+        self.prev_btn = ctk.CTkButton(
+            nav_buttons_frame,
+            text="◀ Previous",
+            command=self._navigate_previous,
+            width=100,
+            height=28
+        )
+        self.prev_btn.pack(side="left", padx=5)
+
+        self.nav_label = ctk.CTkLabel(
+            nav_buttons_frame,
+            text="Batch 1",
+            font=("Segoe UI", 11, "bold")
+        )
+        self.nav_label.pack(side="left", padx=10)
+
+        self.next_btn = ctk.CTkButton(
+            nav_buttons_frame,
+            text="Next ▶",
+            command=self._navigate_next,
+            width=100,
+            height=28
+        )
+        self.next_btn.pack(side="left", padx=5)
+
+        # Mode selector (right)
+        mode_frame = ctk.CTkFrame(nav_frame, fg_color="transparent")
+        mode_frame.grid(row=0, column=2, sticky="e", padx=5)
+
+        ctk.CTkLabel(
+            mode_frame,
+            text="View:",
+            font=("Segoe UI", 10)
+        ).pack(side="left", padx=5)
+
+        self.view_mode_var = ctk.StringVar(value="Raw Data")
+        self.view_mode_menu = ctk.CTkOptionMenu(
+            mode_frame,
+            variable=self.view_mode_var,
+            values=["Raw Data", "Windows"],
+            command=self._on_view_mode_change,
+            width=100
+        )
+        self.view_mode_menu.pack(side="left", padx=5)
+
+        # Sensor plot widget
         plot_frame = ctk.CTkFrame(tab)
-        plot_frame.grid(row=1, column=0, sticky="nsew", padx=10, pady=(5, 10))
+        plot_frame.grid(row=2, column=0, sticky="nsew", padx=10, pady=(5, 10))
         plot_frame.grid_columnconfigure(0, weight=1)
         plot_frame.grid_rowconfigure(0, weight=1)
 
@@ -1344,13 +1416,27 @@ Sensor columns: {len(sensor_columns)}
         if len(sensor_columns) > 3:
             info_text += f" +{len(sensor_columns)-3} more"
 
-        # Add class info if label column exists
+        # Update class filter options if label column exists
         if 'label' in self.loaded_data.columns:
             class_counts = self.loaded_data['label'].value_counts()
             class_list = [f"{label}:{count}" for label, count in class_counts.items()]
             info_text += f" | Classes: {', '.join(class_list)}"
 
+            # Update filter dropdown
+            class_names = ["All Classes"] + sorted(class_counts.index.tolist())
+            self.class_filter_menu.configure(values=class_names)
+            self.class_filter_var.set("All Classes")
+        else:
+            # No classes, reset filter
+            self.class_filter_menu.configure(values=["All Classes"])
+            self.class_filter_var.set("All Classes")
+
         self.info_label.configure(text=info_text)
+
+        # Reset navigation
+        self.current_batch_start = 0
+        self.current_window_index = 0
+        self._update_navigation_ui()
 
         # Plot sensor data
         self._refresh_plot()
@@ -1361,12 +1447,10 @@ Sensor columns: {len(sensor_columns)}
             return
 
         try:
-            # Get max samples limit
             max_samples = int(self.max_samples_var.get())
         except ValueError:
             max_samples = 1000
 
-        # Detect sensor columns
         sensor_columns = self.current_data_source.detect_sensor_columns()
         time_column = self.current_data_source.detect_time_column()
 
@@ -1374,20 +1458,150 @@ Sensor columns: {len(sensor_columns)}
             logger.warning("No sensor columns detected for plotting")
             return
 
-        # Subsample data if too large
-        plot_data = self.loaded_data.head(max_samples) if len(self.loaded_data) > max_samples else self.loaded_data
+        # Get data to plot based on mode
+        if self.view_mode == "windows":
+            plot_data = self._get_window_data()
+            if plot_data is None:
+                return
+            title = f"Window {self.current_window_index + 1} ({len(plot_data)} samples)"
+        else:
+            # Raw data mode with class filter
+            data_to_plot = self._apply_class_filter(self.loaded_data)
+            start = self.current_batch_start
+            end = start + max_samples
+            plot_data = data_to_plot.iloc[start:end]
+
+            total_batches = (len(data_to_plot) + max_samples - 1) // max_samples
+            current_batch = (start // max_samples) + 1
+            title = f"Sensor Data (Batch {current_batch}/{total_batches}, {len(plot_data)} samples)"
 
         # Plot
         self.sensor_plot.plot_sensors(
             data=plot_data,
             sensor_columns=sensor_columns,
             time_column=time_column,
-            title=f"Sensor Data Preview ({len(plot_data)} samples)",
+            title=title,
             xlabel="Time" if time_column else "Sample Index",
             ylabel="Sensor Values"
         )
 
         logger.info(f"Plotted {len(sensor_columns)} sensors with {len(plot_data)} samples")
+
+    def _apply_class_filter(self, data):
+        """Apply class filter to data."""
+        if 'label' not in data.columns:
+            return data
+
+        selected_class = self.class_filter_var.get()
+        if selected_class == "All Classes":
+            return data
+
+        return data[data['label'] == selected_class].reset_index(drop=True)
+
+    def _get_window_data(self):
+        """Get data for current window index."""
+        if not hasattr(self, 'windowing_engine') or self.windowing_engine is None:
+            logger.warning("No windows created yet")
+            return None
+
+        windows = self.windowing_engine.windows
+        if not windows or self.current_window_index >= len(windows):
+            return None
+
+        return windows[self.current_window_index]
+
+    def _navigate_previous(self):
+        """Navigate to previous batch or window."""
+        if self.loaded_data is None:
+            return
+
+        if self.view_mode == "windows":
+            if self.current_window_index > 0:
+                self.current_window_index -= 1
+                self._update_navigation_ui()
+                self._refresh_plot()
+        else:
+            try:
+                max_samples = int(self.max_samples_var.get())
+            except ValueError:
+                max_samples = 1000
+
+            if self.current_batch_start >= max_samples:
+                self.current_batch_start -= max_samples
+                self._update_navigation_ui()
+                self._refresh_plot()
+
+    def _navigate_next(self):
+        """Navigate to next batch or window."""
+        if self.loaded_data is None:
+            return
+
+        if self.view_mode == "windows":
+            if hasattr(self, 'windowing_engine') and self.windowing_engine:
+                windows = self.windowing_engine.windows
+                if self.current_window_index < len(windows) - 1:
+                    self.current_window_index += 1
+                    self._update_navigation_ui()
+                    self._refresh_plot()
+        else:
+            try:
+                max_samples = int(self.max_samples_var.get())
+            except ValueError:
+                max_samples = 1000
+
+            data_to_plot = self._apply_class_filter(self.loaded_data)
+            if self.current_batch_start + max_samples < len(data_to_plot):
+                self.current_batch_start += max_samples
+                self._update_navigation_ui()
+                self._refresh_plot()
+
+    def _update_navigation_ui(self):
+        """Update navigation label and button states."""
+        if self.loaded_data is None:
+            self.nav_label.configure(text="No Data")
+            self.prev_btn.configure(state="disabled")
+            self.next_btn.configure(state="disabled")
+            return
+
+        if self.view_mode == "windows":
+            if hasattr(self, 'windowing_engine') and self.windowing_engine:
+                windows = self.windowing_engine.windows
+                total = len(windows)
+                current = self.current_window_index + 1
+                self.nav_label.configure(text=f"Window {current}/{total}")
+                self.prev_btn.configure(state="normal" if self.current_window_index > 0 else "disabled")
+                self.next_btn.configure(state="normal" if self.current_window_index < total - 1 else "disabled")
+            else:
+                self.nav_label.configure(text="No Windows")
+                self.prev_btn.configure(state="disabled")
+                self.next_btn.configure(state="disabled")
+        else:
+            try:
+                max_samples = int(self.max_samples_var.get())
+            except ValueError:
+                max_samples = 1000
+
+            data_to_plot = self._apply_class_filter(self.loaded_data)
+            total_batches = (len(data_to_plot) + max_samples - 1) // max_samples
+            current_batch = (self.current_batch_start // max_samples) + 1
+
+            self.nav_label.configure(text=f"Batch {current_batch}/{total_batches}")
+            self.prev_btn.configure(state="normal" if self.current_batch_start > 0 else "disabled")
+            self.next_btn.configure(state="normal" if self.current_batch_start + max_samples < len(data_to_plot) else "disabled")
+
+    def _on_view_mode_change(self, mode):
+        """Handle view mode change."""
+        self.view_mode = "windows" if mode == "Windows" else "raw"
+        self.current_batch_start = 0
+        self.current_window_index = 0
+        self._update_navigation_ui()
+        self._refresh_plot()
+
+    def _on_class_filter_change(self, selected_class):
+        """Handle class filter change."""
+        self.current_batch_start = 0
+        self._update_navigation_ui()
+        self._refresh_plot()
 
     def _load_project_data(self) -> None:
         """Load and display existing project data if available."""

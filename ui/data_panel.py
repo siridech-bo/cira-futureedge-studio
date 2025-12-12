@@ -651,54 +651,58 @@ class DataSourcesPanel(ctk.CTkFrame):
         """Setup data preview tab with visualization."""
         tab = self.tabview.tab("Preview")
         tab.grid_columnconfigure(0, weight=1)
-        tab.grid_rowconfigure(2, weight=1)
+        tab.grid_rowconfigure(1, weight=1)  # Give plot the flexible space
 
-        # Info frame
-        info_frame = ctk.CTkFrame(tab)
-        info_frame.grid(row=0, column=0, sticky="ew", padx=10, pady=10)
+        # Compact info and controls in one row
+        top_frame = ctk.CTkFrame(tab, fg_color="transparent")
+        top_frame.grid(row=0, column=0, sticky="ew", padx=10, pady=5)
+        top_frame.grid_columnconfigure(0, weight=1)
 
+        # Info label - compact, single line
         self.info_label = ctk.CTkLabel(
-            info_frame,
+            top_frame,
             text="No data loaded",
-            font=("Segoe UI", 12),
-            justify="left"
+            font=("Segoe UI", 10),
+            justify="left",
+            anchor="w"
         )
-        self.info_label.pack(padx=10, pady=10, anchor="w")
+        self.info_label.grid(row=0, column=0, sticky="w", padx=5, pady=2)
 
-        # Visualization controls
-        controls_frame = ctk.CTkFrame(tab)
-        controls_frame.grid(row=1, column=0, sticky="ew", padx=10, pady=5)
+        # Controls on same line
+        controls_frame = ctk.CTkFrame(top_frame, fg_color="transparent")
+        controls_frame.grid(row=0, column=1, sticky="e", padx=5)
 
         ctk.CTkLabel(
             controls_frame,
-            text="Max samples to plot:",
-            font=("Segoe UI", 11)
-        ).pack(side="left", padx=10)
+            text="Max samples:",
+            font=("Segoe UI", 10)
+        ).pack(side="left", padx=5)
 
         self.max_samples_var = ctk.StringVar(value="1000")
         ctk.CTkEntry(
             controls_frame,
             textvariable=self.max_samples_var,
-            width=100
-        ).pack(side="left", padx=5)
+            width=80
+        ).pack(side="left", padx=2)
 
         ctk.CTkButton(
             controls_frame,
-            text="Refresh Plot",
+            text="Refresh",
             command=self._refresh_plot,
-            width=100
-        ).pack(side="left", padx=10)
+            width=80,
+            height=24
+        ).pack(side="left", padx=5)
 
-        # Sensor plot widget
+        # Sensor plot widget - takes all remaining space
         plot_frame = ctk.CTkFrame(tab)
-        plot_frame.grid(row=2, column=0, sticky="nsew", padx=10, pady=10)
+        plot_frame.grid(row=1, column=0, sticky="nsew", padx=10, pady=(5, 10))
         plot_frame.grid_columnconfigure(0, weight=1)
         plot_frame.grid_rowconfigure(0, weight=1)
 
         self.sensor_plot = SensorPlotWidget(
             plot_frame,
-            width=900,
-            height=500
+            width=1000,
+            height=600
         )
         self.sensor_plot.grid(row=0, column=0, sticky="nsew", padx=5, pady=5)
 
@@ -1086,6 +1090,8 @@ class DataSourcesPanel(ctk.CTkFrame):
         self.current_data_source.file_path = Path(all_files[0])
         self.current_data_source.format_type = format_type
         self.current_data_source.connect()
+        # Load first file to initialize sensor detection (but we use self.loaded_data for actual data)
+        self.current_data_source.load_data()
 
         # Update info label
         info_text = f"Batch Load: {len(all_files)} files, {len(self.loaded_data)} total rows"
@@ -1332,25 +1338,17 @@ Sensor columns: {len(sensor_columns)}
         sensor_columns = self.current_data_source.detect_sensor_columns()
         time_column = self.current_data_source.detect_time_column()
 
-        # Update info
-        info_text = f"""Data Info:
-Rows: {len(self.loaded_data)}
-Columns: {len(self.loaded_data.columns)}
-Memory: {self.loaded_data.memory_usage(deep=True).sum() / 1024 / 1024:.2f} MB
-
-Columns: {', '.join(self.loaded_data.columns)}
-
-Detected:
-- Time column: {time_column or 'None'}
-- Sensor columns: {', '.join(sensor_columns)}
-"""
+        # Compact single-line info
+        info_text = f"📊 {len(self.loaded_data)} rows × {len(self.loaded_data.columns)} cols | "
+        info_text += f"Sensors: {', '.join(sensor_columns[:3])}"
+        if len(sensor_columns) > 3:
+            info_text += f" +{len(sensor_columns)-3} more"
 
         # Add class info if label column exists
         if 'label' in self.loaded_data.columns:
             class_counts = self.loaded_data['label'].value_counts()
-            info_text += f"\nClasses: {len(class_counts)}\n"
-            for label, count in class_counts.items():
-                info_text += f"  - {label}: {count} samples\n"
+            class_list = [f"{label}:{count}" for label, count in class_counts.items()]
+            info_text += f" | Classes: {', '.join(class_list)}"
 
         self.info_label.configure(text=info_text)
 

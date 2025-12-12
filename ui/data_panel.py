@@ -1157,6 +1157,13 @@ class DataSourcesPanel(ctk.CTkFrame):
         # Concatenate all DataFrames
         self.loaded_data = pd.concat(all_dataframes, ignore_index=True)
 
+        # Fix time column to be continuous (remove jumps between files)
+        if 'time' in self.loaded_data.columns:
+            # Create continuous time index based on row index
+            # Assuming constant sampling rate within each file
+            self.loaded_data['time'] = range(len(self.loaded_data))
+            logger.info("Reset time column to continuous index for batch loading")
+
         # Store a simple data source reference (we'll use the first file's metadata)
         self.current_data_source = EdgeImpulseDataSource()
         self.current_data_source.file_path = Path(all_files[0])

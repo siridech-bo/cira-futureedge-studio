@@ -1,29 +1,33 @@
 {
-  "project_id": "43e72148-03c5-43b3-831f-a4875af11cd6",
+  "project_id": "6eb276b8-3995-4649-9f2b-d384eaf89794",
   "name": "cc",
   "domain": "rotating_machinery",
   "description": "",
-  "created_at": "2025-12-12T15:50:21.323599",
-  "modified_at": "2025-12-12T15:50:24.149889",
+  "created_at": "2025-12-12T16:14:23.937439",
+  "modified_at": "2025-12-12T16:16:16.482856",
   "version": "1.0.0",
   "project_path": "D:\\CiRA FES\\output\\cc\\cc.ciraproject",
   "data": {
     "source_type": "csv",
     "source_path": null,
-    "window_size": 100,
-    "sampling_rate": 50.0,
+    "window_size": 500,
+    "sampling_rate": 62.5,
     "overlap": 0.0,
     "labels": {
       "nominal": 0,
       "off": 1,
       "anomaly": 2
     },
-    "sensor_columns": [],
+    "sensor_columns": [
+      "accX",
+      "accY",
+      "accZ"
+    ],
     "data_file": null,
-    "windows_file": null,
-    "num_windows": 0,
-    "time_column": null,
-    "task_type": "classification",
+    "windows_file": "D:\\CiRA FES\\output\\cc\\data\\windows.pkl",
+    "num_windows": 95,
+    "time_column": "time",
+    "task_type": "anomaly_detection",
     "class_mapping": {},
     "num_classes": 0,
     "class_distribution": {},
@@ -81,5 +85,7 @@
     "firmware_file": null
   },
   "current_stage": "data",
-  "completed_stages": []
+  "completed_stages": [
+    "data"
+  ]
 }

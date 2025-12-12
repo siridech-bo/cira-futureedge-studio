@@ -1137,8 +1137,8 @@ class DataSourcesPanel(ctk.CTkFrame):
                 label = filename.split('.')[0]  # Get first part before first dot
 
                 # Add label column if in classification mode
-                task_mode = self.task_mode_var.get()
-                if task_mode == "Classification" and label:
+                task_type = "classification"  # Always add labels for batch loading - user can filter later
+                if label:
                     df['label'] = label
                     class_labels.add(label)
                     logger.info(f"Loaded {file_path}: {len(df)} rows, label='{label}'")

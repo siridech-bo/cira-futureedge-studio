@@ -181,6 +181,10 @@ class SensorPlotWidget(ctk.CTkFrame):
         # Grid
         self.ax.grid(True, alpha=0.3, linestyle='--')
 
+        # Auto-scale axes to fit data
+        self.ax.relim()
+        self.ax.autoscale_view(True, True, True)
+
         # Reapply theme
         self._apply_modern_style()
 

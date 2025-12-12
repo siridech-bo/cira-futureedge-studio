@@ -674,7 +674,7 @@ class DataSourcesPanel(ctk.CTkFrame):
         # Update project task type
         if self.project_manager.current_project:
             self.project_manager.current_project.data.task_type = mode
-            self.project_manager.save_current_project()
+            self.project_manager.current_project.save()
 
         # Update info text
         if mode == "classification":

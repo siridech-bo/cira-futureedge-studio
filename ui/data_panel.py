@@ -19,6 +19,7 @@ from data_sources.edgeimpulse_loader import EdgeImpulseDataSource
 from data_sources.database_loader import DatabaseDataSource
 from data_sources.restapi_loader import RestAPIDataSource
 from data_sources.streaming_loader import StreamingDataSource
+from ui.widgets.sensor_plot import SensorPlotWidget
 
 
 class DataSourcesPanel(ctk.CTkFrame):
@@ -647,10 +648,10 @@ class DataSourcesPanel(ctk.CTkFrame):
         self.window_stats_label.grid(row=2, column=0, pady=10)
 
     def _setup_preview_tab(self) -> None:
-        """Setup data preview tab."""
+        """Setup data preview tab with visualization."""
         tab = self.tabview.tab("Preview")
         tab.grid_columnconfigure(0, weight=1)
-        tab.grid_rowconfigure(1, weight=1)
+        tab.grid_rowconfigure(2, weight=1)
 
         # Info frame
         info_frame = ctk.CTkFrame(tab)
@@ -664,17 +665,42 @@ class DataSourcesPanel(ctk.CTkFrame):
         )
         self.info_label.pack(padx=10, pady=10, anchor="w")
 
-        # Preview text
-        preview_frame = ctk.CTkFrame(tab)
-        preview_frame.grid(row=1, column=0, sticky="nsew", padx=10, pady=10)
-        preview_frame.grid_columnconfigure(0, weight=1)
-        preview_frame.grid_rowconfigure(0, weight=1)
+        # Visualization controls
+        controls_frame = ctk.CTkFrame(tab)
+        controls_frame.grid(row=1, column=0, sticky="ew", padx=10, pady=5)
 
-        self.preview_text = ctk.CTkTextbox(
-            preview_frame,
-            font=("Courier New", 10)
+        ctk.CTkLabel(
+            controls_frame,
+            text="Max samples to plot:",
+            font=("Segoe UI", 11)
+        ).pack(side="left", padx=10)
+
+        self.max_samples_var = ctk.StringVar(value="1000")
+        ctk.CTkEntry(
+            controls_frame,
+            textvariable=self.max_samples_var,
+            width=100
+        ).pack(side="left", padx=5)
+
+        ctk.CTkButton(
+            controls_frame,
+            text="Refresh Plot",
+            command=self._refresh_plot,
+            width=100
+        ).pack(side="left", padx=10)
+
+        # Sensor plot widget
+        plot_frame = ctk.CTkFrame(tab)
+        plot_frame.grid(row=2, column=0, sticky="nsew", padx=10, pady=10)
+        plot_frame.grid_columnconfigure(0, weight=1)
+        plot_frame.grid_rowconfigure(0, weight=1)
+
+        self.sensor_plot = SensorPlotWidget(
+            plot_frame,
+            width=900,
+            height=500
         )
-        self.preview_text.grid(row=0, column=0, sticky="nsew", padx=5, pady=5)
+        self.sensor_plot.grid(row=0, column=0, sticky="nsew", padx=5, pady=5)
 
     def _on_task_mode_change(self, choice: str) -> None:
         """Handle task mode change between Anomaly Detection and Classification."""
@@ -1298,9 +1324,13 @@ Sensor columns: {len(sensor_columns)}
             messagebox.showerror("Windowing Error", f"Failed to create windows:\n{e}")
 
     def _update_preview(self) -> None:
-        """Update data preview."""
+        """Update data preview with visualization."""
         if self.loaded_data is None:
             return
+
+        # Detect sensor and time columns
+        sensor_columns = self.current_data_source.detect_sensor_columns()
+        time_column = self.current_data_source.detect_time_column()
 
         # Update info
         info_text = f"""Data Info:
@@ -1311,16 +1341,55 @@ Memory: {self.loaded_data.memory_usage(deep=True).sum() / 1024 / 1024:.2f} MB
 Columns: {', '.join(self.loaded_data.columns)}
 
 Detected:
-- Time column: {self.current_data_source.detect_time_column() or 'None'}
-- Sensor columns: {', '.join(self.current_data_source.detect_sensor_columns())}
-        """
+- Time column: {time_column or 'None'}
+- Sensor columns: {', '.join(sensor_columns)}
+"""
+
+        # Add class info if label column exists
+        if 'label' in self.loaded_data.columns:
+            class_counts = self.loaded_data['label'].value_counts()
+            info_text += f"\nClasses: {len(class_counts)}\n"
+            for label, count in class_counts.items():
+                info_text += f"  - {label}: {count} samples\n"
 
         self.info_label.configure(text=info_text)
 
-        # Update preview text
-        self.preview_text.delete("1.0", "end")
-        preview_df = self.loaded_data.head(20)
-        self.preview_text.insert("1.0", preview_df.to_string())
+        # Plot sensor data
+        self._refresh_plot()
+
+    def _refresh_plot(self) -> None:
+        """Refresh the sensor plot with current data."""
+        if self.loaded_data is None:
+            return
+
+        try:
+            # Get max samples limit
+            max_samples = int(self.max_samples_var.get())
+        except ValueError:
+            max_samples = 1000
+
+        # Detect sensor columns
+        sensor_columns = self.current_data_source.detect_sensor_columns()
+        time_column = self.current_data_source.detect_time_column()
+
+        if not sensor_columns:
+            logger.warning("No sensor columns detected for plotting")
+            return
+
+        # Subsample data if too large
+        plot_data = self.loaded_data.head(max_samples) if len(self.loaded_data) > max_samples else self.loaded_data
+
+        # Plot
+        self.sensor_plot.plot_sensors(
+            data=plot_data,
+            sensor_columns=sensor_columns,
+            time_column=time_column,
+            title=f"Sensor Data Preview ({len(plot_data)} samples)",
+            xlabel="Time" if time_column else "Sample Index",
+            ylabel="Sensor Values"
+        )
+
+        logger.info(f"Plotted {len(sensor_columns)} sensors with {len(plot_data)} samples")
 
     def _load_project_data(self) -> None:
         """Load and display existing project data if available."""

@@ -57,7 +57,7 @@ class NavigationSidebar(ctk.CTkFrame):
         {"id": "data", "name": "Data Sources", "icon": "📊"},
         {"id": "features", "name": "Feature Extraction", "icon": "🔬"},
         {"id": "llm", "name": "LLM Selection", "icon": "🤖"},
-        {"id": "model", "name": "Anomaly Training", "icon": "🎯"},
+        {"id": "model", "name": "Training", "icon": "🎯"},
         {"id": "dsp", "name": "DSP Generation", "icon": "⚙️"},
         {"id": "build", "name": "Build Firmware", "icon": "🚀"},
     ]

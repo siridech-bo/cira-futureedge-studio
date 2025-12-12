@@ -832,41 +832,67 @@ class ModelPanel(ctk.CTkFrame):
         if not project:
             return
 
-        # Load feature info
-        try:
-            if project.llm.selected_features:
-                self.selected_features = project.llm.selected_features
-                self.features_info_label.configure(
-                    text=f"{len(self.selected_features)} features selected",
-                    text_color="green"
-                )
-
-                # Load features to get sample count
-                if project.features.extracted_features:
-                    features_path = Path(project.features.extracted_features)
-                    with open(features_path, 'rb') as f:
-                        self.features_df = pickle.load(f)
-
-                    n_samples = len(self.features_df)
-                    self.samples_info_label.configure(
-                        text=f"{n_samples} samples",
+        # Load feature info asynchronously
+        def load_thread():
+            try:
+                if project.llm.selected_features:
+                    self.selected_features = project.llm.selected_features
+                    self.features_info_label.configure(
+                        text=f"{len(self.selected_features)} features selected",
                         text_color="green"
                     )
 
-                    # Get recommendation
-                    recommended = ModelTrainer.recommend_algorithm(
-                        n_samples=n_samples,
-                        n_features=len(self.selected_features)
-                    )
-                    algo_name = ALGORITHMS[recommended]['name']
-                    self.recommendation_label.configure(
-                        text=f"{algo_name} ({recommended})"
-                    )
-                    self.algorithm_var.set(recommended)
-                    self._on_algorithm_change()
+                    # Load features to get sample count
+                    if project.features.extracted_features:
+                        features_path = Path(project.features.extracted_features)
+                        file_size = features_path.stat().st_size
 
-        except Exception as e:
-            logger.error(f"Error loading feature info: {e}")
+                        # Update loading status
+                        self.samples_info_label.configure(
+                            text=f"Loading {file_size/(1024*1024):.1f} MB...",
+                            text_color="blue"
+                        )
+
+                        with open(features_path, 'rb') as f:
+                            self.features_df = pickle.load(f)
+
+                        n_samples = len(self.features_df)
+                        self.samples_info_label.configure(
+                            text=f"{n_samples} samples",
+                            text_color="green"
+                        )
+
+                        # Get task mode for recommendation
+                        task_mode = project.data.task_type
+
+                        # Get recommendation based on task mode
+                        if task_mode == "classification":
+                            # For classification, recommend Random Forest as default
+                            recommended = "random_forest"
+                            algo_name = CLASSIFIERS[recommended]['name']
+                        else:
+                            recommended = ModelTrainer.recommend_algorithm(
+                                n_samples=n_samples,
+                                n_features=len(self.selected_features)
+                            )
+                            algo_name = ALGORITHMS[recommended]['name']
+
+                        self.recommendation_label.configure(
+                            text=f"{algo_name} ({recommended})",
+                            text_color="blue"
+                        )
+                        self.algorithm_var.set(recommended)
+                        self._on_algorithm_change()
+
+            except Exception as e:
+                logger.error(f"Error loading feature info: {e}")
+                self.samples_info_label.configure(
+                    text="Error loading features",
+                    text_color="red"
+                )
+
+        # Run in thread
+        threading.Thread(target=load_thread, daemon=True).start()
 
         # Check if model already trained
         if project.model.trained and project.model.model_path:

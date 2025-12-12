@@ -109,7 +109,7 @@ class DataSourcesPanel(ctk.CTkFrame):
 
         # Data source type selection
         source_frame = ctk.CTkFrame(tab)
-        source_frame.grid(row=1, column=0, sticky="ew", padx=10, pady=10)
+        source_frame.grid(row=2, column=0, sticky="ew", padx=10, pady=10)
         source_frame.grid_columnconfigure(1, weight=1)
 
         ctk.CTkLabel(
@@ -129,7 +129,7 @@ class DataSourcesPanel(ctk.CTkFrame):
 
         # CSV-specific options
         self.csv_frame = ctk.CTkFrame(tab)
-        self.csv_frame.grid(row=1, column=0, sticky="ew", padx=10, pady=10)
+        self.csv_frame.grid(row=3, column=0, sticky="ew", padx=10, pady=10)
         self.csv_frame.grid_columnconfigure(1, weight=1)
 
         # File path
@@ -185,7 +185,7 @@ class DataSourcesPanel(ctk.CTkFrame):
 
         # Edge Impulse-specific options
         self.ei_frame = ctk.CTkFrame(tab)
-        self.ei_frame.grid(row=1, column=0, sticky="ew", padx=10, pady=10)
+        self.ei_frame.grid(row=3, column=0, sticky="ew", padx=10, pady=10)
         self.ei_frame.grid_columnconfigure(1, weight=1)
         self.ei_frame.grid_remove()  # Hidden by default
 
@@ -221,7 +221,7 @@ class DataSourcesPanel(ctk.CTkFrame):
 
         # Database-specific options
         self.db_frame = ctk.CTkFrame(tab)
-        self.db_frame.grid(row=1, column=0, sticky="ew", padx=10, pady=10)
+        self.db_frame.grid(row=3, column=0, sticky="ew", padx=10, pady=10)
         self.db_frame.grid_columnconfigure(1, weight=1)
         self.db_frame.grid_remove()  # Hidden by default
 
@@ -335,7 +335,7 @@ class DataSourcesPanel(ctk.CTkFrame):
 
         # REST API-specific options
         self.api_frame = ctk.CTkFrame(tab)
-        self.api_frame.grid(row=1, column=0, sticky="ew", padx=10, pady=10)
+        self.api_frame.grid(row=3, column=0, sticky="ew", padx=10, pady=10)
         self.api_frame.grid_columnconfigure(1, weight=1)
         self.api_frame.grid_remove()  # Hidden by default
 
@@ -448,7 +448,7 @@ class DataSourcesPanel(ctk.CTkFrame):
 
         # Streaming-specific options
         self.stream_frame = ctk.CTkFrame(tab)
-        self.stream_frame.grid(row=1, column=0, sticky="ew", padx=10, pady=10)
+        self.stream_frame.grid(row=3, column=0, sticky="ew", padx=10, pady=10)
         self.stream_frame.grid_columnconfigure(1, weight=1)
         self.stream_frame.grid_remove()  # Hidden by default
 

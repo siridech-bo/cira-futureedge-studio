@@ -87,22 +87,25 @@ class FeaturesPanel(ctk.CTkFrame):
         """Setup configuration tab."""
         tab = self.tabview.tab("Configuration")
         tab.grid_columnconfigure(0, weight=1)
+        tab.grid_columnconfigure(1, weight=1)
+        tab.grid_rowconfigure(0, weight=1)
 
-        # Scrollable frame
-        scroll = ctk.CTkScrollableFrame(tab)
-        scroll.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
-        scroll.grid_columnconfigure(0, weight=1)
+        # Main container frame (no scrolling)
+        container = ctk.CTkFrame(tab, fg_color="transparent")
+        container.grid(row=0, column=0, columnspan=2, sticky="nsew", padx=20, pady=20)
+        container.grid_columnconfigure(0, weight=1)
+        container.grid_columnconfigure(1, weight=1)
 
-        # Operation Mode Section
-        mode_frame = ctk.CTkFrame(scroll)
-        mode_frame.grid(row=0, column=0, sticky="ew", padx=10, pady=10)
-        mode_frame.grid_columnconfigure(1, weight=1)
+        # LEFT COLUMN: Operation Mode Section
+        mode_frame = ctk.CTkFrame(container)
+        mode_frame.grid(row=0, column=0, rowspan=2, sticky="nsew", padx=(0, 10), pady=0)
+        mode_frame.grid_columnconfigure(0, weight=1)
 
         ctk.CTkLabel(
             mode_frame,
             text="Operation Mode:",
             font=("Segoe UI", 14, "bold")
-        ).grid(row=0, column=0, columnspan=2, sticky="w", padx=10, pady=(10, 5))
+        ).grid(row=0, column=0, sticky="w", padx=10, pady=(10, 5))
 
         # Auto-detect mode from project
         default_mode = "anomaly_detection"
@@ -120,7 +123,7 @@ class FeaturesPanel(ctk.CTkFrame):
             value="anomaly_detection",
             command=self._on_mode_change
         )
-        anomaly_radio.grid(row=1, column=0, columnspan=2, sticky="w", padx=30, pady=5)
+        anomaly_radio.grid(row=1, column=0, sticky="w", padx=30, pady=5)
 
         classification_radio = ctk.CTkRadioButton(
             mode_frame,
@@ -129,7 +132,7 @@ class FeaturesPanel(ctk.CTkFrame):
             value="classification",
             command=self._on_mode_change
         )
-        classification_radio.grid(row=2, column=0, columnspan=2, sticky="w", padx=30, pady=5)
+        classification_radio.grid(row=2, column=0, sticky="w", padx=30, pady=5)
 
         forecast_radio = ctk.CTkRadioButton(
             mode_frame,
@@ -138,12 +141,24 @@ class FeaturesPanel(ctk.CTkFrame):
             value="forecasting",
             command=self._on_mode_change
         )
-        forecast_radio.grid(row=3, column=0, columnspan=2, sticky="w", padx=30, pady=(5, 10))
+        forecast_radio.grid(row=3, column=0, sticky="w", padx=30, pady=(5, 15))
 
-        # Complexity Level Section
-        complexity_frame = ctk.CTkFrame(scroll)
-        complexity_frame.grid(row=1, column=0, sticky="ew", padx=10, pady=10)
-        complexity_frame.grid_columnconfigure(1, weight=1)
+        # Info text at bottom of Operation Mode
+        mode_info = ctk.CTkLabel(
+            mode_frame,
+            text="Select the appropriate mode based on your\nproject task type configured in Data Sources.",
+            font=("Segoe UI", 10),
+            text_color="gray",
+            justify="left",
+            wraplength=300
+        )
+        mode_info.grid(row=4, column=0, sticky="w", padx=30, pady=(10, 10))
+
+        # RIGHT COLUMN TOP: Complexity Level Section
+        complexity_frame = ctk.CTkFrame(container)
+        complexity_frame.grid(row=0, column=1, sticky="new", padx=(10, 0), pady=0)
+        complexity_frame.grid_columnconfigure(0, weight=0)
+        complexity_frame.grid_columnconfigure(1, weight=0)
 
         ctk.CTkLabel(
             complexity_frame,
@@ -156,9 +171,10 @@ class FeaturesPanel(ctk.CTkFrame):
             complexity_frame,
             variable=self.complexity_var,
             values=["minimal", "efficient", "comprehensive"],
-            command=self._on_complexity_change
+            command=self._on_complexity_change,
+            width=250
         )
-        complexity_menu.grid(row=0, column=1, padx=10, pady=10, sticky="ew")
+        complexity_menu.grid(row=0, column=1, padx=10, pady=10, sticky="w")
 
         # Complexity descriptions
         ctk.CTkLabel(
@@ -166,14 +182,14 @@ class FeaturesPanel(ctk.CTkFrame):
             text="• Minimal: ~50 features, fastest\n"
                  "• Efficient: ~300 features, balanced (recommended)\n"
                  "• Comprehensive: 700+ features, slowest",
-            font=("Segoe UI", 10),
-            text_color="gray",
+            font=("Segoe UI", 11),
+            text_color="lightgray",
             justify="left"
-        ).grid(row=1, column=0, columnspan=2, sticky="w", padx=30, pady=(0, 10))
+        ).grid(row=1, column=0, columnspan=2, sticky="w", padx=30, pady=(5, 10))
 
-        # Configuration Mode Section
-        config_mode_frame = ctk.CTkFrame(scroll)
-        config_mode_frame.grid(row=2, column=0, sticky="ew", padx=10, pady=10)
+        # RIGHT COLUMN BOTTOM: Configuration Mode Section
+        config_mode_frame = ctk.CTkFrame(container)
+        config_mode_frame.grid(row=1, column=1, sticky="new", padx=(10, 0), pady=(20, 0))
         config_mode_frame.grid_columnconfigure(1, weight=1)
 
         ctk.CTkLabel(
@@ -211,9 +227,9 @@ class FeaturesPanel(ctk.CTkFrame):
         )
         per_sensor_radio.grid(row=3, column=0, columnspan=2, sticky="w", padx=30, pady=(5, 10))
 
-        # Rolling Configuration (for forecasting)
-        self.rolling_frame = ctk.CTkFrame(scroll)
-        self.rolling_frame.grid(row=3, column=0, sticky="ew", padx=10, pady=10)
+        # BOTTOM ROW: Rolling Configuration (for forecasting) - spans both columns
+        self.rolling_frame = ctk.CTkFrame(container)
+        self.rolling_frame.grid(row=2, column=0, columnspan=2, sticky="ew", padx=0, pady=(20, 0))
         self.rolling_frame.grid_columnconfigure(1, weight=1)
         self.rolling_frame.grid_remove()  # Hidden by default
 
@@ -283,9 +299,9 @@ class FeaturesPanel(ctk.CTkFrame):
         )
         horizon_entry.grid(row=4, column=1, padx=10, pady=(5, 10), sticky="w")
 
-        # Computation Settings
-        compute_frame = ctk.CTkFrame(scroll)
-        compute_frame.grid(row=4, column=0, sticky="ew", padx=10, pady=10)
+        # BOTTOM: Computation Settings - spans both columns
+        compute_frame = ctk.CTkFrame(container)
+        compute_frame.grid(row=3, column=0, columnspan=2, sticky="ew", padx=0, pady=(20, 0))
         compute_frame.grid_columnconfigure(1, weight=1)
 
         ctk.CTkLabel(
@@ -342,6 +358,26 @@ class FeaturesPanel(ctk.CTkFrame):
         )
         self.extract_btn.pack()
 
+        # Progress bar
+        self.extraction_progress = ctk.CTkProgressBar(
+            tab,
+            width=400,
+            mode="determinate"  # Changed from indeterminate
+        )
+        self.extraction_progress.grid(row=2, column=0, pady=10)
+        self.extraction_progress.grid_remove()  # Hidden by default
+        self.extraction_progress.set(0)  # Initialize at 0%
+
+        # Percentage label
+        self.percentage_label = ctk.CTkLabel(
+            tab,
+            text="0%",
+            font=("Segoe UI", 14, "bold"),
+            text_color="gray"
+        )
+        self.percentage_label.grid(row=3, column=0, pady=5)
+        self.percentage_label.grid_remove()  # Hidden by default
+
         # Progress info
         self.progress_label = ctk.CTkLabel(
             tab,
@@ -349,7 +385,7 @@ class FeaturesPanel(ctk.CTkFrame):
             font=("Segoe UI", 11),
             text_color="gray"
         )
-        self.progress_label.grid(row=2, column=0, pady=5)
+        self.progress_label.grid(row=4, column=0, pady=5)
 
         # Status
         self.extraction_status_label = ctk.CTkLabel(
@@ -357,7 +393,7 @@ class FeaturesPanel(ctk.CTkFrame):
             text="",
             font=("Segoe UI", 11)
         )
-        self.extraction_status_label.grid(row=3, column=0, pady=5)
+        self.extraction_status_label.grid(row=5, column=0, pady=5)
 
     def _setup_filtering_tab(self) -> None:
         """Setup filtering tab."""
@@ -432,34 +468,60 @@ class FeaturesPanel(ctk.CTkFrame):
         corr_check.grid(row=5, column=0, columnspan=2, sticky="w", padx=30, pady=(5, 10))
 
     def _setup_results_tab(self) -> None:
-        """Setup results tab."""
+        """Setup results tab with professional layout."""
         tab = self.tabview.tab("Results")
         tab.grid_columnconfigure(0, weight=1)
         tab.grid_rowconfigure(1, weight=1)
 
-        # Results info
-        results_info_frame = ctk.CTkFrame(tab)
-        results_info_frame.grid(row=0, column=0, sticky="ew", padx=10, pady=10)
+        # Scrollable container for all content
+        scroll_container = ctk.CTkScrollableFrame(tab)
+        scroll_container.grid(row=0, column=0, rowspan=2, sticky="nsew", padx=10, pady=10)
+        scroll_container.grid_columnconfigure(0, weight=1)
+        scroll_container.grid_columnconfigure(1, weight=1)
+        scroll_container.grid_columnconfigure(2, weight=1)
+        scroll_container.grid_columnconfigure(3, weight=1)
 
+        # Title
+        title_label = ctk.CTkLabel(
+            scroll_container,
+            text="📊 Feature Extraction Results",
+            font=("Segoe UI", 18, "bold")
+        )
+        title_label.grid(row=0, column=0, columnspan=4, sticky="w", padx=10, pady=(10, 5))
+
+        # Status label (will show "No features extracted yet" or success message)
         self.results_info_label = ctk.CTkLabel(
-            results_info_frame,
-            text="No features extracted yet",
+            scroll_container,
+            text="No features extracted yet. Configure settings and extract features.",
             font=("Segoe UI", 12),
             text_color="gray"
         )
-        self.results_info_label.pack(padx=20, pady=20)
+        self.results_info_label.grid(row=1, column=0, columnspan=4, sticky="w", padx=10, pady=(0, 20))
 
-        # Results display
-        results_frame = ctk.CTkScrollableFrame(tab)
-        results_frame.grid(row=1, column=0, sticky="nsew", padx=10, pady=10)
-        results_frame.grid_columnconfigure(0, weight=1)
+        # Statistics cards (will be populated after extraction)
+        self.stats_cards_frame = ctk.CTkFrame(scroll_container, fg_color="transparent")
+        self.stats_cards_frame.grid(row=2, column=0, columnspan=4, sticky="ew", padx=10, pady=10)
+        self.stats_cards_frame.grid_columnconfigure(0, weight=1)
+        self.stats_cards_frame.grid_columnconfigure(1, weight=1)
+        self.stats_cards_frame.grid_columnconfigure(2, weight=1)
+        self.stats_cards_frame.grid_columnconfigure(3, weight=1)
+        self.stats_cards_frame.grid_remove()  # Hidden until extraction completes
 
-        self.results_text = ctk.CTkTextbox(
-            results_frame,
-            font=("Courier New", 10),
-            wrap="none"
+        # Feature names section (will be populated after extraction)
+        features_title_label = ctk.CTkLabel(
+            scroll_container,
+            text="📋 Extracted Features",
+            font=("Segoe UI", 14, "bold")
         )
-        self.results_text.pack(fill="both", expand=True)
+        features_title_label.grid(row=3, column=0, columnspan=4, sticky="w", padx=10, pady=(20, 10))
+        features_title_label.grid_remove()  # Hidden initially
+        self.features_title_label = features_title_label
+
+        # Feature list frame (scrollable grid)
+        self.features_display_frame = ctk.CTkFrame(scroll_container)
+        self.features_display_frame.grid(row=4, column=0, columnspan=4, sticky="nsew", padx=10, pady=10)
+        self.features_display_frame.grid_columnconfigure(0, weight=1)
+        self.features_display_frame.grid_remove()  # Hidden initially
 
         # Export button
         export_frame = ctk.CTkFrame(tab, fg_color="transparent")
@@ -579,9 +641,14 @@ class FeaturesPanel(ctk.CTkFrame):
 
             sensor_columns = project.data.sensor_columns
 
-            # Disable extract button
+            # Disable extract button and show progress
             self.extract_btn.configure(state="disabled")
-            self.progress_label.configure(text="Extracting features...")
+            self.extraction_progress.grid()
+            self.extraction_progress.set(0)
+            self.percentage_label.grid()
+            self.percentage_label.configure(text="0%")
+            self.progress_label.configure(text="🔄 Initializing feature extraction...")
+            self.extraction_status_label.configure(text="")
 
             # Run extraction in thread
             def extraction_thread():
@@ -596,15 +663,36 @@ class FeaturesPanel(ctk.CTkFrame):
                         # Check if manual train/test split
                         if project.data.train_test_split_type == "manual":
                             # Extract features separately for train and test
-                            logger.info(f"Extracting features from {len(train_windows)} train windows")
+                            total_train = len(train_windows)
+                            total_test = len(test_windows) if test_windows else 0
+                            total_windows = total_train + total_test
+
+                            logger.info(f"Extracting features from {total_train} train windows")
+                            self.after(0, lambda: self.progress_label.configure(
+                                text=f"Extracting features from training data..."
+                            ))
+                            self.after(0, lambda: self.percentage_label.configure(text="0% (Processing training data)"))
+                            self.after(0, lambda: self.extraction_progress.set(0.1))
+
                             train_features = self.extraction_engine.extract_from_windows(
                                 train_windows,
                                 sensor_columns
                             )
 
+                            # Update progress after train
+                            progress_after_train = total_train / total_windows if total_windows > 0 else 0.5
+                            self.after(0, lambda p=progress_after_train: self.extraction_progress.set(p))
+                            self.after(0, lambda p=progress_after_train: self.percentage_label.configure(
+                                text=f"{int(p*100)}% ({total_train}/{total_windows} windows)"
+                            ))
+
                             test_features = None
                             if test_windows:
-                                logger.info(f"Extracting features from {len(test_windows)} test windows")
+                                logger.info(f"Extracting features from {total_test} test windows")
+                                self.after(0, lambda: self.progress_label.configure(
+                                    text=f"Extracting features from testing data..."
+                                ))
+
                                 test_features = self.extraction_engine.extract_from_windows(
                                     test_windows,
                                     sensor_columns
@@ -621,10 +709,21 @@ class FeaturesPanel(ctk.CTkFrame):
                                 features = train_features
                         else:
                             # Standard extraction
+                            num_windows = len(windows) if windows else 0
+                            self.after(0, lambda: self.progress_label.configure(
+                                text=f"Extracting features from data..."
+                            ))
+                            self.after(0, lambda: self.percentage_label.configure(text=f"0% (Processing {num_windows} windows)"))
+                            self.after(0, lambda: self.extraction_progress.set(0.1))
+
                             features = self.extraction_engine.extract_from_windows(
                                 windows,
                                 sensor_columns
                             )
+
+                            # Update to 100% after completion
+                            self.after(0, lambda: self.extraction_progress.set(1.0))
+                            self.after(0, lambda: self.percentage_label.configure(text=f"100% ({num_windows}/{num_windows} windows)"))
 
                     self.extracted_features = features
 
@@ -644,7 +743,18 @@ class FeaturesPanel(ctk.CTkFrame):
 
     def _extraction_complete(self, features: pd.DataFrame) -> None:
         """Handle extraction completion."""
-        self.progress_label.configure(text="")
+        # Set progress to 100%
+        self.extraction_progress.set(1.0)
+        self.percentage_label.configure(text="100%", text_color="green")
+
+        # Hide progress after a short delay
+        def hide_progress():
+            self.extraction_progress.grid_remove()
+            self.percentage_label.grid_remove()
+            self.progress_label.configure(text="")
+
+        self.after(1500, hide_progress)
+
         self.extraction_status_label.configure(
             text=f"✓ Extracted {features.shape[1]} features from {features.shape[0]} windows",
             text_color="green"
@@ -696,7 +806,11 @@ class FeaturesPanel(ctk.CTkFrame):
 
     def _extraction_error(self, error: str) -> None:
         """Handle extraction error."""
+        # Hide progress bar
+        self.extraction_progress.grid_remove()
+        self.percentage_label.grid_remove()
         self.progress_label.configure(text="")
+
         self.extraction_status_label.configure(
             text=f"✗ Error: {error}",
             text_color="red"
@@ -708,6 +822,8 @@ class FeaturesPanel(ctk.CTkFrame):
         """Show error message (thread-safe)."""
         self.after(0, lambda: messagebox.showerror("Error", message))
         self.after(0, lambda: self.extract_btn.configure(state="normal"))
+        self.after(0, lambda: self.extraction_progress.grid_remove())
+        self.after(0, lambda: self.percentage_label.grid_remove())
         self.after(0, lambda: self.progress_label.configure(text=""))
 
     def _build_config(self) -> FeatureExtractionConfig:
@@ -748,43 +864,110 @@ class FeaturesPanel(ctk.CTkFrame):
         return config
 
     def _display_results(self) -> None:
-        """Display extraction results."""
+        """Display extraction results in professional layout."""
         if self.extracted_features is None:
             return
 
         # Get statistics
         stats = self.extraction_engine.get_feature_statistics()
+        project = self.project_manager.current_project
 
-        # Build results text
-        results = "=" * 60 + "\n"
-        results += "Feature Extraction Results\n"
-        results += "=" * 60 + "\n\n"
-
-        results += f"Total Features: {stats['total_features']}\n"
-        results += f"Samples: {stats['num_samples']}\n"
-        results += f"Memory Usage: {stats['memory_usage_mb']:.2f} MB\n\n"
-
-        if 'filtered_features' in stats:
-            results += f"Filtered Features: {stats['filtered_features']}\n"
-            results += f"Reduction: {stats['reduction_percent']:.1f}%\n\n"
-
-        results += "-" * 60 + "\n"
-        results += "Feature Names (first 50):\n"
-        results += "-" * 60 + "\n"
-        for i, name in enumerate(stats['feature_names'][:50]):
-            results += f"{i+1:3d}. {name}\n"
-
-        if len(stats['feature_names']) > 50:
-            results += f"... and {len(stats['feature_names']) - 50} more\n"
-
-        # Display
-        self.results_text.delete("1.0", "end")
-        self.results_text.insert("1.0", results)
-
+        # Update status label
         self.results_info_label.configure(
-            text=f"✓ Extracted {stats['total_features']} features",
+            text=f"✓ Feature extraction completed successfully!",
             text_color="green"
         )
+
+        # Clear and show stats cards
+        for widget in self.stats_cards_frame.winfo_children():
+            widget.destroy()
+
+        # Create stat cards
+        cards = [
+            ("🔢", "Total Features", f"{stats['total_features']}", "#3B82F6"),
+            ("📊", "Samples", f"{stats['num_samples']}", "#10B981"),
+            ("🎯", "Mode", project.features.operation_mode.replace('_', ' ').title(), "#F59E0B"),
+            ("⚙️", "Complexity", project.features.complexity_level.title(), "#8B5CF6")
+        ]
+
+        for idx, (icon, label, value, color) in enumerate(cards):
+            card = ctk.CTkFrame(self.stats_cards_frame, fg_color=color, corner_radius=10)
+            card.grid(row=0, column=idx, padx=5, pady=5, sticky="ew")
+
+            ctk.CTkLabel(
+                card,
+                text=icon,
+                font=("Segoe UI", 24)
+            ).pack(pady=(10, 0))
+
+            ctk.CTkLabel(
+                card,
+                text=value,
+                font=("Segoe UI", 20, "bold"),
+                text_color="white"
+            ).pack()
+
+            ctk.CTkLabel(
+                card,
+                text=label,
+                font=("Segoe UI", 11),
+                text_color="white"
+            ).pack(pady=(0, 10))
+
+        self.stats_cards_frame.grid()
+
+        # Show feature names section
+        self.features_title_label.grid()
+
+        # Clear and populate feature display
+        for widget in self.features_display_frame.winfo_children():
+            widget.destroy()
+
+        # Create scrollable frame for features
+        features_scroll = ctk.CTkScrollableFrame(self.features_display_frame, height=300)
+        features_scroll.pack(fill="both", expand=True, padx=10, pady=10)
+        features_scroll.grid_columnconfigure(0, weight=0)
+        features_scroll.grid_columnconfigure(1, weight=1)
+
+        # Header
+        ctk.CTkLabel(
+            features_scroll,
+            text="#",
+            font=("Segoe UI", 11, "bold"),
+            width=50
+        ).grid(row=0, column=0, sticky="w", padx=5, pady=5)
+
+        ctk.CTkLabel(
+            features_scroll,
+            text="Feature Name",
+            font=("Segoe UI", 11, "bold")
+        ).grid(row=0, column=1, sticky="w", padx=5, pady=5)
+
+        # Feature list (show all features in a scrollable grid)
+        for i, name in enumerate(stats['feature_names'], 1):
+            # Alternate row colors
+            bg_color = "gray20" if i % 2 == 0 else "transparent"
+
+            row_frame = ctk.CTkFrame(features_scroll, fg_color=bg_color)
+            row_frame.grid(row=i, column=0, columnspan=2, sticky="ew", padx=2, pady=1)
+            row_frame.grid_columnconfigure(1, weight=1)
+
+            ctk.CTkLabel(
+                row_frame,
+                text=f"{i}",
+                font=("Segoe UI", 10),
+                text_color="gray",
+                width=50
+            ).grid(row=0, column=0, sticky="w", padx=5, pady=2)
+
+            ctk.CTkLabel(
+                row_frame,
+                text=name,
+                font=("Consolas", 10),
+                anchor="w"
+            ).grid(row=0, column=1, sticky="w", padx=5, pady=2)
+
+        self.features_display_frame.grid()
 
     def _export_features(self) -> None:
         """Export features to file."""
@@ -1170,21 +1353,25 @@ class FeaturesPanel(ctk.CTkFrame):
                     with open(features_path, 'rb') as f:
                         self.extracted_features = pickle.load(f)
 
-                    # Update Results tab to show feature info
+                    # Create a mock extraction engine with the loaded features
+                    from core.feature_extraction import FeatureExtractionEngine
+                    self.extraction_engine = FeatureExtractionEngine(FeatureExtractionConfig())
+                    self.extraction_engine.extracted_features = self.extracted_features
+                    self.extraction_engine.feature_names = list(self.extracted_features.columns)
+
+                    # Update Results tab with professional display
                     num_features = len(project.features.feature_names)
                     num_samples = len(self.extracted_features)
 
-                    info_text = f"""✓ Features loaded from project!
+                    info_text = f"✓ Features loaded from existing project!"
+                    self.results_info_label.configure(text=info_text, text_color="green")
 
-Features: {num_features}
-Samples: {num_samples}
-Mode: {project.features.operation_mode.replace('_', ' ').title()}
-Complexity: {project.features.complexity_level.title()}
+                    # Enable export button
+                    self.export_btn.configure(state="normal")
 
-The features are ready for LLM selection and model training.
-You can also re-extract features if needed.
-                    """
-                    self.results_info_label.configure(text=info_text)
+                    # Display results with professional layout
+                    self._display_results()
+
                     logger.info(f"Loaded extracted features: {num_features} features, {num_samples} samples")
                 else:
                     logger.warning(f"Features file not found: {features_path}")

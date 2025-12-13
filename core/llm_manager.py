@@ -109,7 +109,8 @@ class LLMManager:
         domain: str,
         target_count: int = 5,
         platform_constraints: Optional[Dict[str, Any]] = None,
-        custom_prompt_template: Optional[str] = None
+        custom_prompt_template: Optional[str] = None,
+        feature_stats_per_class: Optional[Dict[str, Dict]] = None
     ) -> FeatureSelection:
         """
         Select best features using LLM.
@@ -139,7 +140,8 @@ class LLMManager:
                     feature_importance,
                     domain,
                     target_count,
-                    platform_constraints
+                    platform_constraints,
+                    feature_stats_per_class
                 )
             else:
                 prompt = self._build_selection_prompt(
@@ -147,7 +149,8 @@ class LLMManager:
                     feature_importance,
                     domain,
                     target_count,
-                    platform_constraints
+                    platform_constraints,
+                    feature_stats_per_class
                 )
 
             logger.info(f"Requesting LLM feature selection (top {target_count})")
@@ -202,7 +205,8 @@ class LLMManager:
         importance: Dict[str, float],
         domain: str,
         target_count: int,
-        constraints: Optional[Dict[str, Any]]
+        constraints: Optional[Dict[str, Any]],
+        feature_stats_per_class: Optional[Dict[str, Dict]] = None
     ) -> str:
         """Build prompt from custom template with variable substitution."""
 
@@ -213,14 +217,32 @@ class LLMManager:
             reverse=True
         )
 
-        # Take top 50 for context (avoid token limit)
-        top_features = sorted_features[:50]
+        # Take top 30 for context (avoid token limit with rich stats)
+        top_features = sorted_features[:30]
 
-        # Build feature list with importance
+        # Build feature list with rich context
         feature_list = []
         for feat in top_features:
             imp = importance.get(feat, 0)
-            feature_list.append(f"- {feat} (importance: {imp:.4f})")
+            feat_info = f"- {feat} (importance: {imp:.4f})"
+
+            # Add per-class stats if available
+            if feature_stats_per_class and feat in feature_stats_per_class:
+                stats = feature_stats_per_class[feat]
+                mi_score = stats.get('mi_score', 0)
+                feat_info += f", MI: {mi_score:.4f}"
+
+                # Add class means to show separation
+                class_means = []
+                for class_label, class_stat in stats.items():
+                    if class_label != 'mi_score':
+                        mean_val = class_stat['mean']
+                        class_means.append(f"{class_label}={mean_val:.2f}")
+
+                if class_means:
+                    feat_info += f" [{', '.join(class_means)}]"
+
+            feature_list.append(feat_info)
 
         feature_text = "\n".join(feature_list)
 
@@ -261,9 +283,10 @@ Target Platform Constraints:
         importance: Dict[str, float],
         domain: str,
         target_count: int,
-        constraints: Optional[Dict[str, Any]]
+        constraints: Optional[Dict[str, Any]],
+        feature_stats_per_class: Optional[Dict[str, Dict]] = None
     ) -> str:
-        """Build prompt for feature selection."""
+        """Build prompt for feature selection with rich feature context."""
 
         # Sort by importance
         sorted_features = sorted(
@@ -272,14 +295,32 @@ Target Platform Constraints:
             reverse=True
         )
 
-        # Take top 50 for context (avoid token limit)
-        top_features = sorted_features[:50]
+        # Take top 30 for context (reduced from 50 due to richer stats)
+        top_features = sorted_features[:30]
 
-        # Build feature list with importance
+        # Build feature list with rich context
         feature_list = []
         for feat in top_features:
             imp = importance.get(feat, 0)
-            feature_list.append(f"- {feat} (importance: {imp:.4f})")
+            feat_info = f"- {feat} (importance: {imp:.4f})"
+
+            # Add per-class stats if available
+            if feature_stats_per_class and feat in feature_stats_per_class:
+                stats = feature_stats_per_class[feat]
+                mi_score = stats.get('mi_score', 0)
+                feat_info += f", MI: {mi_score:.4f}"
+
+                # Add class means to show separation
+                class_means = []
+                for class_label, class_stat in stats.items():
+                    if class_label != 'mi_score':
+                        mean_val = class_stat['mean']
+                        class_means.append(f"{class_label}={mean_val:.2f}")
+
+                if class_means:
+                    feat_info += f" [{', '.join(class_means)}]"
+
+            feature_list.append(feat_info)
 
         feature_text = "\n".join(feature_list)
 

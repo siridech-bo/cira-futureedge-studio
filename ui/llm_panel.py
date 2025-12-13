@@ -35,6 +35,8 @@ class LLMPanel(ctk.CTkFrame):
         self.project_manager = project_manager
         self.llm_manager: Optional[LLMManager] = None
         self.selected_features: List[str] = []
+        self.feature_stats_cache: Optional[Dict[str, Dict]] = None  # Cache for displaying in results
+        self.feature_importance_cache: Optional[Dict[str, float]] = None
 
         self._setup_ui()
 
@@ -555,10 +557,66 @@ Reasoning:
                 feature_names = list(features_df.columns)
                 logger.info(f"Loaded {len(feature_names)} extracted features")
 
-                # Calculate feature importance (mean absolute value)
+                # Load windows to get class labels
+                if project.data.train_test_split_type == "manual":
+                    # Load combined windows for labels
+                    if project.data.train_windows_file:
+                        with open(project.data.train_windows_file, 'rb') as f:
+                            train_windows = pickle.load(f)
+                        windows = train_windows
+                        if project.data.test_windows_file:
+                            with open(project.data.test_windows_file, 'rb') as f:
+                                test_windows = pickle.load(f)
+                            windows = train_windows + test_windows
+                    else:
+                        windows = []
+                else:
+                    windows = project.load_windows()
+
+                # Extract labels from windows
+                labels = [w.class_label if hasattr(w, 'class_label') and w.class_label else "unknown" for w in windows]
+                logger.info(f"Loaded {len(labels)} labels from windows")
+
+                # Calculate rich feature statistics
+                import numpy as np
+                from sklearn.metrics import mutual_info_classif
+                from sklearn.preprocessing import LabelEncoder
+
                 feature_importance = {}
+                feature_stats_per_class = {}
+
+                # Calculate per-class statistics
+                unique_labels = sorted(set(labels))
+                logger.info(f"Computing statistics for {len(unique_labels)} classes")
+
                 for col in feature_names:
+                    # Overall importance (mean absolute value)
                     feature_importance[col] = features_df[col].abs().mean()
+
+                    # Per-class statistics
+                    class_stats = {}
+                    for label in unique_labels:
+                        label_mask = [l == label for l in labels]
+                        class_data = features_df[col][label_mask]
+                        class_stats[label] = {
+                            'mean': float(class_data.mean()),
+                            'std': float(class_data.std()),
+                            'min': float(class_data.min()),
+                            'max': float(class_data.max())
+                        }
+                    feature_stats_per_class[col] = class_stats
+
+                # Calculate mutual information (class separation power) for top 100 features
+                sorted_features = sorted(feature_names, key=lambda x: feature_importance.get(x, 0), reverse=True)[:100]
+                X_top = features_df[sorted_features].values
+                le = LabelEncoder()
+                y_encoded = le.fit_transform(labels)
+
+                mi_scores = mutual_info_classif(X_top, y_encoded, random_state=42)
+                for feat, mi_score in zip(sorted_features, mi_scores):
+                    feature_stats_per_class[feat]['mi_score'] = float(mi_score)
+
+                logger.info("Calculated per-class statistics and mutual information scores")
 
                 # Build platform constraints
                 platform_constraints = {
@@ -577,7 +635,8 @@ Reasoning:
                         domain=project.domain,
                         target_count=target_count,
                         platform_constraints=platform_constraints,
-                        custom_prompt_template=custom_prompt_template
+                        custom_prompt_template=custom_prompt_template,
+                        feature_stats_per_class=feature_stats_per_class
                     )
                 else:
                     # Use fallback
@@ -589,6 +648,8 @@ Reasoning:
                     )
 
                 self.selected_features = selection.selected_features
+                self.feature_stats_cache = feature_stats_per_class  # Store for results display
+                self.feature_importance_cache = feature_importance
 
                 # Save to project
                 project.llm.selected_features = self.selected_features
@@ -620,18 +681,58 @@ Reasoning:
 
         # Build results text
         results_text = f"Feature Selection Results\n"
-        results_text += f"{'=' * 60}\n\n"
+        results_text += f"{'=' * 80}\n\n"
         results_text += f"Method: {'LLM-based' if not selection.fallback_used else 'Statistical fallback'}\n"
         results_text += f"Features selected: {len(selection.selected_features)}\n"
         results_text += f"Confidence: {selection.confidence:.2f}\n\n"
 
-        results_text += f"Selected Features:\n"
-        results_text += f"{'-' * 60}\n"
+        results_text += f"Selected Features with Statistics:\n"
+        results_text += f"{'-' * 80}\n\n"
+
+        # Display detailed statistics for each selected feature
         for i, feat in enumerate(selection.selected_features, 1):
             results_text += f"{i}. {feat}\n"
 
+            # Add importance score if available
+            if self.feature_importance_cache and feat in self.feature_importance_cache:
+                importance = self.feature_importance_cache[feat]
+                results_text += f"   Importance: {importance:.4f}\n"
+
+            # Add detailed statistics if available
+            if self.feature_stats_cache and feat in self.feature_stats_cache:
+                stats = self.feature_stats_cache[feat]
+
+                # Mutual Information score
+                if 'mi_score' in stats:
+                    mi_score = stats['mi_score']
+                    results_text += f"   Mutual Information: {mi_score:.4f}\n"
+
+                # Per-class statistics
+                results_text += f"   Class Statistics:\n"
+                class_labels = [k for k in stats.keys() if k != 'mi_score']
+
+                for class_label in sorted(class_labels):
+                    class_stat = stats[class_label]
+                    mean = class_stat['mean']
+                    std = class_stat['std']
+                    min_val = class_stat['min']
+                    max_val = class_stat['max']
+                    results_text += f"      {class_label}: mean={mean:.4f}, std={std:.4f}, min={min_val:.4f}, max={max_val:.4f}\n"
+
+                # Calculate and show class separation (difference between max and min means)
+                if len(class_labels) >= 2:
+                    means = [stats[label]['mean'] for label in class_labels]
+                    separation = max(means) - min(means)
+                    if min(means) != 0:
+                        separation_ratio = max(means) / min(means) if min(means) > 0 else float('inf')
+                        results_text += f"   → Class separation: {separation:.4f} (ratio: {separation_ratio:.2f}x)\n"
+                    else:
+                        results_text += f"   → Class separation: {separation:.4f}\n"
+
+            results_text += "\n"
+
         results_text += f"\nReasoning:\n"
-        results_text += f"{'-' * 60}\n"
+        results_text += f"{'-' * 80}\n"
         results_text += f"{selection.reasoning}\n"
 
         self.results_text.delete("1.0", "end")

@@ -579,7 +579,7 @@ Reasoning:
 
                 # Calculate rich feature statistics
                 import numpy as np
-                from sklearn.metrics import mutual_info_classif
+                from sklearn.feature_selection import mutual_info_classif
                 from sklearn.preprocessing import LabelEncoder
 
                 feature_importance = {}

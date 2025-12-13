@@ -71,15 +71,19 @@ class FeatureExtractionEngine:
         self,
         windows: List[Window],
         sensor_columns: List[str],
-        target: Optional[pd.Series] = None
+        target: Optional[pd.Series] = None,
+        progress_callback: Optional[callable] = None,
+        chunk_size: int = 500
     ) -> pd.DataFrame:
         """
-        Extract features from windowed data.
+        Extract features from windowed data with optional progress tracking.
 
         Args:
             windows: List of Window objects
             sensor_columns: List of sensor column names
             target: Target variable for supervised filtering (optional)
+            progress_callback: Callback function(current, total, percentage) for progress updates
+            chunk_size: Number of windows to process per chunk (for progress tracking)
 
         Returns:
             DataFrame with extracted features
@@ -87,46 +91,106 @@ class FeatureExtractionEngine:
         from tsfresh import extract_features
         from tsfresh.utilities.dataframe_functions import impute
 
-        logger.info(f"Extracting features from {len(windows)} windows")
+        total_windows = len(windows)
+        logger.info(f"Extracting features from {total_windows} windows")
         logger.info(f"Sensor columns: {sensor_columns}")
         logger.info(f"Configuration mode: {self.config.configuration_mode.value}")
-
-        # Convert windows to tsfresh format
-        df_tsfresh = self._windows_to_tsfresh_format(windows, sensor_columns)
 
         # Get tsfresh settings
         settings = self.config.get_tsfresh_settings()
 
-        # Extract features
-        if self.config.configuration_mode == ConfigurationMode.PER_SENSOR:
-            # Per-sensor custom settings
-            logger.info("Using per-sensor configuration")
-            features = extract_features(
-                df_tsfresh,
-                column_id="window_id",
-                column_sort="sample_id",
-                default_fc_parameters=settings,
-                n_jobs=self.config.n_jobs,
-                chunksize=self.config.chunksize,
-                disable_progressbar=False,
-                show_warnings=self.config.show_warnings
-            )
-        else:
-            # Global settings
-            logger.info(f"Using {self.config.complexity_level.value} settings")
-            features = extract_features(
-                df_tsfresh,
-                column_id="window_id",
-                column_sort="sample_id",
-                default_fc_parameters=settings,
-                n_jobs=self.config.n_jobs,
-                chunksize=self.config.chunksize,
-                disable_progressbar=False,
-                show_warnings=self.config.show_warnings
-            )
+        # If no progress callback or small dataset, use standard extraction
+        if progress_callback is None or total_windows <= chunk_size:
+            logger.info("Using standard extraction (no chunking)")
 
-        # Impute missing values
-        impute(features)
+            # Convert windows to tsfresh format
+            df_tsfresh = self._windows_to_tsfresh_format(windows, sensor_columns)
+
+            # Extract features
+            if self.config.configuration_mode == ConfigurationMode.PER_SENSOR:
+                logger.info("Using per-sensor configuration")
+                features = extract_features(
+                    df_tsfresh,
+                    column_id="window_id",
+                    column_sort="sample_id",
+                    default_fc_parameters=settings,
+                    n_jobs=self.config.n_jobs,
+                    chunksize=self.config.chunksize,
+                    disable_progressbar=True,  # Disable tsfresh's progress bar
+                    show_warnings=self.config.show_warnings
+                )
+            else:
+                logger.info(f"Using {self.config.complexity_level.value} settings")
+                features = extract_features(
+                    df_tsfresh,
+                    column_id="window_id",
+                    column_sort="sample_id",
+                    default_fc_parameters=settings,
+                    n_jobs=self.config.n_jobs,
+                    chunksize=self.config.chunksize,
+                    disable_progressbar=True,  # Disable tsfresh's progress bar
+                    show_warnings=self.config.show_warnings
+                )
+
+            # Impute missing values
+            impute(features)
+
+        else:
+            # Chunked extraction with progress tracking
+            logger.info(f"Using chunked extraction (chunk_size={chunk_size})")
+
+            all_features = []
+            num_chunks = (total_windows + chunk_size - 1) // chunk_size  # Ceiling division
+
+            for chunk_idx in range(num_chunks):
+                start_idx = chunk_idx * chunk_size
+                end_idx = min(start_idx + chunk_size, total_windows)
+                chunk_windows = windows[start_idx:end_idx]
+
+                logger.info(f"Processing chunk {chunk_idx + 1}/{num_chunks}: windows {start_idx}-{end_idx}")
+
+                # Convert chunk to tsfresh format
+                df_tsfresh_chunk = self._windows_to_tsfresh_format(chunk_windows, sensor_columns)
+
+                # Extract features for this chunk
+                if self.config.configuration_mode == ConfigurationMode.PER_SENSOR:
+                    chunk_features = extract_features(
+                        df_tsfresh_chunk,
+                        column_id="window_id",
+                        column_sort="sample_id",
+                        default_fc_parameters=settings,
+                        n_jobs=self.config.n_jobs,
+                        chunksize=self.config.chunksize,
+                        disable_progressbar=True,  # Disable tsfresh's progress bar
+                        show_warnings=self.config.show_warnings
+                    )
+                else:
+                    chunk_features = extract_features(
+                        df_tsfresh_chunk,
+                        column_id="window_id",
+                        column_sort="sample_id",
+                        default_fc_parameters=settings,
+                        n_jobs=self.config.n_jobs,
+                        chunksize=self.config.chunksize,
+                        disable_progressbar=True,  # Disable tsfresh's progress bar
+                        show_warnings=self.config.show_warnings
+                    )
+
+                # Impute missing values for chunk
+                impute(chunk_features)
+
+                all_features.append(chunk_features)
+
+                # Report progress
+                processed = end_idx
+                percentage = (processed / total_windows) * 100
+                progress_callback(processed, total_windows, percentage)
+                logger.info(f"Progress: {processed}/{total_windows} ({percentage:.1f}%)")
+
+            # Combine all chunks
+            logger.info("Combining all feature chunks...")
+            features = pd.concat(all_features, ignore_index=False)
+            logger.info(f"Combined features shape: {features.shape}")
 
         logger.info(f"Extracted {features.shape[1]} features")
         self.extracted_features = features

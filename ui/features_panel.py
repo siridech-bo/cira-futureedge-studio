@@ -362,19 +362,30 @@ class FeaturesPanel(ctk.CTkFrame):
         self.extraction_progress = ctk.CTkProgressBar(
             tab,
             width=400,
-            mode="indeterminate"
+            mode="determinate"
         )
         self.extraction_progress.grid(row=2, column=0, pady=10)
         self.extraction_progress.grid_remove()  # Hidden by default
+        self.extraction_progress.set(0)
+
+        # Percentage label
+        self.percentage_label = ctk.CTkLabel(
+            tab,
+            text="0%",
+            font=("Segoe UI", 14, "bold"),
+            text_color="gray"
+        )
+        self.percentage_label.grid(row=3, column=0, pady=2)
+        self.percentage_label.grid_remove()  # Hidden by default
 
         # Progress info
         self.progress_label = ctk.CTkLabel(
             tab,
             text="",
-            font=("Segoe UI", 11),
+            font=("Segoe UI", 10),
             text_color="gray"
         )
-        self.progress_label.grid(row=3, column=0, pady=5)
+        self.progress_label.grid(row=4, column=0, pady=5)
 
         # Status
         self.extraction_status_label = ctk.CTkLabel(
@@ -607,8 +618,10 @@ class FeaturesPanel(ctk.CTkFrame):
             # Disable extract button and show progress
             self.extract_btn.configure(state="disabled")
             self.extraction_progress.grid()
-            self.extraction_progress.start()
-            self.progress_label.configure(text="🔄 Extracting features... (this may take several minutes)")
+            self.extraction_progress.set(0)
+            self.percentage_label.grid()
+            self.percentage_label.configure(text="0%", text_color="gray")
+            self.progress_label.configure(text="Initializing extraction...")
             self.extraction_status_label.configure(text="")
 
             # Run extraction in thread
@@ -626,27 +639,48 @@ class FeaturesPanel(ctk.CTkFrame):
                             # Extract features separately for train and test
                             total_train = len(train_windows)
                             total_test = len(test_windows) if test_windows else 0
+                            total_windows = total_train + total_test
+
+                            # Progress callback for training data
+                            def train_progress(current, total, percentage):
+                                # Calculate overall progress (training is first 50% if we have test data)
+                                if total_test > 0:
+                                    overall_pct = (current / total_windows) * 100
+                                else:
+                                    overall_pct = percentage
+
+                                self.after(0, lambda: self._update_extraction_progress(
+                                    current, total_windows, overall_pct,
+                                    f"Extracting training features ({current}/{total_train} windows)"
+                                ))
 
                             logger.info(f"Extracting features from {total_train} train windows")
-                            self.after(0, lambda: self.progress_label.configure(
-                                text=f"🔄 Extracting features from training data ({total_train} windows)..."
-                            ))
-
                             train_features = self.extraction_engine.extract_from_windows(
                                 train_windows,
-                                sensor_columns
+                                sensor_columns,
+                                progress_callback=train_progress,
+                                chunk_size=500
                             )
 
                             test_features = None
                             if test_windows:
-                                logger.info(f"Extracting features from {total_test} test windows")
-                                self.after(0, lambda: self.progress_label.configure(
-                                    text=f"🔄 Extracting features from testing data ({total_test} windows)..."
-                                ))
+                                # Progress callback for test data
+                                def test_progress(current, total, percentage):
+                                    # Training is complete, so add its count to current
+                                    overall_current = total_train + current
+                                    overall_pct = (overall_current / total_windows) * 100
 
+                                    self.after(0, lambda: self._update_extraction_progress(
+                                        overall_current, total_windows, overall_pct,
+                                        f"Extracting test features ({current}/{total_test} windows)"
+                                    ))
+
+                                logger.info(f"Extracting features from {total_test} test windows")
                                 test_features = self.extraction_engine.extract_from_windows(
                                     test_windows,
-                                    sensor_columns
+                                    sensor_columns,
+                                    progress_callback=test_progress,
+                                    chunk_size=500
                                 )
 
                             # Store train and test features separately
@@ -659,15 +693,20 @@ class FeaturesPanel(ctk.CTkFrame):
                             else:
                                 features = train_features
                         else:
-                            # Standard extraction
+                            # Standard extraction with progress callback
                             num_windows = len(windows) if windows else 0
-                            self.after(0, lambda: self.progress_label.configure(
-                                text=f"🔄 Extracting features from {num_windows} windows..."
-                            ))
+
+                            def standard_progress(current, total, percentage):
+                                self.after(0, lambda: self._update_extraction_progress(
+                                    current, total, percentage,
+                                    f"Extracting features ({current}/{total} windows)"
+                                ))
 
                             features = self.extraction_engine.extract_from_windows(
                                 windows,
-                                sensor_columns
+                                sensor_columns,
+                                progress_callback=standard_progress,
+                                chunk_size=500
                             )
 
                     self.extracted_features = features
@@ -686,12 +725,25 @@ class FeaturesPanel(ctk.CTkFrame):
             messagebox.showerror("Error", f"Failed to start extraction:\n{e}")
             self.extract_btn.configure(state="normal")
 
+    def _update_extraction_progress(self, current: int, total: int, percentage: float, message: str) -> None:
+        """Update extraction progress UI (thread-safe, called via after())."""
+        self.extraction_progress.set(percentage / 100.0)
+        self.percentage_label.configure(text=f"{percentage:.1f}%")
+        self.progress_label.configure(text=message)
+
     def _extraction_complete(self, features: pd.DataFrame) -> None:
         """Handle extraction completion."""
-        # Stop and hide progress
-        self.extraction_progress.stop()
-        self.extraction_progress.grid_remove()
-        self.progress_label.configure(text="")
+        # Set to 100%
+        self.extraction_progress.set(1.0)
+        self.percentage_label.configure(text="100%", text_color="green")
+
+        # Hide progress after short delay
+        def hide_progress():
+            self.extraction_progress.grid_remove()
+            self.percentage_label.grid_remove()
+            self.progress_label.configure(text="")
+
+        self.after(2000, hide_progress)
 
         self.extraction_status_label.configure(
             text=f"✓ Extracted {features.shape[1]} features from {features.shape[0]} windows",
@@ -744,9 +796,9 @@ class FeaturesPanel(ctk.CTkFrame):
 
     def _extraction_error(self, error: str) -> None:
         """Handle extraction error."""
-        # Stop and hide progress bar
-        self.extraction_progress.stop()
+        # Hide progress bar
         self.extraction_progress.grid_remove()
+        self.percentage_label.grid_remove()
         self.progress_label.configure(text="")
 
         self.extraction_status_label.configure(
@@ -760,8 +812,8 @@ class FeaturesPanel(ctk.CTkFrame):
         """Show error message (thread-safe)."""
         self.after(0, lambda: messagebox.showerror("Error", message))
         self.after(0, lambda: self.extract_btn.configure(state="normal"))
-        self.after(0, lambda: self.extraction_progress.stop())
         self.after(0, lambda: self.extraction_progress.grid_remove())
+        self.after(0, lambda: self.percentage_label.grid_remove())
         self.after(0, lambda: self.progress_label.configure(text=""))
 
     def _build_config(self) -> FeatureExtractionConfig:

@@ -807,7 +807,13 @@ Reasoning:
 
         # Ready
         info_text = f"✓ Ready for feature selection\n"
-        info_text += f"  Available features: {project.features.num_features_extracted}\n"
+
+        # Show filtered or extracted feature count
+        if project.features.filtering_applied and project.features.num_features_filtered > 0:
+            info_text += f"  Available features: {project.features.num_features_filtered} (filtered from {project.features.num_features_extracted})\n"
+        else:
+            info_text += f"  Available features: {project.features.num_features_extracted}\n"
+
         info_text += f"  LLM: {'Loaded' if self.llm_manager and self.llm_manager.is_loaded else 'Fallback mode'}"
 
         self.selection_info_label.configure(text=info_text)

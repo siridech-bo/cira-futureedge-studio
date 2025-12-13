@@ -461,6 +461,13 @@ class FilteringPanel(ctk.CTkFrame):
         )
         self.analyze_btn.configure(state="normal")
 
+        # Save analysis to project
+        if self.project_manager.has_project():
+            project = self.project_manager.current_project
+            project.features.quality_analysis = stats
+            self.project_manager.save_project()
+            logger.info("Quality analysis saved to project")
+
         # Build report
         report = "Feature Quality Analysis\n"
         report += "=" * 80 + "\n\n"
@@ -687,7 +694,10 @@ class FilteringPanel(ctk.CTkFrame):
 
         # Update project
         project.features.filtered_features = str(filtered_path)
-        project.features.num_features_selected = len(result.selected_feature_names)
+        project.features.num_features_filtered = len(result.selected_feature_names)
+        project.features.filtering_applied = True
+        project.features.filtering_method = result.method
+        project.features.filtering_stats = result.filtering_stats
         self.project_manager.save_project()
 
         messagebox.showinfo(
@@ -715,6 +725,40 @@ class FilteringPanel(ctk.CTkFrame):
             )
             return
 
-        self.analysis_info_label.configure(
-            text=f"✓ Ready to filter {project.features.num_features_extracted} extracted features"
-        )
+        # Load saved quality analysis if available
+        if project.features.quality_analysis:
+            self.current_stats = project.features.quality_analysis
+            self._display_analysis(project.features.quality_analysis)
+
+        # Load saved filtering results if available
+        if project.features.filtering_applied and project.features.filtering_stats:
+            # Create a FilteringResult object from saved data
+            from core.feature_filtering import FilteringResult
+            import pandas as pd
+
+            # Load filtered features if they exist
+            if project.features.filtered_features and Path(project.features.filtered_features).exists():
+                with open(project.features.filtered_features, 'rb') as f:
+                    filtered_df = pickle.load(f)
+
+                # Reconstruct FilteringResult
+                result = FilteringResult(
+                    filtered_features=filtered_df,
+                    selected_feature_names=list(filtered_df.columns),
+                    removed_feature_names=[],  # Not saved
+                    filtering_stats=project.features.filtering_stats,
+                    method=project.features.filtering_method or "unknown"
+                )
+
+                self.filtering_result = result
+                self._filter_complete(result)
+
+        # Update info label
+        if project.features.filtering_applied:
+            self.analysis_info_label.configure(
+                text=f"✓ Filtering applied: {project.features.num_features_extracted} → {project.features.num_features_filtered} features"
+            )
+        else:
+            self.analysis_info_label.configure(
+                text=f"✓ Ready to filter {project.features.num_features_extracted} extracted features"
+            )

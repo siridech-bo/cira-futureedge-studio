@@ -75,6 +75,13 @@ class ProjectFeatures:
     # Statistics
     num_features_extracted: int = 0
     num_features_selected: int = 0
+    num_features_filtered: int = 0  # Number of features after filtering
+
+    # Filtering metadata
+    filtering_applied: bool = False
+    filtering_method: Optional[str] = None  # "basic", "tsfresh", "mutual_info"
+    filtering_stats: Dict[str, Any] = field(default_factory=dict)  # Filtering statistics
+    quality_analysis: Dict[str, Any] = field(default_factory=dict)  # Quality analysis results
 
     # Legacy
     candidate_features: List[Dict[str, Any]] = field(default_factory=list)

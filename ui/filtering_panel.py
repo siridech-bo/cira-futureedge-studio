@@ -193,12 +193,21 @@ class FilteringPanel(ctk.CTkFrame):
             font=("Segoe UI", 11)
         ).grid(row=2, column=0, columnspan=2, padx=15, pady=5, sticky="w")
 
+        # Remove extreme values
+        self.remove_extreme_var = ctk.BooleanVar(value=True)
+        ctk.CTkCheckBox(
+            self.options_frame,
+            text="Remove extreme values (>1e15)",
+            variable=self.remove_extreme_var,
+            font=("Segoe UI", 11)
+        ).grid(row=3, column=0, columnspan=2, padx=15, pady=5, sticky="w")
+
         # Variance threshold
         ctk.CTkLabel(
             self.options_frame,
             text="Variance Threshold:",
             font=("Segoe UI", 11)
-        ).grid(row=3, column=0, padx=15, pady=10, sticky="w")
+        ).grid(row=4, column=0, padx=15, pady=10, sticky="w")
 
         self.variance_threshold_var = ctk.StringVar(value="0.01")
         ctk.CTkEntry(
@@ -206,14 +215,14 @@ class FilteringPanel(ctk.CTkFrame):
             textvariable=self.variance_threshold_var,
             font=("Segoe UI", 11),
             width=120
-        ).grid(row=3, column=1, padx=10, pady=10, sticky="w")
+        ).grid(row=4, column=1, padx=10, pady=10, sticky="w")
 
         ctk.CTkLabel(
             self.options_frame,
             text="Remove features with variance < threshold",
             font=("Segoe UI", 9),
             text_color="gray"
-        ).grid(row=4, column=0, columnspan=2, padx=15, pady=(0, 10), sticky="w")
+        ).grid(row=5, column=0, columnspan=2, padx=15, pady=(0, 10), sticky="w")
 
     def _setup_tsfresh_options(self) -> None:
         """Setup options for tsfresh filtering."""
@@ -579,7 +588,8 @@ class FilteringPanel(ctk.CTkFrame):
                         features_df,
                         variance_threshold=variance_threshold,
                         remove_constant=self.remove_constant_var.get(),
-                        remove_nan=self.remove_nan_var.get()
+                        remove_nan=self.remove_nan_var.get(),
+                        remove_extreme=self.remove_extreme_var.get()
                     )
                 elif method == "tsfresh":
                     fdr_level = float(self.fdr_level_var.get())

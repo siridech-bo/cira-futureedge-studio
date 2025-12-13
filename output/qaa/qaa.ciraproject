@@ -4,7 +4,7 @@
   "domain": "rotating_machinery",
   "description": "",
   "created_at": "2025-12-13T16:07:46.504796",
-  "modified_at": "2025-12-13T22:12:32.051685",
+  "modified_at": "2025-12-13T22:16:49.090414",
   "version": "1.0.0",
   "project_path": "D:\\CiRA FES\\output\\qaa\\qaa.ciraproject",
   "data": {
@@ -25149,15 +25149,15 @@
     "feature_config": null,
     "num_features_extracted": 3108,
     "num_features_selected": 1262,
-    "num_features_filtered": 1262,
+    "num_features_filtered": 663,
     "filtering_applied": true,
-    "filtering_method": "basic",
+    "filtering_method": "tsfresh",
     "filtering_stats": {
-      "constant_features": 948,
-      "low_variance_features": 898,
       "original_features": 3108,
-      "filtered_features": 1262,
-      "removed_features": 1846
+      "filtered_features": 663,
+      "removed_features": 2445,
+      "fdr_level": 0.05,
+      "hypotheses_independent": true
     },
     "quality_analysis": {
       "total_features": 3108,

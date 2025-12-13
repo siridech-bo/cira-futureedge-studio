@@ -38,7 +38,9 @@ class FeatureFilter:
         features_df: pd.DataFrame,
         variance_threshold: float = 0.01,
         remove_constant: bool = True,
-        remove_nan: bool = True
+        remove_nan: bool = True,
+        remove_extreme: bool = True,
+        extreme_threshold: float = 1e15
     ) -> FilteringResult:
         """
         Basic filtering: remove constant, low-variance, and NaN features.
@@ -98,6 +100,21 @@ class FeatureFilter:
                 filtered_df = filtered_df.drop(columns=nan_features)
                 removed_features.extend(nan_features)
                 stats['nan_features'] = len(nan_features)
+
+        # Remove features with extreme values (numerical instability)
+        if remove_extreme:
+            extreme_features = []
+            for col in filtered_df.columns:
+                max_abs_val = filtered_df[col].abs().max()
+                if max_abs_val > extreme_threshold:
+                    extreme_features.append(col)
+                    logger.debug(f"Feature {col} has extreme value: {max_abs_val:.2e}")
+
+            if extreme_features:
+                logger.info(f"Removing {len(extreme_features)} features with extreme values (>{extreme_threshold:.0e})")
+                filtered_df = filtered_df.drop(columns=extreme_features)
+                removed_features.extend(extreme_features)
+                stats['extreme_features'] = len(extreme_features)
 
         stats['original_features'] = original_count
         stats['filtered_features'] = len(filtered_df.columns)

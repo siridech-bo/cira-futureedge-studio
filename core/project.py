@@ -37,6 +37,19 @@ class ProjectData:
     label_pattern: str = "prefix"  # "prefix", "suffix", "folder", "regex"
     window_labels: Optional[List[str]] = None  # Class label for each window
 
+    # Train/Test split fields
+    train_test_split_type: str = "auto"  # "auto" (random split) or "manual" (separate folders)
+    train_data_file: Optional[str] = None  # Path to training data
+    test_data_file: Optional[str] = None  # Path to test data
+    train_windows_file: Optional[str] = None  # Path to training windows
+    test_windows_file: Optional[str] = None  # Path to test windows
+    num_train_windows: int = 0
+    num_test_windows: int = 0
+
+    # Original folder paths (for display purposes)
+    train_folder_path: Optional[str] = None  # Original train folder selected by user
+    test_folder_path: Optional[str] = None  # Original test folder selected by user
+
 
 @dataclass
 class ProjectFeatures:

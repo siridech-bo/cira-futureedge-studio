@@ -44,11 +44,13 @@ class ModelPanel(ctk.CTkFrame):
         self.notebook.add("Algorithm")
         self.notebook.add("Training")
         self.notebook.add("Evaluation")
+        self.notebook.add("Explorer")
         self.notebook.add("Export")
 
         self._create_algorithm_tab()
         self._create_training_tab()
         self._create_evaluation_tab()
+        self._create_explorer_tab()
         self._create_export_tab()
 
     def _create_algorithm_tab(self):
@@ -294,6 +296,89 @@ class ModelPanel(ctk.CTkFrame):
         )
         self.no_results_label.grid(row=0, column=0, pady=50)
 
+    def _create_explorer_tab(self):
+        """Create feature explorer tab with 3D visualization."""
+        tab = self.notebook.tab("Explorer")
+        tab.grid_columnconfigure(0, weight=1)
+        tab.grid_rowconfigure(1, weight=1)  # Give 3D plot more space
+
+        # Top section: Feature importance chart
+        importance_frame = ctk.CTkFrame(tab)
+        importance_frame.grid(row=0, column=0, sticky="ew", padx=10, pady=(10, 5))
+        importance_frame.grid_columnconfigure(0, weight=1)
+
+        ctk.CTkLabel(
+            importance_frame,
+            text="📊 Feature Importance",
+            font=("Segoe UI", 16, "bold")
+        ).grid(row=0, column=0, sticky="w", padx=10, pady=5)
+
+        # Feature importance chart (will be populated after training)
+        self.explorer_fi_widget = FeatureImportanceChart(importance_frame, width=900, height=300)
+        self.explorer_fi_widget.grid(row=1, column=0, padx=10, pady=5, sticky="ew")
+
+        # Middle section: Feature selection for 3D
+        selection_frame = ctk.CTkFrame(tab)
+        selection_frame.grid(row=1, column=0, sticky="ew", padx=10, pady=5)
+        selection_frame.grid_columnconfigure((1, 3, 5), weight=1)
+
+        ctk.CTkLabel(
+            selection_frame,
+            text="Select 3 features to visualize:",
+            font=("Segoe UI", 12, "bold")
+        ).grid(row=0, column=0, columnspan=6, sticky="w", padx=10, pady=(10, 5))
+
+        # X-Axis
+        ctk.CTkLabel(selection_frame, text="X-Axis:", font=("Segoe UI", 11)).grid(row=1, column=0, padx=(10, 5), pady=5, sticky="e")
+        self.explorer_x_var = ctk.StringVar(value="No features available")
+        self.explorer_x_menu = ctk.CTkOptionMenu(selection_frame, variable=self.explorer_x_var, values=["No features available"], width=250)
+        self.explorer_x_menu.grid(row=1, column=1, padx=5, pady=5, sticky="ew")
+
+        # Y-Axis
+        ctk.CTkLabel(selection_frame, text="Y-Axis:", font=("Segoe UI", 11)).grid(row=1, column=2, padx=(10, 5), pady=5, sticky="e")
+        self.explorer_y_var = ctk.StringVar(value="No features available")
+        self.explorer_y_menu = ctk.CTkOptionMenu(selection_frame, variable=self.explorer_y_var, values=["No features available"], width=250)
+        self.explorer_y_menu.grid(row=1, column=3, padx=5, pady=5, sticky="ew")
+
+        # Z-Axis
+        ctk.CTkLabel(selection_frame, text="Z-Axis:", font=("Segoe UI", 11)).grid(row=1, column=4, padx=(10, 5), pady=5, sticky="e")
+        self.explorer_z_var = ctk.StringVar(value="No features available")
+        self.explorer_z_menu = ctk.CTkOptionMenu(selection_frame, variable=self.explorer_z_var, values=["No features available"], width=250)
+        self.explorer_z_menu.grid(row=1, column=5, padx=5, pady=5, sticky="ew")
+
+        # Visualize button
+        self.explorer_visualize_btn = ctk.CTkButton(
+            selection_frame,
+            text="🚀 Visualize in 3D",
+            command=self._visualize_3d_explorer,
+            height=35,
+            font=("Segoe UI", 12, "bold"),
+            fg_color="green",
+            hover_color="darkgreen"
+        )
+        self.explorer_visualize_btn.grid(row=2, column=0, columnspan=6, padx=10, pady=10)
+
+        # Bottom section: 3D Plot (embedded Matplotlib)
+        plot_frame = ctk.CTkFrame(tab)
+        plot_frame.grid(row=2, column=0, sticky="nsew", padx=10, pady=(5, 10))
+        plot_frame.grid_columnconfigure(0, weight=1)
+        plot_frame.grid_rowconfigure(0, weight=1)
+
+        # Import matplotlib for embedded 3D plot
+        from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+        from matplotlib.figure import Figure
+
+        self.explorer_fig = Figure(figsize=(9, 6), dpi=100)
+        self.explorer_ax = self.explorer_fig.add_subplot(111, projection='3d')
+        self.explorer_ax.set_title("Select features and click 'Visualize in 3D'", fontsize=14)
+        self.explorer_ax.set_xlabel("X")
+        self.explorer_ax.set_ylabel("Y")
+        self.explorer_ax.set_zlabel("Z")
+
+        self.explorer_canvas = FigureCanvasTkAgg(self.explorer_fig, master=plot_frame)
+        self.explorer_canvas.draw()
+        self.explorer_canvas.get_tk_widget().grid(row=0, column=0, sticky="nsew", padx=5, pady=5)
+
     def _create_export_tab(self):
         """Create model export tab."""
         tab = self.notebook.tab("Export")
@@ -448,34 +533,94 @@ class ModelPanel(ctk.CTkFrame):
                 # Branch based on task mode
                 if task_mode == "classification":
                     # CLASSIFICATION MODE
-                    self._log_training("Loading windows to extract labels...")
-                    windows = project.load_windows()
-                    if not windows:
-                        raise ValueError("No windows found. Please segment data in the Data panel first.")
 
-                    labels = np.array([w.class_label for w in windows])
-                    if labels[0] is None:
-                        raise ValueError("No class labels found in windows. Enable label extraction in Data panel.")
+                    # Check if manual train/test split
+                    if project.data.train_test_split_type == "manual":
+                        self._log_training("Using manual train/test split from separate datasets...")
 
-                    self._log_training(f"Found {len(set(labels))} classes: {sorted(set(labels))}")
+                        # Load train features and windows
+                        train_features_path = project.get_features_dir() / "train_features.pkl"
+                        with open(train_features_path, 'rb') as f:
+                            train_features = pickle.load(f)
 
-                    # Create classification config
-                    class_config = ClassificationConfig(
-                        algorithm=config.algorithm,
-                        test_size=test_size,
-                        normalize=self.normalize_var.get(),
-                        random_state=random_state,
-                        params={}
-                    )
+                        with open(project.data.train_windows_file, 'rb') as f:
+                            train_windows = pickle.load(f)
 
-                    # Train classifier
-                    results = self.classification_trainer.train(
-                        self.features_df,
-                        self.selected_features,
-                        labels,
-                        class_config,
-                        model_dir
-                    )
+                        train_labels = [w.class_label for w in train_windows]
+                        self._log_training(f"Train: {len(train_labels)} samples")
+
+                        # Load test features and windows if available
+                        test_features = None
+                        test_labels = None
+                        if project.data.test_windows_file:
+                            test_features_path = project.get_features_dir() / "test_features.pkl"
+                            with open(test_features_path, 'rb') as f:
+                                test_features = pickle.load(f)
+
+                            with open(project.data.test_windows_file, 'rb') as f:
+                                test_windows = pickle.load(f)
+
+                            test_labels = [w.class_label for w in test_windows]
+                            self._log_training(f"Test: {len(test_labels)} samples")
+
+                        self._log_training(f"Found {len(set(train_labels))} classes: {sorted(set(train_labels))}")
+
+                        # Create classification config with manual split
+                        class_config = ClassificationConfig(
+                            algorithm=config.algorithm,
+                            test_size=test_size,
+                            normalize=self.normalize_var.get(),
+                            random_state=random_state,
+                            params={},
+                            train_features=train_features,
+                            train_labels=train_labels,
+                            test_features=test_features,
+                            test_labels=test_labels
+                        )
+
+                        # Use combined features for compatibility (but train/test already split in config)
+                        features_combined = self.features_df
+                        labels_combined = train_labels + (test_labels if test_labels else [])
+
+                        # Train classifier
+                        results = self.classification_trainer.train(
+                            features_combined,
+                            self.selected_features,
+                            labels_combined,
+                            class_config,
+                            model_dir
+                        )
+
+                    else:
+                        # Automatic train/test split
+                        self._log_training("Loading windows to extract labels...")
+                        windows = project.load_windows()
+                        if not windows:
+                            raise ValueError("No windows found. Please segment data in the Data panel first.")
+
+                        labels = np.array([w.class_label for w in windows])
+                        if labels[0] is None:
+                            raise ValueError("No class labels found in windows. Enable label extraction in Data panel.")
+
+                        self._log_training(f"Found {len(set(labels))} classes: {sorted(set(labels))}")
+
+                        # Create classification config
+                        class_config = ClassificationConfig(
+                            algorithm=config.algorithm,
+                            test_size=test_size,
+                            normalize=self.normalize_var.get(),
+                            random_state=random_state,
+                            params={}
+                        )
+
+                        # Train classifier
+                        results = self.classification_trainer.train(
+                            self.features_df,
+                            self.selected_features,
+                            labels,
+                            class_config,
+                            model_dir
+                        )
 
                 else:
                     # ANOMALY DETECTION MODE (existing code)
@@ -576,6 +721,28 @@ class ModelPanel(ctk.CTkFrame):
                 "recall_macro": results.recall_macro,
                 "f1_macro": results.f1_macro
             }
+
+        # Update Explorer tab with feature importance and dropdowns
+        if task_mode == "classification" and hasattr(results, 'feature_importances') and hasattr(results, 'feature_names'):
+            # Update feature importance chart in Explorer tab
+            self.explorer_fi_widget.plot_importance(results.feature_names, results.feature_importances)
+
+            # Update feature dropdowns
+            self.explorer_x_menu.configure(values=results.feature_names)
+            self.explorer_y_menu.configure(values=results.feature_names)
+            self.explorer_z_menu.configure(values=results.feature_names)
+
+            # Auto-select top 3 features by importance
+            if len(results.feature_names) >= 3:
+                sorted_indices = np.argsort(results.feature_importances)[::-1]
+                top_3_features = [results.feature_names[i] for i in sorted_indices[:3]]
+
+                self.explorer_x_var.set(top_3_features[0])
+                self.explorer_y_var.set(top_3_features[1])
+                self.explorer_z_var.set(top_3_features[2])
+
+                logger.info(f"Explorer tab updated with top 3 features: {top_3_features}")
+
         project.save()
 
         messagebox.showinfo("Training Complete", message_text)
@@ -610,10 +777,23 @@ class ModelPanel(ctk.CTkFrame):
                 font=ctk.CTkFont(size=14, weight="bold")
             ).grid(row=0, column=0, columnspan=2, padx=10, pady=10, sticky="w")
 
+            # Get test dataset folder path if using manual split
+            project = self.project_manager.current_project
+            test_folder_info = ""
+            if project and project.data.train_test_split_type == "manual":
+                if project.data.test_folder_path:
+                    # Use the original test folder path
+                    test_folder = project.data.test_folder_path
+                    # Show last 60 characters if path is long
+                    if len(test_folder) > 60:
+                        test_folder_info = f" (from: ...{test_folder[-60:]})"
+                    else:
+                        test_folder_info = f" (from: {test_folder})"
+
             labels = [
                 ("Algorithm:", results.algorithm),
                 ("Training Samples:", str(results.train_samples)),
-                ("Test Samples:", str(results.test_samples)),
+                ("Test Samples:", str(results.test_samples) + test_folder_info),
                 ("Features:", str(results.n_features)),
                 ("Classes:", str(results.n_classes)),
             ]
@@ -622,9 +802,11 @@ class ModelPanel(ctk.CTkFrame):
                 ctk.CTkLabel(info_frame, text=label).grid(
                     row=i, column=0, padx=10, pady=5, sticky="w"
                 )
-                ctk.CTkLabel(info_frame, text=value, text_color="blue").grid(
-                    row=i, column=1, padx=10, pady=5, sticky="w"
-                )
+                # Make test samples label wrap if it's long
+                test_label = ctk.CTkLabel(info_frame, text=value, text_color="blue")
+                if "from:" in value:
+                    test_label.configure(wraplength=600, justify="left")
+                test_label.grid(row=i, column=1, padx=10, pady=5, sticky="w")
 
             # Overall metrics
             metrics_frame = ctk.CTkFrame(self.results_container)
@@ -666,7 +848,7 @@ class ModelPanel(ctk.CTkFrame):
                     font=ctk.CTkFont(size=14, weight="bold")
                 ).grid(row=0, column=0, padx=10, pady=10, sticky="w")
 
-                cm_widget = ConfusionMatrixWidget(cm_frame, width=500, height=400)
+                cm_widget = ConfusionMatrixWidget(cm_frame, width=800, height=600)
                 cm_widget.grid(row=1, column=0, padx=10, pady=10)
 
                 cm_widget.plot_confusion_matrix(
@@ -687,7 +869,7 @@ class ModelPanel(ctk.CTkFrame):
                     font=ctk.CTkFont(size=14, weight="bold")
                 ).grid(row=0, column=0, padx=10, pady=10, sticky="w")
 
-                fi_widget = FeatureImportanceChart(fi_frame, width=600, height=400)
+                fi_widget = FeatureImportanceChart(fi_frame, width=900, height=500)
                 fi_widget.grid(row=1, column=0, padx=10, pady=10)
 
                 feature_names = list(results.feature_importances.keys())
@@ -802,6 +984,98 @@ class ModelPanel(ctk.CTkFrame):
         features_text.insert("1.0", "\n".join(f"{i+1}. {f}" for i, f in enumerate(results.feature_names)))
         features_text.configure(state="disabled")
 
+    def _visualize_3d_explorer(self):
+        """Create 3D visualization using Matplotlib (embedded)."""
+        project = self.project_manager.current_project
+        if not project:
+            messagebox.showerror("No Project", "No project loaded.")
+            return
+
+        # Get selected features
+        x_feature = self.explorer_x_var.get()
+        y_feature = self.explorer_y_var.get()
+        z_feature = self.explorer_z_var.get()
+
+        if x_feature == "No features available":
+            messagebox.showwarning("No Features", "Train model first to visualize features.")
+            return
+
+        # Check if features are different
+        if len({x_feature, y_feature, z_feature}) < 3:
+            messagebox.showwarning("Duplicate Features", "Please select 3 different features.")
+            return
+
+        try:
+            # Load features
+            if not self.features_df or self.features_df.empty:
+                messagebox.showwarning("No Features", "No feature data loaded. Train model first.")
+                return
+
+            # Load windows to get labels
+            windows = []
+            if project.data.train_test_split_type == "manual":
+                # Load train and test windows
+                if project.data.train_windows_file and project.data.test_windows_file:
+                    with open(project.data.train_windows_file, 'rb') as f:
+                        windows.extend(pickle.load(f))
+                    with open(project.data.test_windows_file, 'rb') as f:
+                        windows.extend(pickle.load(f))
+            else:
+                # Load single windows file
+                if project.data.windows_file:
+                    with open(project.data.windows_file, 'rb') as f:
+                        windows = pickle.load(f)
+
+            if not windows:
+                messagebox.showwarning("No Windows", "No window data found.")
+                return
+
+            # Get labels from windows
+            labels = [w.class_label if hasattr(w, 'class_label') and w.class_label else str(w.label) for w in windows]
+
+            # Get feature data
+            x_data = self.features_df[x_feature].values
+            y_data = self.features_df[y_feature].values
+            z_data = self.features_df[z_feature].values
+
+            # Clear previous plot
+            self.explorer_ax.clear()
+
+            # Get unique labels and assign colors
+            unique_labels = sorted(set(labels))
+            colors_list = ['red', 'blue', 'green', 'orange', 'purple', 'brown', 'pink', 'gray', 'olive', 'cyan']
+
+            # Plot each class
+            for idx, label in enumerate(unique_labels):
+                mask = [l == label for l in labels]
+                color = colors_list[idx % len(colors_list)]
+                self.explorer_ax.scatter(
+                    x_data[mask],
+                    y_data[mask],
+                    z_data[mask],
+                    c=color,
+                    label=label,
+                    s=30,
+                    alpha=0.6
+                )
+
+            self.explorer_ax.set_xlabel(x_feature, fontsize=10)
+            self.explorer_ax.set_ylabel(y_feature, fontsize=10)
+            self.explorer_ax.set_zlabel(z_feature, fontsize=10)
+            self.explorer_ax.set_title(f"3D Feature Space ({len(labels)} samples)", fontsize=14, fontweight='bold')
+            self.explorer_ax.legend(loc='upper right', fontsize=9)
+
+            # Redraw canvas
+            self.explorer_canvas.draw()
+
+            logger.info(f"3D visualization created with features: {x_feature}, {y_feature}, {z_feature}")
+
+        except Exception as e:
+            logger.error(f"Failed to create 3D visualization: {e}")
+            import traceback
+            traceback.print_exc()
+            messagebox.showerror("Visualization Error", f"Failed to create visualization:\n{str(e)}")
+
     def _open_model_dir(self):
         """Open the model directory in file explorer."""
         project = self.project_manager.current_project
@@ -912,3 +1186,42 @@ class ModelPanel(ctk.CTkFrame):
                     )
                     self.open_dir_btn.configure(state="normal")
                     self.complete_btn.configure(state="normal")
+
+                    # Load model to populate Explorer tab (classification only)
+                    if project.data.task_type == "classification":
+                        self._load_existing_model_for_explorer(models[0])
+
+    def _load_existing_model_for_explorer(self, model_path: Path):
+        """Load existing trained model and populate Explorer tab."""
+        try:
+            with open(model_path, 'rb') as f:
+                model_data = pickle.load(f)
+
+            # Extract feature importances if available
+            model = model_data.get('model')
+            feature_names = model_data.get('feature_names', [])
+
+            if model and hasattr(model, 'feature_importances_') and feature_names:
+                importances = model.feature_importances_
+
+                # Update Explorer tab feature importance chart
+                self.explorer_fi_widget.plot_importance(feature_names, importances)
+
+                # Update feature dropdowns
+                self.explorer_x_menu.configure(values=feature_names)
+                self.explorer_y_menu.configure(values=feature_names)
+                self.explorer_z_menu.configure(values=feature_names)
+
+                # Auto-select top 3 features
+                if len(feature_names) >= 3:
+                    sorted_indices = np.argsort(importances)[::-1]
+                    top_3_features = [feature_names[i] for i in sorted_indices[:3]]
+
+                    self.explorer_x_var.set(top_3_features[0])
+                    self.explorer_y_var.set(top_3_features[1])
+                    self.explorer_z_var.set(top_3_features[2])
+
+                    logger.info(f"Explorer tab loaded with top 3 features from existing model: {top_3_features}")
+
+        except Exception as e:
+            logger.warning(f"Could not load model for Explorer tab: {e}")

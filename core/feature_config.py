@@ -33,6 +33,7 @@ class ConfigurationMode(str, Enum):
 class OperationMode(str, Enum):
     """Application operation modes."""
     ANOMALY_DETECTION = "anomaly_detection"
+    CLASSIFICATION = "classification"
     FORECASTING = "forecasting"
 
 

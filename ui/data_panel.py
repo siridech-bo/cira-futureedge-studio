@@ -190,36 +190,73 @@ class DataSourcesPanel(ctk.CTkFrame):
         self.ei_frame.grid_columnconfigure(1, weight=1)
         self.ei_frame.grid_remove()  # Hidden by default
 
-        # File path
+        # Training folder
         ctk.CTkLabel(
             self.ei_frame,
-            text="Edge Impulse File:",
-            font=("Segoe UI", 12)
+            text="Training Data:",
+            font=("Segoe UI", 12, "bold")
         ).grid(row=0, column=0, padx=10, pady=5, sticky="w")
+
+        self.ei_train_path_entry = ctk.CTkEntry(
+            self.ei_frame,
+            placeholder_text="Select folder with training files..."
+        )
+        self.ei_train_path_entry.grid(row=0, column=1, padx=5, pady=5, sticky="ew")
+
+        browse_train_btn = ctk.CTkButton(
+            self.ei_frame,
+            text="Browse Train...",
+            command=self._browse_ei_train_folder,
+            width=130,
+            fg_color="green",
+            hover_color="darkgreen"
+        )
+        browse_train_btn.grid(row=0, column=2, padx=10, pady=5)
+
+        # Test folder
+        ctk.CTkLabel(
+            self.ei_frame,
+            text="Test Data:",
+            font=("Segoe UI", 12, "bold")
+        ).grid(row=1, column=0, padx=10, pady=5, sticky="w")
+
+        self.ei_test_path_entry = ctk.CTkEntry(
+            self.ei_frame,
+            placeholder_text="Select folder with test files (optional)..."
+        )
+        self.ei_test_path_entry.grid(row=1, column=1, padx=5, pady=5, sticky="ew")
+
+        browse_test_btn = ctk.CTkButton(
+            self.ei_frame,
+            text="Browse Test...",
+            command=self._browse_ei_test_folder,
+            width=130,
+            fg_color="orange",
+            hover_color="darkorange"
+        )
+        browse_test_btn.grid(row=1, column=2, padx=10, pady=5)
+
+        # Single file option (legacy)
+        ctk.CTkLabel(
+            self.ei_frame,
+            text="Or Single File:",
+            font=("Segoe UI", 10),
+            text_color="gray"
+        ).grid(row=2, column=0, padx=10, pady=5, sticky="w")
 
         self.ei_file_path_entry = ctk.CTkEntry(
             self.ei_frame,
-            placeholder_text="Select JSON or CBOR file..."
+            placeholder_text="Select single JSON or CBOR file..."
         )
-        self.ei_file_path_entry.grid(row=0, column=1, padx=5, pady=5, sticky="ew")
+        self.ei_file_path_entry.grid(row=2, column=1, padx=5, pady=5, sticky="ew")
 
         browse_ei_btn = ctk.CTkButton(
             self.ei_frame,
             text="Browse File...",
             command=self._browse_ei_file,
-            width=120
+            width=130
         )
-        browse_ei_btn.grid(row=0, column=2, padx=(5, 2), pady=5)
-
-        browse_folder_btn = ctk.CTkButton(
-            self.ei_frame,
-            text="Browse Folder...",
-            command=self._browse_ei_folder,
-            width=120,
-            fg_color="green",
-            hover_color="darkgreen"
-        )
-        browse_folder_btn.grid(row=0, column=3, padx=(2, 10), pady=5)
+        browse_ei_btn.grid(row=2, column=2, padx=10, pady=5)
 
         # Device info (will be populated after loading)
         self.ei_info_label = ctk.CTkLabel(
@@ -228,7 +265,7 @@ class DataSourcesPanel(ctk.CTkFrame):
             font=("Segoe UI", 10),
             text_color="gray"
         )
-        self.ei_info_label.grid(row=1, column=0, columnspan=4, padx=10, pady=5, sticky="w")
+        self.ei_info_label.grid(row=3, column=0, columnspan=3, padx=10, pady=5, sticky="w")
 
         # Database-specific options
         self.db_frame = ctk.CTkFrame(tab)
@@ -571,10 +608,11 @@ class DataSourcesPanel(ctk.CTkFrame):
         """Setup windowing configuration tab."""
         tab = self.tabview.tab("Windowing")
         tab.grid_columnconfigure(0, weight=1)
+        tab.grid_columnconfigure(1, weight=1)  # Two columns: left for controls, right for info
 
         # Windowing parameters
         params_frame = ctk.CTkFrame(tab)
-        params_frame.grid(row=0, column=0, sticky="ew", padx=10, pady=10)
+        params_frame.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
         params_frame.grid_columnconfigure(1, weight=1)
 
         # Window size
@@ -637,15 +675,42 @@ class DataSourcesPanel(ctk.CTkFrame):
         )
         self.create_windows_btn.pack()
 
-        # Window stats
+        # Progress bar for loading and windowing operations
+        self.progress_frame = ctk.CTkFrame(tab, fg_color="transparent")
+        self.progress_frame.grid(row=2, column=0, sticky="ew", padx=20, pady=5)
+        self.progress_frame.grid_columnconfigure(0, weight=1)
+        self.progress_frame.grid_remove()  # Hidden by default
+
+        self.progress_label = ctk.CTkLabel(
+            self.progress_frame,
+            text="Loading...",
+            font=("Segoe UI", 10),
+            text_color="blue"
+        )
+        self.progress_label.grid(row=0, column=0, sticky="w", padx=5, pady=(5, 2))
+
+        self.progress_bar = ctk.CTkProgressBar(
+            self.progress_frame,
+            mode="determinate",
+            height=15
+        )
+        self.progress_bar.grid(row=1, column=0, sticky="ew", padx=5, pady=(0, 5))
+        self.progress_bar.set(0)
+
+        # Info panel on the right side
+        info_frame = ctk.CTkFrame(tab, fg_color="#2b2b2b")
+        info_frame.grid(row=0, column=1, rowspan=3, sticky="nsew", padx=10, pady=10)
+
+        # Window stats label in the right panel
         self.window_stats_label = ctk.CTkLabel(
-            tab,
+            info_frame,
             text="",
             font=("Segoe UI", 11),
-            text_color="gray",
-            justify="left"
+            text_color="lightgray",
+            justify="left",
+            anchor="nw"
         )
-        self.window_stats_label.grid(row=2, column=0, pady=10)
+        self.window_stats_label.pack(fill="both", expand=True, padx=15, pady=15)
 
     def _setup_preview_tab(self) -> None:
         """Setup data preview tab with visualization."""
@@ -879,6 +944,67 @@ class DataSourcesPanel(ctk.CTkFrame):
 
             logger.info(f"Selected folder: {folder_path} ({file_count} Edge Impulse files found)")
 
+    def _browse_ei_train_folder(self) -> None:
+        """Browse for folder containing training Edge Impulse files."""
+        import os
+
+        folder_path = filedialog.askdirectory(
+            title="Select Training Data Folder"
+        )
+
+        if folder_path:
+            # Update the entry field to show folder path
+            self.ei_train_path_entry.delete(0, "end")
+            self.ei_train_path_entry.insert(0, folder_path)
+
+            # Count files for feedback
+            file_count = 0
+            class_labels = set()
+            for root, dirs, files in os.walk(folder_path):
+                for file in files:
+                    if file.endswith(('.json', '.cbor')):
+                        file_count += 1
+                        # Extract class label from filename
+                        label = file.split('.')[0]
+                        class_labels.add(label)
+
+            info_text = f"Training: {file_count} files, {len(class_labels)} classes: {', '.join(sorted(class_labels))}"
+            self.ei_info_label.configure(text=info_text, text_color="green")
+            logger.info(f"Selected training folder: {folder_path} ({file_count} files, {len(class_labels)} classes)")
+
+    def _browse_ei_test_folder(self) -> None:
+        """Browse for folder containing test Edge Impulse files."""
+        import os
+
+        folder_path = filedialog.askdirectory(
+            title="Select Test Data Folder (Optional)"
+        )
+
+        if folder_path:
+            # Update the entry field to show folder path
+            self.ei_test_path_entry.delete(0, "end")
+            self.ei_test_path_entry.insert(0, folder_path)
+
+            # Count files for feedback
+            file_count = 0
+            class_labels = set()
+            for root, dirs, files in os.walk(folder_path):
+                for file in files:
+                    if file.endswith(('.json', '.cbor')):
+                        file_count += 1
+                        # Extract class label from filename
+                        label = file.split('.')[0]
+                        class_labels.add(label)
+
+            # Update info label with both train and test info
+            train_info = self.ei_info_label.cget("text")
+            if train_info:
+                info_text = f"{train_info} | Test: {file_count} files, {len(class_labels)} classes"
+            else:
+                info_text = f"Test: {file_count} files, {len(class_labels)} classes: {', '.join(sorted(class_labels))}"
+            self.ei_info_label.configure(text=info_text, text_color="blue")
+            logger.info(f"Selected test folder: {folder_path} ({file_count} files, {len(class_labels)} classes)")
+
     def _on_db_type_change(self, db_type: str) -> None:
         """Handle database type change."""
         # Update port placeholder based on database type
@@ -979,11 +1105,20 @@ class DataSourcesPanel(ctk.CTkFrame):
                 self._load_csv_data(file_path)
 
             elif source_type in ["Edge Impulse JSON", "Edge Impulse CBOR"]:
+                # Check for train/test split folders first
+                train_path = self.ei_train_path_entry.get().strip()
+                test_path = self.ei_test_path_entry.get().strip()
                 file_path = self.ei_file_path_entry.get().strip()
-                if not file_path:
-                    messagebox.showwarning("No File", "Please select an Edge Impulse file first.")
+
+                if train_path:
+                    # Load train/test split separately
+                    self._load_edgeimpulse_train_test(train_path, test_path, source_type)
+                elif file_path:
+                    # Load single file or batch folder (legacy)
+                    self._load_edgeimpulse_data(file_path, source_type)
+                else:
+                    messagebox.showwarning("No Data", "Please select training data folder or a single file.")
                     return
-                self._load_edgeimpulse_data(file_path, source_type)
 
             elif source_type == "Database":
                 self._load_database_data()
@@ -1094,7 +1229,9 @@ class DataSourcesPanel(ctk.CTkFrame):
         info_text = f"Device: {device_info['type']}"
         if device_info['name']:
             info_text += f" ({device_info['name']})"
-        info_text += f" | Sampling: {sampling_rate:.2f} Hz | Sensors: {len(sensor_info)}"
+        if sampling_rate is not None:
+            info_text += f" | Sampling: {sampling_rate:.2f} Hz"
+        info_text += f" | Sensors: {len(sensor_info)}"
 
         self.ei_info_label.configure(text=info_text)
 
@@ -1179,6 +1316,141 @@ class DataSourcesPanel(ctk.CTkFrame):
 
         self.ei_info_label.configure(text=info_text)
         logger.info(f"Batch loading complete: {len(all_dataframes)} files concatenated")
+
+    def _load_edgeimpulse_train_test(self, train_folder: str, test_folder: str, format_type: str) -> None:
+        """Load training and test data separately from different folders."""
+        import os
+        import pickle
+
+        # Convert UI format type to internal format
+        format_map = {
+            "Edge Impulse JSON": "json",
+            "Edge Impulse CBOR": "cbor"
+        }
+        internal_format = format_map.get(format_type, "auto")
+
+        # Helper function to load folder
+        def load_folder(folder_path, dataset_name):
+            all_files = []
+            for root, dirs, files in os.walk(folder_path):
+                for file in files:
+                    if file.endswith(('.json', '.cbor')):
+                        all_files.append(os.path.join(root, file))
+
+            if not all_files:
+                raise Exception(f"No .cbor or .json files found in {folder_path}")
+
+            logger.info(f"Loading {dataset_name}: Found {len(all_files)} files")
+
+            all_dataframes = []
+            class_labels = set()
+
+            for file_path in all_files:
+                try:
+                    data_source = EdgeImpulseDataSource()
+                    data_source.file_path = Path(file_path)
+                    data_source.format_type = internal_format
+
+                    if not data_source.connect():
+                        logger.warning(f"Skipping {file_path}: {data_source.last_error}")
+                        continue
+
+                    df = data_source.load_data()
+
+                    # Extract class label from filename
+                    filename = os.path.basename(file_path)
+                    label = filename.split('.')[0]
+
+                    if label:
+                        df['label'] = label
+                        class_labels.add(label)
+                        logger.info(f"Loaded {filename}: {len(df)} rows, label='{label}'")
+
+                    # Store source file information
+                    df['_source_file'] = filename
+
+                    all_dataframes.append(df)
+
+                except Exception as e:
+                    logger.error(f"Failed to load {file_path}: {e}")
+                    continue
+
+            if not all_dataframes:
+                raise Exception(f"No files could be loaded from {dataset_name} folder")
+
+            # Concatenate all DataFrames
+            combined_df = pd.concat(all_dataframes, ignore_index=True)
+
+            # Fix time column
+            if 'time' in combined_df.columns:
+                combined_df['time'] = range(len(combined_df))
+
+            return combined_df, class_labels, all_files
+
+        # Load training data
+        train_df, train_classes, train_files = load_folder(train_folder, "training")
+
+        # Load test data if provided
+        test_df = None
+        test_classes = set()
+        test_files = []
+        if test_folder:
+            test_df, test_classes, test_files = load_folder(test_folder, "test")
+
+        # Save train and test data separately
+        project = self.project_manager.current_project
+        if project:
+            data_dir = project.get_data_dir()
+
+            # Save training data
+            train_data_path = data_dir / "train_data.pkl"
+            with open(train_data_path, 'wb') as f:
+                pickle.dump(train_df, f)
+            project.data.train_data_file = str(train_data_path)
+            logger.info(f"Saved training data: {len(train_df)} rows to {train_data_path}")
+
+            # Save test data if available
+            if test_df is not None:
+                test_data_path = data_dir / "test_data.pkl"
+                with open(test_data_path, 'wb') as f:
+                    pickle.dump(test_df, f)
+                project.data.test_data_file = str(test_data_path)
+                logger.info(f"Saved test data: {len(test_df)} rows to {test_data_path}")
+
+            # Mark as manual split
+            project.data.train_test_split_type = "manual"
+            project.data.task_type = "classification"
+
+            # Store original folder paths for display and re-loading
+            project.data.train_folder_path = train_folder
+            project.data.test_folder_path = test_folder if test_folder else None
+            project.data.source_type = format_type  # Store source type for re-loading
+
+            # Store class info
+            all_classes = train_classes | test_classes
+            project.data.num_classes = len(all_classes)
+            project.data.class_mapping = {cls: idx for idx, cls in enumerate(sorted(all_classes))}
+
+            project.save()
+
+        # For UI display, show combined data (but keep them separate internally)
+        if test_df is not None:
+            self.loaded_data = pd.concat([train_df, test_df], ignore_index=True)
+            info_text = f"Train: {len(train_df)} rows, {len(train_files)} files | Test: {len(test_df)} rows, {len(test_files)} files"
+            info_text += f" | Classes: {sorted(train_classes | test_classes)}"
+        else:
+            self.loaded_data = train_df
+            info_text = f"Train: {len(train_df)} rows, {len(train_files)} files | Classes: {sorted(train_classes)}"
+
+        # Store data source reference
+        self.current_data_source = EdgeImpulseDataSource()
+        self.current_data_source.file_path = Path(train_files[0])
+        self.current_data_source.format_type = internal_format  # Use internal format
+        self.current_data_source.connect()
+        self.current_data_source.load_data()
+
+        self.ei_info_label.configure(text=info_text, text_color="blue")
+        logger.info(f"Train/Test split loading complete")
 
     def _load_database_data(self) -> None:
         """Load data from database."""
@@ -1331,11 +1603,20 @@ class DataSourcesPanel(ctk.CTkFrame):
             messagebox.showwarning("No Data", "Please load data first.")
             return
 
+        # Show progress bar
+        self.progress_frame.grid()
+        self.progress_label.configure(text="Creating windows...")
+        self.progress_bar.set(0.1)
+        self.update_idletasks()
+
         try:
             # Get parameters
             window_size = int(self.window_size_var.get())
             overlap = float(self.overlap_var.get()) / 100.0  # Convert to ratio
             sampling_rate = float(self.sampling_rate_var.get())
+
+            self.progress_bar.set(0.2)
+            self.update_idletasks()
 
             # Create windowing config
             config = WindowConfig(
@@ -1346,6 +1627,9 @@ class DataSourcesPanel(ctk.CTkFrame):
 
             # Initialize windowing engine
             self.windowing_engine = WindowingEngine(config)
+
+            self.progress_bar.set(0.3)
+            self.update_idletasks()
 
             # Detect sensor columns
             sensor_columns = self.current_data_source.detect_sensor_columns()
@@ -1360,13 +1644,74 @@ class DataSourcesPanel(ctk.CTkFrame):
                 label_column = 'label'
                 logger.info("Found 'label' column in data - will use for window labeling")
 
-            # Segment data
-            windows = self.windowing_engine.segment_data(
-                self.loaded_data,
-                sensor_columns=sensor_columns,
-                time_column=time_column,
-                label_column=label_column
-            )
+            # Check if we have separate train/test data
+            project = self.project_manager.current_project
+            if project and project.data.train_test_split_type == "manual":
+                # Load and window train/test data separately
+                import pickle
+
+                self.progress_label.configure(text="Windowing training data...")
+                self.progress_bar.set(0.4)
+                self.update_idletasks()
+
+                # Window training data
+                with open(project.data.train_data_file, 'rb') as f:
+                    train_data = pickle.load(f)
+
+                train_windows = self.windowing_engine.segment_data(
+                    train_data,
+                    sensor_columns=sensor_columns,
+                    time_column=time_column,
+                    label_column=label_column
+                )
+
+                self.progress_label.configure(text="Windowing test data...")
+                self.progress_bar.set(0.6)
+                self.update_idletasks()
+
+                # Window test data if available
+                test_windows = []
+                if project.data.test_data_file:
+                    with open(project.data.test_data_file, 'rb') as f:
+                        test_data = pickle.load(f)
+
+                    test_windows = self.windowing_engine.segment_data(
+                        test_data,
+                        sensor_columns=sensor_columns,
+                        time_column=time_column,
+                        label_column=label_column
+                    )
+
+                # Save train and test windows separately
+                data_dir = project.get_data_dir()
+
+                train_windows_path = data_dir / "train_windows.pkl"
+                with open(train_windows_path, 'wb') as f:
+                    pickle.dump(train_windows, f)
+                project.data.train_windows_file = str(train_windows_path)
+                project.data.num_train_windows = len(train_windows)
+
+                if test_windows:
+                    test_windows_path = data_dir / "test_windows.pkl"
+                    with open(test_windows_path, 'wb') as f:
+                        pickle.dump(test_windows, f)
+                    project.data.test_windows_file = str(test_windows_path)
+                    project.data.num_test_windows = len(test_windows)
+
+                # Combined windows for display/stats
+                windows = train_windows + test_windows
+                # Update windowing engine with combined windows for preview
+                self.windowing_engine.windows = windows
+                logger.info(f"Created {len(train_windows)} train windows, {len(test_windows)} test windows")
+
+            else:
+                # Standard windowing (single dataset or auto-split)
+                windows = self.windowing_engine.segment_data(
+                    self.loaded_data,
+                    sensor_columns=sensor_columns,
+                    time_column=time_column,
+                    label_column=label_column
+                )
 
             # Update stats
             stats = self.windowing_engine.get_window_stats()
@@ -1379,6 +1724,12 @@ Sampling rate: {stats['sampling_rate']} Hz
 Sensor columns: {len(sensor_columns)}
 """
 
+            # Add train/test split info if using manual split
+            if project and project.data.train_test_split_type == "manual":
+                stats_text += f"\nTrain/Test Split (Manual):\n"
+                stats_text += f"  Training: {project.data.num_train_windows} windows\n"
+                stats_text += f"  Test: {project.data.num_test_windows} windows\n"
+
             # Add class distribution if classification mode
             if 'class_distribution' in stats:
                 stats_text += "\nClass Distribution:\n"
@@ -1386,6 +1737,10 @@ Sensor columns: {len(sensor_columns)}
                     stats_text += f"  - {class_name}: {count} windows\n"
 
             self.window_stats_label.configure(text=stats_text)
+
+            self.progress_label.configure(text="Saving windows...")
+            self.progress_bar.set(0.8)
+            self.update_idletasks()
 
             # Save to project
             if self.project_manager.has_project():
@@ -1401,12 +1756,23 @@ Sensor columns: {len(sensor_columns)}
                 project.mark_stage_completed("data")
                 self.project_manager.save_project()
 
+            self.progress_bar.set(1.0)
+            self.progress_label.configure(text="✓ Windows created successfully!")
+            self.update_idletasks()
+
             logger.info(f"Created {len(windows)} windows")
+
+            # Hide progress bar after 1 second
+            self.after(1000, self.progress_frame.grid_remove)
+
             messagebox.showinfo("Success", f"Created {len(windows)} windows successfully!")
 
         except Exception as e:
             logger.error(f"Failed to create windows: {e}")
             messagebox.showerror("Windowing Error", f"Failed to create windows:\n{e}")
+
+            # Hide progress bar on error
+            self.progress_frame.grid_remove()
 
     def _update_preview(self) -> None:
         """Update data preview with visualization."""
@@ -1450,7 +1816,8 @@ Sensor columns: {len(sensor_columns)}
 
     def _refresh_plot(self) -> None:
         """Refresh the sensor plot with current data."""
-        if self.loaded_data is None:
+        # Allow plotting in windows mode even without loaded_data
+        if self.loaded_data is None and self.view_mode != "windows":
             return
 
         try:
@@ -1458,21 +1825,57 @@ Sensor columns: {len(sensor_columns)}
         except ValueError:
             max_samples = 1000
 
-        sensor_columns = self.current_data_source.detect_sensor_columns()
-        time_column = self.current_data_source.detect_time_column()
-
-        if not sensor_columns:
-            logger.warning("No sensor columns detected for plotting")
-            return
-
         # Get data to plot based on mode
         if self.view_mode == "windows":
             plot_data = self._get_window_data()
             if plot_data is None:
                 return
-            title = f"Window {self.current_window_index + 1} ({len(plot_data)} samples)"
+
+            # Get sensor columns from project data or plot_data columns
+            project = self.project_manager.current_project
+            if project and hasattr(project.data, 'sensor_columns') and project.data.sensor_columns:
+                sensor_columns = project.data.sensor_columns
+            else:
+                # Use all numeric columns except time/label/metadata
+                sensor_columns = [col for col in plot_data.columns if col not in ['time', 'label', 'timestamp', '_source_file']]
+
+            time_column = 'time' if 'time' in plot_data.columns else None
+
+            # Get window info for title (use filtered windows)
+            filtered_windows = self._get_filtered_windows()
+            window = filtered_windows[self.current_window_index]
+            class_label = f" - {window.class_label}" if hasattr(window, 'class_label') and window.class_label else ""
+
+            # Get source file from window data if available
+            source_file = ""
+            source_file_name = ""
+            logger.info(f"Window data columns: {list(plot_data.columns)}")
+            if '_source_file' in plot_data.columns:
+                # Get the most common source file in this window
+                source_files = plot_data['_source_file'].unique()
+                if len(source_files) > 0:
+                    source_file_name = source_files[0]
+                    source_file = f" | File: {source_file_name}"
+                    logger.info(f"Found source file: {source_file_name}")
+            else:
+                logger.warning("_source_file column not found in window data")
+
+            # Update info label with source file
+            if source_file_name:
+                self.info_label.configure(text=f"📊 Window {self.current_window_index + 1}/{len(filtered_windows)}{class_label} | 📄 Source: {source_file_name}")
+            else:
+                self.info_label.configure(text=f"📊 Window {self.current_window_index + 1}/{len(filtered_windows)}{class_label}")
+
+            title = f"Window {self.current_window_index + 1}/{len(filtered_windows)}{class_label} ({len(plot_data)} samples){source_file}"
         else:
             # Raw data mode with class filter
+            sensor_columns = self.current_data_source.detect_sensor_columns()
+            time_column = self.current_data_source.detect_time_column()
+
+            if not sensor_columns:
+                logger.warning("No sensor columns detected for plotting")
+                return
+
             data_to_plot = self._apply_class_filter(self.loaded_data)
             start = self.current_batch_start
             end = start + max_samples
@@ -1505,21 +1908,38 @@ Sensor columns: {len(sensor_columns)}
 
         return data[data['label'] == selected_class].reset_index(drop=True)
 
-    def _get_window_data(self):
-        """Get data for current window index."""
+    def _get_filtered_windows(self):
+        """Get list of windows filtered by selected class."""
         if not hasattr(self, 'windowing_engine') or self.windowing_engine is None:
-            logger.warning("No windows created yet")
-            return None
+            return []
 
         windows = self.windowing_engine.windows
-        if not windows or self.current_window_index >= len(windows):
+        if not windows:
+            return []
+
+        # Apply class filter
+        selected_class = self.class_filter_var.get()
+        if selected_class == "All Classes":
+            return windows
+
+        # Filter windows by class label
+        filtered = [w for w in windows if hasattr(w, 'class_label') and w.class_label == selected_class]
+        return filtered
+
+    def _get_window_data(self):
+        """Get data for current window index."""
+        filtered_windows = self._get_filtered_windows()
+        if not filtered_windows or self.current_window_index >= len(filtered_windows):
             return None
 
-        return windows[self.current_window_index]
+        # Return the DataFrame from the window object
+        window = filtered_windows[self.current_window_index]
+        return window.data
 
     def _navigate_previous(self):
         """Navigate to previous batch or window."""
-        if self.loaded_data is None:
+        # Allow navigation if we have windows even without loaded_data
+        if self.loaded_data is None and self.view_mode != "windows":
             return
 
         if self.view_mode == "windows":
@@ -1540,16 +1960,16 @@ Sensor columns: {len(sensor_columns)}
 
     def _navigate_next(self):
         """Navigate to next batch or window."""
-        if self.loaded_data is None:
+        # Allow navigation if we have windows even without loaded_data
+        if self.loaded_data is None and self.view_mode != "windows":
             return
 
         if self.view_mode == "windows":
-            if hasattr(self, 'windowing_engine') and self.windowing_engine:
-                windows = self.windowing_engine.windows
-                if self.current_window_index < len(windows) - 1:
-                    self.current_window_index += 1
-                    self._update_navigation_ui()
-                    self._refresh_plot()
+            filtered_windows = self._get_filtered_windows()
+            if filtered_windows and self.current_window_index < len(filtered_windows) - 1:
+                self.current_window_index += 1
+                self._update_navigation_ui()
+                self._refresh_plot()
         else:
             try:
                 max_samples = int(self.max_samples_var.get())
@@ -1564,16 +1984,11 @@ Sensor columns: {len(sensor_columns)}
 
     def _update_navigation_ui(self):
         """Update navigation label and button states."""
-        if self.loaded_data is None:
-            self.nav_label.configure(text="No Data")
-            self.prev_btn.configure(state="disabled")
-            self.next_btn.configure(state="disabled")
-            return
-
         if self.view_mode == "windows":
-            if hasattr(self, 'windowing_engine') and self.windowing_engine:
-                windows = self.windowing_engine.windows
-                total = len(windows)
+            # Windows mode - use filtered windows
+            filtered_windows = self._get_filtered_windows()
+            if filtered_windows:
+                total = len(filtered_windows)
                 current = self.current_window_index + 1
                 self.nav_label.configure(text=f"Window {current}/{total}")
                 self.prev_btn.configure(state="normal" if self.current_window_index > 0 else "disabled")
@@ -1582,6 +1997,14 @@ Sensor columns: {len(sensor_columns)}
                 self.nav_label.configure(text="No Windows")
                 self.prev_btn.configure(state="disabled")
                 self.next_btn.configure(state="disabled")
+            return
+
+        # Batch mode - requires loaded_data
+        if self.loaded_data is None:
+            self.nav_label.configure(text="No Data")
+            self.prev_btn.configure(state="disabled")
+            self.next_btn.configure(state="disabled")
+            return
         else:
             try:
                 max_samples = int(self.max_samples_var.get())
@@ -1607,6 +2030,7 @@ Sensor columns: {len(sensor_columns)}
     def _on_class_filter_change(self, selected_class):
         """Handle class filter change."""
         self.current_batch_start = 0
+        self.current_window_index = 0  # Reset window index when filter changes
         self._update_navigation_ui()
         self._refresh_plot()
 
@@ -1619,8 +2043,68 @@ Sensor columns: {len(sensor_columns)}
 
         # Check if project has windows
         if project.data.num_windows > 0:
-            # Display window information
-            info_text = f"""✓ Project data loaded!
+            # Check if using manual train/test split
+            if project.data.train_test_split_type == "manual":
+                # Get source type for display
+                source_type = getattr(project.data, 'source_type', 'Unknown')
+                source_type_display = {
+                    'json': 'Edge Impulse JSON',
+                    'cbor': 'Edge Impulse CBOR',
+                    'csv': 'CSV'
+                }.get(source_type, source_type.upper())
+
+                # Check if source files still exist
+                import os
+                train_exists = os.path.exists(project.data.train_folder_path) if project.data.train_folder_path else False
+                test_exists = os.path.exists(project.data.test_folder_path) if project.data.test_folder_path else False
+
+                source_status = "✓ Source files found" if train_exists else "⚠ Source files not found"
+
+                # Truncate long folder paths for display
+                def truncate_path(path, max_length=60):
+                    if not path or len(path) <= max_length:
+                        return path
+                    # Show start and end of path
+                    return path[:25] + "..." + path[-(max_length-28):]
+
+                train_path_display = truncate_path(project.data.train_folder_path)
+                test_path_display = truncate_path(project.data.test_folder_path)
+
+                # Show train/test split info with source information
+                info_text = f"""✓ Project data loaded with manual train/test split!
+
+📁 DATA SOURCE
+Format: {source_type_display}
+Status: {source_status}
+Training folder: {train_path_display or 'N/A'}
+Test folder: {test_path_display or 'N/A'}
+
+📊 WINDOWS
+Training windows: {project.data.num_train_windows}
+Test windows: {project.data.num_test_windows}
+Total windows: {project.data.num_windows}
+Window size: {project.data.window_size} samples
+Overlap: {project.data.overlap * 100:.1f}%
+Sampling rate: {project.data.sampling_rate} Hz
+
+🔬 SENSORS
+Sensor columns: {len(project.data.sensor_columns)}
+Sensors: {', '.join(project.data.sensor_columns) if project.data.sensor_columns else 'N/A'}
+
+💡 Use the 'Raw Data' / 'Windows' toggle in Preview tab to switch views.
+To reload or modify data, load a new data source.
+                """
+
+                # Populate train/test folder paths in UI
+                if project.data.train_folder_path:
+                    self.ei_train_path_entry.delete(0, 'end')
+                    self.ei_train_path_entry.insert(0, project.data.train_folder_path)
+                if project.data.test_folder_path:
+                    self.ei_test_path_entry.delete(0, 'end')
+                    self.ei_test_path_entry.insert(0, project.data.test_folder_path)
+            else:
+                # Display standard window information
+                info_text = f"""✓ Project data loaded!
 
 Source: {project.data.source_path or 'N/A'}
 Windows: {project.data.num_windows}
@@ -1632,7 +2116,7 @@ Sensors: {', '.join(project.data.sensor_columns) if project.data.sensor_columns 
 
 To reload or modify data, load a new data source.
 To proceed to feature extraction, go to the Feature Extraction stage.
-            """
+                """
 
             self.window_stats_label.configure(text=info_text)
 
@@ -1641,4 +2125,152 @@ To proceed to feature extraction, go to the Feature Extraction stage.
             self.overlap_var.set(str(project.data.overlap * 100))
             self.sampling_rate_var.set(str(project.data.sampling_rate))
 
+            # Re-load raw source data if available (for Raw Data view)
+            self._reload_source_data_if_available(project)
+
+            # Load windows for preview
+            try:
+                import pickle
+                from pathlib import Path
+
+                # Load windows based on split type
+                if project.data.train_test_split_type == "manual":
+                    # Load train and test windows
+                    if project.data.train_windows_file and project.data.test_windows_file:
+                        with open(project.data.train_windows_file, 'rb') as f:
+                            train_windows = pickle.load(f)
+                        with open(project.data.test_windows_file, 'rb') as f:
+                            test_windows = pickle.load(f)
+                        # Combine for preview
+                        self.windows = train_windows + test_windows
+                        logger.info(f"Loaded {len(train_windows)} train + {len(test_windows)} test windows for preview")
+                        logger.info(f"Total combined windows: {len(self.windows)}")
+                else:
+                    # Load single windows file
+                    if project.data.windows_file:
+                        with open(project.data.windows_file, 'rb') as f:
+                            self.windows = pickle.load(f)
+                        logger.info(f"Loaded {len(self.windows)} windows for preview")
+
+                # Initialize windowing engine with loaded windows
+                if self.windows:
+                    from core.windowing import WindowingEngine, WindowConfig
+                    config = WindowConfig(
+                        window_size=project.data.window_size,
+                        overlap=project.data.overlap,
+                        sampling_rate=project.data.sampling_rate
+                    )
+                    self.windowing_engine = WindowingEngine(config)
+                    self.windowing_engine.windows = self.windows  # Set windows directly
+
+                    # Update class filter options if in classification mode
+                    if hasattr(project.data, 'class_mapping') and project.data.class_mapping:
+                        class_names = list(project.data.class_mapping.keys())
+                        self.class_filter_menu.configure(values=["All Classes"] + class_names)
+
+                    # Set view mode to windows and update preview
+                    self.view_mode = "windows"
+                    self.current_window_index = 0
+
+                    # Update info label with data source information
+                    num_windows = len(self.windows)
+
+                    # Show which views are available
+                    has_raw_data = self.loaded_data is not None
+                    view_status = "Raw Data & Windows views available" if has_raw_data else "Windows view only"
+
+                    self.info_label.configure(text=f"📊 {num_windows} windows loaded | {view_status}")
+
+                    # Refresh plot to show first window
+                    self._refresh_plot()
+
+            except Exception as e:
+                logger.error(f"Error loading windows for preview: {e}")
+                import traceback
+                traceback.print_exc()
+
             logger.info(f"Loaded project data: {project.data.num_windows} windows")
+
+    def _reload_source_data_if_available(self, project) -> None:
+        """
+        Re-load raw source data when opening a saved project.
+        This enables Raw Data view mode alongside Windows view.
+        """
+        import os
+
+        # Check if source paths are stored
+        if not hasattr(project.data, 'train_folder_path') or not project.data.train_folder_path:
+            logger.info("No source paths stored - Raw Data view will be unavailable")
+            return
+
+        # Check if source files still exist
+        train_exists = os.path.exists(project.data.train_folder_path)
+        test_exists = project.data.test_folder_path and os.path.exists(project.data.test_folder_path)
+
+        if not train_exists:
+            logger.warning(f"Source training folder not found: {project.data.train_folder_path}")
+            logger.warning("Raw Data view will be unavailable - only Windows view supported")
+            return
+
+        # Show progress bar
+        self.progress_frame.grid()
+        self.progress_label.configure(text="Re-loading source data...")
+        self.progress_bar.set(0.1)
+        self.update_idletasks()
+
+        try:
+            # Always detect format from actual file extensions (don't trust stored metadata)
+            import glob
+            sample_files = glob.glob(os.path.join(project.data.train_folder_path, '*.*'))
+            if sample_files:
+                # Check first file extension
+                first_file = sample_files[0]
+                if first_file.endswith('.cbor'):
+                    source_type = 'cbor'
+                elif first_file.endswith('.json'):
+                    source_type = 'json'
+                else:
+                    source_type = 'json'  # default
+                logger.info(f"Detected source format from file extension: {source_type}")
+            else:
+                # Fallback to stored value or default
+                source_type = getattr(project.data, 'source_type', 'json')
+                logger.warning(f"No files found, using stored/default format: {source_type}")
+
+            # Map internal format to UI format string
+            format_map = {
+                "json": "Edge Impulse JSON",
+                "cbor": "Edge Impulse CBOR"
+            }
+            ui_format = format_map.get(source_type, "Edge Impulse JSON")
+
+            logger.info(f"Re-loading source data from: {project.data.train_folder_path}")
+            logger.info(f"Format: {ui_format}")
+
+            self.progress_bar.set(0.3)
+            self.update_idletasks()
+
+            # Re-load the data using existing load function
+            self._load_edgeimpulse_train_test(
+                project.data.train_folder_path,
+                project.data.test_folder_path,
+                ui_format
+            )
+
+            self.progress_bar.set(1.0)
+            self.progress_label.configure(text="✓ Source data loaded successfully!")
+            self.update_idletasks()
+
+            logger.info("✓ Raw source data re-loaded successfully - both Raw and Windows views available")
+
+            # Hide progress bar after 1 second
+            self.after(1000, self.progress_frame.grid_remove)
+
+        except Exception as e:
+            logger.error(f"Failed to re-load source data: {e}")
+            logger.warning("Raw Data view will be unavailable - only Windows view supported")
+            import traceback
+            traceback.print_exc()
+
+            # Hide progress bar on error
+            self.progress_frame.grid_remove()

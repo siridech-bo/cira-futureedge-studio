@@ -48,6 +48,7 @@ class FeaturesPanel(ctk.CTkFrame):
         self.extracted_features: Optional[pd.DataFrame] = None
 
         self._setup_ui()
+        self._load_project_features()  # Load existing features if available
 
     def _setup_ui(self) -> None:
         """Setup UI components."""
@@ -103,7 +104,14 @@ class FeaturesPanel(ctk.CTkFrame):
             font=("Segoe UI", 14, "bold")
         ).grid(row=0, column=0, columnspan=2, sticky="w", padx=10, pady=(10, 5))
 
-        self.mode_var = ctk.StringVar(value="anomaly_detection")
+        # Auto-detect mode from project
+        default_mode = "anomaly_detection"
+        if self.project_manager.has_project():
+            project = self.project_manager.current_project
+            if hasattr(project.data, 'task_type'):
+                default_mode = project.data.task_type
+
+        self.mode_var = ctk.StringVar(value=default_mode)
 
         anomaly_radio = ctk.CTkRadioButton(
             mode_frame,
@@ -114,6 +122,15 @@ class FeaturesPanel(ctk.CTkFrame):
         )
         anomaly_radio.grid(row=1, column=0, columnspan=2, sticky="w", padx=30, pady=5)
 
+        classification_radio = ctk.CTkRadioButton(
+            mode_frame,
+            text="🎓 Classification - Categorize sensor patterns",
+            variable=self.mode_var,
+            value="classification",
+            command=self._on_mode_change
+        )
+        classification_radio.grid(row=2, column=0, columnspan=2, sticky="w", padx=30, pady=5)
+
         forecast_radio = ctk.CTkRadioButton(
             mode_frame,
             text="📈 Time Series Forecasting - Predict future values",
@@ -121,7 +138,7 @@ class FeaturesPanel(ctk.CTkFrame):
             value="forecasting",
             command=self._on_mode_change
         )
-        forecast_radio.grid(row=2, column=0, columnspan=2, sticky="w", padx=30, pady=(5, 10))
+        forecast_radio.grid(row=3, column=0, columnspan=2, sticky="w", padx=30, pady=(5, 10))
 
         # Complexity Level Section
         complexity_frame = ctk.CTkFrame(scroll)
@@ -532,13 +549,35 @@ class FeaturesPanel(ctk.CTkFrame):
             # Get project data
             project = self.project_manager.current_project
 
-            # Load windows from disk
-            windows = project.load_windows()
-            sensor_columns = project.data.sensor_columns
+            # Check if we have separate train/test windows
+            if project.data.train_test_split_type == "manual":
+                # Load train and test windows separately
+                import pickle
 
-            if not windows:
-                messagebox.showwarning("No Data", "No windows available. Create windows first.")
-                return
+                if not project.data.train_windows_file:
+                    messagebox.showwarning("No Data", "No training windows available. Create windows first.")
+                    return
+
+                with open(project.data.train_windows_file, 'rb') as f:
+                    train_windows = pickle.load(f)
+
+                test_windows = []
+                if project.data.test_windows_file:
+                    with open(project.data.test_windows_file, 'rb') as f:
+                        test_windows = pickle.load(f)
+
+                windows = None  # Not used in manual split mode
+            else:
+                # Load combined windows
+                windows = project.load_windows()
+                train_windows = None
+                test_windows = None
+
+                if not windows:
+                    messagebox.showwarning("No Data", "No windows available. Create windows first.")
+                    return
+
+            sensor_columns = project.data.sensor_columns
 
             # Disable extract button
             self.extract_btn.configure(state="disabled")
@@ -554,11 +593,38 @@ class FeaturesPanel(ctk.CTkFrame):
                         self._show_error("Forecasting mode not yet implemented")
                         return
                     else:
-                        # Anomaly detection mode
-                        features = self.extraction_engine.extract_from_windows(
-                            windows,
-                            sensor_columns
-                        )
+                        # Check if manual train/test split
+                        if project.data.train_test_split_type == "manual":
+                            # Extract features separately for train and test
+                            logger.info(f"Extracting features from {len(train_windows)} train windows")
+                            train_features = self.extraction_engine.extract_from_windows(
+                                train_windows,
+                                sensor_columns
+                            )
+
+                            test_features = None
+                            if test_windows:
+                                logger.info(f"Extracting features from {len(test_windows)} test windows")
+                                test_features = self.extraction_engine.extract_from_windows(
+                                    test_windows,
+                                    sensor_columns
+                                )
+
+                            # Store train and test features separately
+                            self.train_features = train_features
+                            self.test_features = test_features
+
+                            # For display, combine features
+                            if test_features is not None:
+                                features = pd.concat([train_features, test_features], ignore_index=True)
+                            else:
+                                features = train_features
+                        else:
+                            # Standard extraction
+                            features = self.extraction_engine.extract_from_windows(
+                                windows,
+                                sensor_columns
+                            )
 
                     self.extracted_features = features
 
@@ -594,8 +660,25 @@ class FeaturesPanel(ctk.CTkFrame):
         features_dir = project.get_features_dir()
         features_dir.mkdir(parents=True, exist_ok=True)
 
-        features_file = features_dir / "extracted.pkl"
         import pickle
+
+        # Save train/test features separately if manual split
+        if project.data.train_test_split_type == "manual":
+            # Save training features
+            train_features_file = features_dir / "train_features.pkl"
+            with open(train_features_file, 'wb') as f:
+                pickle.dump(self.train_features, f)
+            logger.info(f"Saved {self.train_features.shape[1]} train features to {train_features_file}")
+
+            # Save test features if available
+            if self.test_features is not None:
+                test_features_file = features_dir / "test_features.pkl"
+                with open(test_features_file, 'wb') as f:
+                    pickle.dump(self.test_features, f)
+                logger.info(f"Saved {self.test_features.shape[1]} test features to {test_features_file}")
+
+        # Also save combined features for compatibility
+        features_file = features_dir / "extracted.pkl"
         with open(features_file, 'wb') as f:
             pickle.dump(features, f)
 
@@ -733,12 +816,397 @@ class FeaturesPanel(ctk.CTkFrame):
                 logger.error(f"Failed to export features: {e}")
                 messagebox.showerror("Error", f"Failed to export features:\n{e}")
 
+    def _setup_explorer_tab(self) -> None:
+        """Setup feature explorer tab for 3D visualization."""
+        tab = self.tabview.tab("Explorer")
+        tab.grid_columnconfigure(0, weight=1)
+        tab.grid_rowconfigure(1, weight=1)
+
+        # Scrollable frame
+        scroll = ctk.CTkScrollableFrame(tab)
+        scroll.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
+        scroll.grid_columnconfigure(0, weight=1)
+
+        # Title
+        title_frame = ctk.CTkFrame(scroll, fg_color="transparent")
+        title_frame.grid(row=0, column=0, sticky="ew", padx=10, pady=10)
+
+        ctk.CTkLabel(
+            title_frame,
+            text="🔍 Feature Explorer - 3D Visualization",
+            font=("Segoe UI", 16, "bold")
+        ).pack(side="left")
+
+        # Info label
+        info_text = "Visualize how features separate your classes in 3D space. Select 3 features to plot as X, Y, and Z axes."
+        ctk.CTkLabel(
+            scroll,
+            text=info_text,
+            font=("Segoe UI", 10),
+            text_color="gray",
+            wraplength=600,
+            justify="left"
+        ).grid(row=1, column=0, sticky="w", padx=10, pady=(0, 20))
+
+        # Feature selection frame
+        selection_frame = ctk.CTkFrame(scroll)
+        selection_frame.grid(row=2, column=0, sticky="ew", padx=10, pady=10)
+        selection_frame.grid_columnconfigure(1, weight=1)
+
+        ctk.CTkLabel(
+            selection_frame,
+            text="Select 3 Features:",
+            font=("Segoe UI", 14, "bold")
+        ).grid(row=0, column=0, columnspan=2, padx=10, pady=10, sticky="w")
+
+        # X-axis selection
+        ctk.CTkLabel(
+            selection_frame,
+            text="X-Axis:",
+            font=("Segoe UI", 12)
+        ).grid(row=1, column=0, padx=10, pady=5, sticky="w")
+
+        self.explorer_x_var = ctk.StringVar(value="No features available")
+        self.explorer_x_menu = ctk.CTkOptionMenu(
+            selection_frame,
+            variable=self.explorer_x_var,
+            values=["No features available"],
+            width=400
+        )
+        self.explorer_x_menu.grid(row=1, column=1, padx=10, pady=5, sticky="ew")
+
+        # Y-axis selection
+        ctk.CTkLabel(
+            selection_frame,
+            text="Y-Axis:",
+            font=("Segoe UI", 12)
+        ).grid(row=2, column=0, padx=10, pady=5, sticky="w")
+
+        self.explorer_y_var = ctk.StringVar(value="No features available")
+        self.explorer_y_menu = ctk.CTkOptionMenu(
+            selection_frame,
+            variable=self.explorer_y_var,
+            values=["No features available"],
+            width=400
+        )
+        self.explorer_y_menu.grid(row=2, column=1, padx=10, pady=5, sticky="ew")
+
+        # Z-axis selection
+        ctk.CTkLabel(
+            selection_frame,
+            text="Z-Axis:",
+            font=("Segoe UI", 12)
+        ).grid(row=3, column=0, padx=10, pady=5, sticky="w")
+
+        self.explorer_z_var = ctk.StringVar(value="No features available")
+        self.explorer_z_menu = ctk.CTkOptionMenu(
+            selection_frame,
+            variable=self.explorer_z_var,
+            values=["No features available"],
+            width=400
+        )
+        self.explorer_z_menu.grid(row=3, column=1, padx=10, pady=5, sticky="ew")
+
+        # Quick action buttons
+        button_frame = ctk.CTkFrame(scroll, fg_color="transparent")
+        button_frame.grid(row=3, column=0, sticky="ew", padx=10, pady=10)
+
+        self.use_top3_btn = ctk.CTkButton(
+            button_frame,
+            text="📊 Use Top 3 Important Features",
+            command=self._use_top3_features,
+            width=200,
+            fg_color="green",
+            hover_color="darkgreen"
+        )
+        self.use_top3_btn.pack(side="left", padx=5)
+
+        self.randomize_btn = ctk.CTkButton(
+            button_frame,
+            text="🎲 Randomize Features",
+            command=self._randomize_features,
+            width=180
+        )
+        self.randomize_btn.pack(side="left", padx=5)
+
+        # Visualize button
+        visualize_frame = ctk.CTkFrame(scroll, fg_color="transparent")
+        visualize_frame.grid(row=4, column=0, sticky="ew", padx=10, pady=20)
+
+        self.visualize_btn = ctk.CTkButton(
+            visualize_frame,
+            text="🚀 Visualize in 3D",
+            command=self._visualize_3d,
+            width=300,
+            height=40,
+            font=("Segoe UI", 14, "bold"),
+            fg_color="#1f6aa5",
+            hover_color="#144870"
+        )
+        self.visualize_btn.pack()
+
+        # Status label
+        self.explorer_status_label = ctk.CTkLabel(
+            scroll,
+            text="Extract features first to enable visualization",
+            font=("Segoe UI", 11),
+            text_color="orange"
+        )
+        self.explorer_status_label.grid(row=5, column=0, padx=10, pady=10)
+
+    def _use_top3_features(self):
+        """Auto-populate dropdowns with top 3 most important features."""
+        if self.extracted_features is None or self.extracted_features.shape[1] < 3:
+            messagebox.showwarning("No Features", "Extract features first or need at least 3 features.")
+            return
+
+        # Get feature names
+        feature_names = list(self.extracted_features.columns)
+
+        # Check if we have feature importances from trained model
+        project = self.project_manager.current_project
+        if project and hasattr(project, 'model') and hasattr(project.model, 'feature_importances'):
+            # Use model's feature importance if available
+            try:
+                import pickle
+                model_path = project.model.model_path
+                with open(model_path, 'rb') as f:
+                    model = pickle.load(f)
+
+                if hasattr(model, 'feature_importances_'):
+                    importances = model.feature_importances_
+                    # Sort features by importance
+                    sorted_indices = importances.argsort()[::-1]
+                    sorted_features = [feature_names[i] for i in sorted_indices[:3]]
+
+                    self.explorer_x_var.set(sorted_features[0])
+                    self.explorer_y_var.set(sorted_features[1])
+                    self.explorer_z_var.set(sorted_features[2])
+
+                    self.explorer_status_label.configure(
+                        text=f"✓ Selected top 3 features by importance",
+                        text_color="green"
+                    )
+                    return
+            except Exception as e:
+                logger.warning(f"Could not load feature importances: {e}")
+
+        # Fallback: just use first 3 features
+        self.explorer_x_var.set(feature_names[0])
+        self.explorer_y_var.set(feature_names[1])
+        self.explorer_z_var.set(feature_names[2])
+
+        self.explorer_status_label.configure(
+            text="✓ Selected first 3 features (train model to see importance-based selection)",
+            text_color="blue"
+        )
+
+    def _randomize_features(self):
+        """Randomly select 3 features."""
+        if not self.extracted_features or self.extracted_features.shape[1] < 3:
+            messagebox.showwarning("No Features", "Extract features first.")
+            return
+
+        import random
+        feature_names = list(self.extracted_features.columns)
+        random_features = random.sample(feature_names, 3)
+
+        self.explorer_x_var.set(random_features[0])
+        self.explorer_y_var.set(random_features[1])
+        self.explorer_z_var.set(random_features[2])
+
+        self.explorer_status_label.configure(
+            text="✓ Randomly selected 3 features",
+            text_color="blue"
+        )
+
+    def _visualize_3d(self):
+        """Create 3D visualization using Plotly."""
+        if self.extracted_features is None:
+            messagebox.showwarning("No Features", "Please extract features first.")
+            return
+
+        # Get selected features
+        x_feature = self.explorer_x_var.get()
+        y_feature = self.explorer_y_var.get()
+        z_feature = self.explorer_z_var.get()
+
+        if x_feature == "No features available":
+            messagebox.showwarning("No Features", "Please extract features first.")
+            return
+
+        # Check if features are the same
+        if len({x_feature, y_feature, z_feature}) < 3:
+            messagebox.showwarning("Duplicate Features", "Please select 3 different features.")
+            return
+
+        try:
+            # Get project and windows for labels
+            project = self.project_manager.current_project
+            if not project:
+                messagebox.showerror("No Project", "No project loaded.")
+                return
+
+            # Load windows to get labels
+            if project.data.train_test_split_type == "manual":
+                # Load combined windows
+                import pickle
+                if project.data.train_windows_file:
+                    with open(project.data.train_windows_file, 'rb') as f:
+                        train_windows = pickle.load(f)
+                    windows = train_windows
+
+                    if project.data.test_windows_file:
+                        with open(project.data.test_windows_file, 'rb') as f:
+                            test_windows = pickle.load(f)
+                        windows = train_windows + test_windows
+                else:
+                    windows = project.load_windows()
+            else:
+                windows = project.load_windows()
+
+            if not windows:
+                messagebox.showwarning("No Windows", "No windows found. Create windows first.")
+                return
+
+            # Extract labels
+            labels = [w.class_label if hasattr(w, 'class_label') and w.class_label else "unlabeled" for w in windows]
+
+            # Create 3D visualization with Plotly
+            try:
+                import plotly.graph_objects as go
+                import webbrowser
+                import tempfile
+                import os
+
+                # Get data
+                x_data = self.extracted_features[x_feature].values
+                y_data = self.extracted_features[y_feature].values
+                z_data = self.extracted_features[z_feature].values
+
+                # Create scatter plot for each class
+                unique_labels = sorted(set(labels))
+                traces = []
+
+                colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd',
+                         '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']
+
+                for idx, label in enumerate(unique_labels):
+                    mask = [l == label for l in labels]
+                    trace = go.Scatter3d(
+                        x=x_data[mask],
+                        y=y_data[mask],
+                        z=z_data[mask],
+                        mode='markers',
+                        name=label,
+                        marker=dict(
+                            size=5,
+                            color=colors[idx % len(colors)],
+                            opacity=0.8,
+                            line=dict(color='white', width=0.5)
+                        )
+                    )
+                    traces.append(trace)
+
+                # Create figure
+                fig = go.Figure(data=traces)
+
+                fig.update_layout(
+                    title=f"Feature Explorer ({len(labels)} samples)",
+                    scene=dict(
+                        xaxis_title=x_feature,
+                        yaxis_title=y_feature,
+                        zaxis_title=z_feature,
+                        xaxis=dict(backgroundcolor="rgb(230, 230,230)"),
+                        yaxis=dict(backgroundcolor="rgb(230, 230,230)"),
+                        zaxis=dict(backgroundcolor="rgb(230, 230,230)"),
+                    ),
+                    width=1200,
+                    height=800,
+                    hovermode='closest'
+                )
+
+                # Save to temp HTML file and open in browser
+                temp_file = tempfile.NamedTemporaryFile(mode='w', suffix='.html', delete=False)
+                fig.write_html(temp_file.name)
+                temp_file.close()
+
+                webbrowser.open('file://' + os.path.realpath(temp_file.name))
+
+                self.explorer_status_label.configure(
+                    text=f"✓ 3D visualization opened in browser ({len(unique_labels)} classes)",
+                    text_color="green"
+                )
+
+                logger.info(f"Feature Explorer: Visualized {x_feature} vs {y_feature} vs {z_feature}")
+
+            except ImportError:
+                messagebox.showerror(
+                    "Missing Library",
+                    "Plotly is required for 3D visualization.\n\nInstall with:\npip install plotly"
+                )
+
+        except Exception as e:
+            logger.error(f"Failed to create 3D visualization: {e}")
+            messagebox.showerror("Visualization Error", f"Failed to create visualization:\n{e}")
+
+    def _load_project_features(self) -> None:
+        """Load and display existing extracted features if available."""
+        if not self.project_manager.has_project():
+            return
+
+        project = self.project_manager.current_project
+
+        # Check if features were extracted
+        if project.features.extracted and project.features.extracted_features:
+            try:
+                import pickle
+                from pathlib import Path
+
+                features_path = Path(project.features.extracted_features)
+
+                # Load features from pickle file
+                if features_path.exists():
+                    with open(features_path, 'rb') as f:
+                        self.extracted_features = pickle.load(f)
+
+                    # Update Results tab to show feature info
+                    num_features = len(project.features.feature_names)
+                    num_samples = len(self.extracted_features)
+
+                    info_text = f"""✓ Features loaded from project!
+
+Features: {num_features}
+Samples: {num_samples}
+Mode: {project.features.operation_mode.replace('_', ' ').title()}
+Complexity: {project.features.complexity_level.title()}
+
+The features are ready for LLM selection and model training.
+You can also re-extract features if needed.
+                    """
+                    self.results_info_label.configure(text=info_text)
+                    logger.info(f"Loaded extracted features: {num_features} features, {num_samples} samples")
+                else:
+                    logger.warning(f"Features file not found: {features_path}")
+
+            except Exception as e:
+                logger.error(f"Error loading features: {e}")
+                import traceback
+                traceback.print_exc()
+
     def refresh(self) -> None:
         """Refresh panel with current project data."""
         self._update_extraction_info()
 
-        # Update target column options if in forecasting mode
+        # Auto-select operation mode from project task_type
         if self.project_manager.has_project():
             project = self.project_manager.current_project
+
+            # Update mode selector
+            if hasattr(project.data, 'task_type'):
+                self.mode_var.set(project.data.task_type)
+                self._on_mode_change()  # Update UI based on mode
+
+            # Update target column options if in forecasting mode
             if hasattr(project.data, 'sensor_columns') and project.data.sensor_columns:
                 self.target_column_menu.configure(values=project.data.sensor_columns)

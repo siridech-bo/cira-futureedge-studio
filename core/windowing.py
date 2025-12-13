@@ -95,11 +95,17 @@ class WindowingEngine:
         windows = []
         window_id = 0
 
-        # Extract relevant columns
+        # Extract relevant columns (include metadata columns like _source_file)
         if time_column and time_column in data.columns:
             columns_to_extract = [time_column] + sensor_columns
         else:
             columns_to_extract = sensor_columns
+
+        # Add metadata columns if they exist (preserve source file tracking, etc.)
+        metadata_columns = ['_source_file']
+        for meta_col in metadata_columns:
+            if meta_col in data.columns and meta_col not in columns_to_extract:
+                columns_to_extract.append(meta_col)
 
         # Iterate through data and create windows
         for start_idx in range(0, len(data) - self.config.window_size + 1, step_size):

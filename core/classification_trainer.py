@@ -113,6 +113,12 @@ class ClassificationConfig:
     normalize: bool = True
     params: Dict[str, Any] = None
 
+    # Manual train/test split (optional)
+    train_features: Optional[Any] = None  # DataFrame with training features
+    train_labels: Optional[List[str]] = None  # Training labels
+    test_features: Optional[Any] = None  # DataFrame with test features
+    test_labels: Optional[List[str]] = None  # Test labels
+
     def __post_init__(self):
         if self.params is None:
             self.params = {}
@@ -230,11 +236,30 @@ class ClassificationTrainer:
 
         logger.info(f"Detected {len(self.class_names)} classes: {self.class_names}")
 
-        # Split data (stratified to maintain class distribution)
-        X_train, X_test, y_train, y_test = train_test_split(
-            X, y, test_size=config.test_size,
-            random_state=config.random_state, stratify=y
-        )
+        # Check if we have pre-split train/test data
+        if hasattr(config, 'train_features') and config.train_features is not None:
+            # Use pre-split data (manual train/test split)
+            logger.info("Using manual train/test split from separate datasets")
+
+            X_train = config.train_features[selected_features].values
+            y_train = self.label_encoder.transform(config.train_labels)
+
+            if config.test_features is not None and config.test_labels is not None:
+                X_test = config.test_features[selected_features].values
+                y_test = self.label_encoder.transform(config.test_labels)
+                logger.info(f"Train: {X_train.shape[0]} samples, Test: {X_test.shape[0]} samples")
+            else:
+                # No test data provided, use entire training data for evaluation
+                X_test = X_train
+                y_test = y_train
+                logger.warning("No test data provided, using training data for evaluation")
+        else:
+            # Split data automatically (stratified to maintain class distribution)
+            logger.info(f"Using automatic train/test split ({config.test_size*100:.0f}% test)")
+            X_train, X_test, y_train, y_test = train_test_split(
+                X, y, test_size=config.test_size,
+                random_state=config.random_state, stratify=y
+            )
 
         # Normalize if requested
         if config.normalize:

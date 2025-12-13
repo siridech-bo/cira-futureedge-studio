@@ -106,10 +106,11 @@ class FilteringPanel(ctk.CTkFrame):
         """Setup filter settings tab."""
         tab = self.tabview.tab("Filter Settings")
         tab.grid_columnconfigure(0, weight=1)
+        tab.grid_columnconfigure(1, weight=2)  # Options column wider
 
-        # Filtering method selection
+        # LEFT COLUMN: Filtering method selection
         method_frame = ctk.CTkFrame(tab)
-        method_frame.grid(row=0, column=0, sticky="ew", padx=10, pady=10)
+        method_frame.grid(row=0, column=0, sticky="nsew", padx=(10, 5), pady=10)
 
         ctk.CTkLabel(
             method_frame,
@@ -119,9 +120,9 @@ class FilteringPanel(ctk.CTkFrame):
 
         self.method_var = ctk.StringVar(value="basic")
         methods = [
-            ("Basic (Constant, Low-Variance, NaN)", "basic"),
-            ("tsfresh Hypothesis Testing", "tsfresh"),
-            ("Mutual Information", "mutual_info")
+            ("Basic", "basic"),
+            ("tsfresh", "tsfresh"),
+            ("Mutual Info", "mutual_info")
         ]
 
         for i, (label, value) in enumerate(methods):
@@ -132,19 +133,18 @@ class FilteringPanel(ctk.CTkFrame):
                 value=value,
                 command=self._update_filter_options,
                 font=("Segoe UI", 12)
-            ).grid(row=i+1, column=0, padx=30, pady=5, sticky="w")
+            ).grid(row=i+1, column=0, padx=20, pady=5, sticky="w")
 
-        # Options frame (dynamic based on method)
+        # RIGHT COLUMN: Options frame (dynamic based on method)
         self.options_frame = ctk.CTkFrame(tab)
-        self.options_frame.grid(row=1, column=0, sticky="nsew", padx=10, pady=10)
+        self.options_frame.grid(row=0, column=1, sticky="nsew", padx=(5, 10), pady=10)
         self.options_frame.grid_columnconfigure(1, weight=1)
-        tab.grid_rowconfigure(1, weight=1)
 
         self._setup_basic_options()
 
-        # Filter button
+        # Filter button (spans both columns)
         filter_btn_frame = ctk.CTkFrame(tab, fg_color="transparent")
-        filter_btn_frame.grid(row=2, column=0, sticky="ew", padx=10, pady=10)
+        filter_btn_frame.grid(row=1, column=0, columnspan=2, sticky="ew", padx=10, pady=10)
 
         self.filter_btn = ctk.CTkButton(
             filter_btn_frame,
@@ -171,7 +171,7 @@ class FilteringPanel(ctk.CTkFrame):
 
         ctk.CTkLabel(
             self.options_frame,
-            text="Basic Filtering Options",
+            text="Basic Filtering",
             font=("Segoe UI", 14, "bold")
         ).grid(row=0, column=0, columnspan=2, padx=10, pady=10, sticky="w")
 
@@ -179,41 +179,41 @@ class FilteringPanel(ctk.CTkFrame):
         self.remove_constant_var = ctk.BooleanVar(value=True)
         ctk.CTkCheckBox(
             self.options_frame,
-            text="Remove constant features (std = 0)",
+            text="Remove constant (std = 0)",
             variable=self.remove_constant_var,
-            font=("Segoe UI", 12)
-        ).grid(row=1, column=0, columnspan=2, padx=20, pady=5, sticky="w")
+            font=("Segoe UI", 11)
+        ).grid(row=1, column=0, columnspan=2, padx=15, pady=5, sticky="w")
 
         # Remove NaN features
         self.remove_nan_var = ctk.BooleanVar(value=True)
         ctk.CTkCheckBox(
             self.options_frame,
-            text="Remove features with NaN values",
+            text="Remove NaN features",
             variable=self.remove_nan_var,
-            font=("Segoe UI", 12)
-        ).grid(row=2, column=0, columnspan=2, padx=20, pady=5, sticky="w")
+            font=("Segoe UI", 11)
+        ).grid(row=2, column=0, columnspan=2, padx=15, pady=5, sticky="w")
 
         # Variance threshold
         ctk.CTkLabel(
             self.options_frame,
             text="Variance Threshold:",
-            font=("Segoe UI", 12)
-        ).grid(row=3, column=0, padx=20, pady=10, sticky="w")
+            font=("Segoe UI", 11)
+        ).grid(row=3, column=0, padx=15, pady=10, sticky="w")
 
         self.variance_threshold_var = ctk.StringVar(value="0.01")
         ctk.CTkEntry(
             self.options_frame,
             textvariable=self.variance_threshold_var,
-            font=("Segoe UI", 12),
-            width=150
+            font=("Segoe UI", 11),
+            width=120
         ).grid(row=3, column=1, padx=10, pady=10, sticky="w")
 
         ctk.CTkLabel(
             self.options_frame,
-            text="Features with variance below this threshold will be removed",
-            font=("Segoe UI", 10),
+            text="Remove features with variance < threshold",
+            font=("Segoe UI", 9),
             text_color="gray"
-        ).grid(row=4, column=0, columnspan=2, padx=20, pady=(0, 10), sticky="w")
+        ).grid(row=4, column=0, columnspan=2, padx=15, pady=(0, 10), sticky="w")
 
     def _setup_tsfresh_options(self) -> None:
         """Setup options for tsfresh filtering."""
@@ -223,7 +223,7 @@ class FilteringPanel(ctk.CTkFrame):
 
         ctk.CTkLabel(
             self.options_frame,
-            text="tsfresh Hypothesis Testing Options",
+            text="tsfresh Hypothesis Testing",
             font=("Segoe UI", 14, "bold")
         ).grid(row=0, column=0, columnspan=2, padx=10, pady=10, sticky="w")
 
@@ -231,46 +231,46 @@ class FilteringPanel(ctk.CTkFrame):
         ctk.CTkLabel(
             self.options_frame,
             text="FDR Level:",
-            font=("Segoe UI", 12)
-        ).grid(row=1, column=0, padx=20, pady=10, sticky="w")
+            font=("Segoe UI", 11)
+        ).grid(row=1, column=0, padx=15, pady=10, sticky="w")
 
         self.fdr_level_var = ctk.StringVar(value="0.05")
         ctk.CTkEntry(
             self.options_frame,
             textvariable=self.fdr_level_var,
-            font=("Segoe UI", 12),
-            width=150
+            font=("Segoe UI", 11),
+            width=120
         ).grid(row=1, column=1, padx=10, pady=10, sticky="w")
 
         ctk.CTkLabel(
             self.options_frame,
-            text="False Discovery Rate threshold (typically 0.01-0.05)",
-            font=("Segoe UI", 10),
+            text="False Discovery Rate (0.01-0.05)",
+            font=("Segoe UI", 9),
             text_color="gray"
-        ).grid(row=2, column=0, columnspan=2, padx=20, pady=(0, 10), sticky="w")
+        ).grid(row=2, column=0, columnspan=2, padx=15, pady=(0, 10), sticky="w")
 
         # Hypotheses independence
         self.hypotheses_independent_var = ctk.BooleanVar(value=False)
         ctk.CTkCheckBox(
             self.options_frame,
-            text="Treat hypotheses as independent (less conservative)",
+            text="Independent hypotheses (less conservative)",
             variable=self.hypotheses_independent_var,
-            font=("Segoe UI", 12)
-        ).grid(row=3, column=0, columnspan=2, padx=20, pady=5, sticky="w")
+            font=("Segoe UI", 11)
+        ).grid(row=3, column=0, columnspan=2, padx=15, pady=5, sticky="w")
 
         # Info
         info_text = (
-            "tsfresh uses statistical hypothesis testing to identify relevant features.\n"
-            "Lower FDR = more conservative filtering (fewer features kept).\n"
-            "This method is recommended by tsfresh documentation for feature selection."
+            "Statistical hypothesis testing for feature relevance.\n"
+            "Lower FDR = fewer features (more conservative).\n"
+            "Recommended by tsfresh documentation."
         )
         ctk.CTkLabel(
             self.options_frame,
             text=info_text,
-            font=("Segoe UI", 10),
+            font=("Segoe UI", 9),
             text_color="lightblue",
             justify="left"
-        ).grid(row=4, column=0, columnspan=2, padx=20, pady=10, sticky="w")
+        ).grid(row=4, column=0, columnspan=2, padx=15, pady=10, sticky="w")
 
     def _setup_mi_options(self) -> None:
         """Setup options for mutual information filtering."""
@@ -280,7 +280,7 @@ class FilteringPanel(ctk.CTkFrame):
 
         ctk.CTkLabel(
             self.options_frame,
-            text="Mutual Information Filtering Options",
+            text="Mutual Information Filtering",
             font=("Segoe UI", 14, "bold")
         ).grid(row=0, column=0, columnspan=2, padx=10, pady=10, sticky="w")
 
@@ -288,8 +288,8 @@ class FilteringPanel(ctk.CTkFrame):
         ctk.CTkLabel(
             self.options_frame,
             text="Selection Mode:",
-            font=("Segoe UI", 12)
-        ).grid(row=1, column=0, padx=20, pady=10, sticky="w")
+            font=("Segoe UI", 11)
+        ).grid(row=1, column=0, padx=15, pady=10, sticky="w")
 
         self.mi_mode_var = ctk.StringVar(value="threshold")
         mode_menu = ctk.CTkOptionMenu(

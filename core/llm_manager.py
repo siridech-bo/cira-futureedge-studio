@@ -108,7 +108,8 @@ class LLMManager:
         feature_importance: Dict[str, float],
         domain: str,
         target_count: int = 5,
-        platform_constraints: Optional[Dict[str, Any]] = None
+        platform_constraints: Optional[Dict[str, Any]] = None,
+        custom_prompt_template: Optional[str] = None
     ) -> FeatureSelection:
         """
         Select best features using LLM.
@@ -130,14 +131,24 @@ class LLMManager:
             )
 
         try:
-            # Build prompt
-            prompt = self._build_selection_prompt(
-                features,
-                feature_importance,
-                domain,
-                target_count,
-                platform_constraints
-            )
+            # Build prompt (use custom template if provided)
+            if custom_prompt_template:
+                prompt = self._build_custom_prompt(
+                    custom_prompt_template,
+                    features,
+                    feature_importance,
+                    domain,
+                    target_count,
+                    platform_constraints
+                )
+            else:
+                prompt = self._build_selection_prompt(
+                    features,
+                    feature_importance,
+                    domain,
+                    target_count,
+                    platform_constraints
+                )
 
             logger.info(f"Requesting LLM feature selection (top {target_count})")
 
@@ -183,6 +194,66 @@ class LLMManager:
             return self._fallback_selection(
                 features, feature_importance, target_count
             )
+
+    def _build_custom_prompt(
+        self,
+        template: str,
+        features: List[str],
+        importance: Dict[str, float],
+        domain: str,
+        target_count: int,
+        constraints: Optional[Dict[str, Any]]
+    ) -> str:
+        """Build prompt from custom template with variable substitution."""
+
+        # Sort by importance
+        sorted_features = sorted(
+            features,
+            key=lambda x: importance.get(x, 0),
+            reverse=True
+        )
+
+        # Take top 50 for context (avoid token limit)
+        top_features = sorted_features[:50]
+
+        # Build feature list with importance
+        feature_list = []
+        for feat in top_features:
+            imp = importance.get(feat, 0)
+            feature_list.append(f"- {feat} (importance: {imp:.4f})")
+
+        feature_text = "\n".join(feature_list)
+
+        # Domain context
+        domain_context = {
+            "rotating_machinery": "vibration and rotation patterns in motors, pumps, and bearings",
+            "thermal_systems": "temperature patterns in heating and cooling systems",
+            "electrical": "power, current, and voltage patterns",
+            "custom": "general time-series patterns"
+        }.get(domain, "general time-series patterns")
+
+        # Platform constraints text
+        constraints_text = ""
+        if constraints:
+            memory_kb = constraints.get('memory_kb', 256)
+            mcu = constraints.get('mcu', 'Cortex-M4')
+            constraints_text = f"""
+Target Platform Constraints:
+- MCU: {mcu}
+- Available Memory: {memory_kb} KB
+- Must be computationally efficient for embedded deployment
+"""
+
+        # Substitute variables in template
+        prompt = template.format(
+            target_count=target_count,
+            domain_context=domain_context,
+            domain=domain,
+            constraints_text=constraints_text,
+            feature_text=feature_text
+        )
+
+        return prompt
 
     def _build_selection_prompt(
         self,

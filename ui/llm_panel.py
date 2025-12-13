@@ -172,6 +172,7 @@ class LLMPanel(ctk.CTkFrame):
         """Setup feature selection tab."""
         tab = self.tabview.tab("Feature Selection")
         tab.grid_columnconfigure(0, weight=1)
+        tab.grid_rowconfigure(2, weight=1)  # Make prompt section expandable
 
         # Info
         self.selection_info_label = ctk.CTkLabel(
@@ -238,9 +239,63 @@ class LLMPanel(ctk.CTkFrame):
         )
         memory_entry.grid(row=3, column=1, padx=10, pady=(5, 10), sticky="w")
 
+        # Prompt Editor Section
+        prompt_frame = ctk.CTkFrame(tab)
+        prompt_frame.grid(row=2, column=0, sticky="nsew", padx=10, pady=10)
+        prompt_frame.grid_columnconfigure(0, weight=1)
+        prompt_frame.grid_rowconfigure(1, weight=1)
+
+        # Prompt header with buttons
+        prompt_header = ctk.CTkFrame(prompt_frame, fg_color="transparent")
+        prompt_header.grid(row=0, column=0, sticky="ew", padx=10, pady=(10, 5))
+        prompt_header.grid_columnconfigure(0, weight=1)
+
+        ctk.CTkLabel(
+            prompt_header,
+            text="📝 LLM Prompt Template:",
+            font=("Segoe UI", 14, "bold")
+        ).grid(row=0, column=0, sticky="w")
+
+        prompt_btn_frame = ctk.CTkFrame(prompt_header, fg_color="transparent")
+        prompt_btn_frame.grid(row=0, column=1, sticky="e")
+
+        self.reset_prompt_btn = ctk.CTkButton(
+            prompt_btn_frame,
+            text="↺ Reset to Default",
+            command=self._reset_prompt,
+            width=130,
+            height=28,
+            font=("Segoe UI", 11)
+        )
+        self.reset_prompt_btn.pack(side="left", padx=5)
+
+        self.save_prompt_btn = ctk.CTkButton(
+            prompt_btn_frame,
+            text="💾 Save Prompt",
+            command=self._save_prompt,
+            width=120,
+            height=28,
+            font=("Segoe UI", 11),
+            fg_color="green",
+            hover_color="darkgreen"
+        )
+        self.save_prompt_btn.pack(side="left", padx=5)
+
+        # Prompt textbox
+        self.prompt_textbox = ctk.CTkTextbox(
+            prompt_frame,
+            font=("Consolas", 10),
+            wrap="word",
+            height=300
+        )
+        self.prompt_textbox.grid(row=1, column=0, sticky="nsew", padx=10, pady=5)
+
+        # Load default prompt
+        self._load_default_prompt()
+
         # Select button
         select_frame = ctk.CTkFrame(tab, fg_color="transparent")
-        select_frame.grid(row=2, column=0, pady=20)
+        select_frame.grid(row=3, column=0, pady=20)
 
         self.select_btn = ctk.CTkButton(
             select_frame,
@@ -381,6 +436,86 @@ class LLMPanel(ctk.CTkFrame):
         self.load_btn.configure(state="normal")
         messagebox.showerror("Load Error", f"Failed to load model:\n{error}")
 
+    def _get_default_prompt_template(self) -> str:
+        """Get the default prompt template."""
+        return """<|begin_of_text|><|start_header_id|>system<|end_header_id|>
+
+You are an expert in embedded systems and machine learning feature engineering. Your task is to select the most effective features for anomaly detection on resource-constrained embedded devices.
+
+<|eot_id|><|start_header_id|>user<|end_header_id|>
+
+I need to select the top {target_count} features for anomaly detection in {domain_context}.
+
+Application Domain: {domain}
+{constraints_text}
+Available Features (sorted by statistical importance):
+{feature_text}
+
+Requirements:
+1. Select exactly {target_count} features
+2. Prioritize features that:
+   - Are computationally efficient (avoid complex transforms)
+   - Have high discriminative power
+   - Are robust to noise
+   - Complement each other (low correlation)
+   - Are interpretable for embedded deployment
+
+3. Consider:
+   - Statistical features (mean, std, variance) are very fast
+   - FFT and spectral features are moderately expensive
+   - Time-domain features are generally fast
+   - Avoid highly correlated features
+
+Provide your selection in this format:
+<selection>
+1. feature_name_1
+2. feature_name_2
+...
+{target_count}. feature_name_{target_count}
+</selection>
+
+Reasoning:
+[Brief explanation of why these features were selected]
+
+<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+<selection>"""
+
+    def _load_default_prompt(self) -> None:
+        """Load the default prompt template into the textbox."""
+        default_prompt = self._get_default_prompt_template()
+        self.prompt_textbox.delete("1.0", "end")
+        self.prompt_textbox.insert("1.0", default_prompt)
+
+    def _reset_prompt(self) -> None:
+        """Reset prompt to default template."""
+        if messagebox.askyesno("Reset Prompt", "Reset prompt to default template? Your custom changes will be lost."):
+            self._load_default_prompt()
+            messagebox.showinfo("Success", "Prompt reset to default template")
+
+    def _save_prompt(self) -> None:
+        """Save the current prompt template to project."""
+        if not self.project_manager.has_project():
+            messagebox.showwarning("No Project", "Please create or open a project first.")
+            return
+
+        prompt_text = self.prompt_textbox.get("1.0", "end-1c")
+
+        # Save to project
+        project = self.project_manager.current_project
+        if not hasattr(project, 'llm'):
+            from dataclasses import dataclass, field
+            @dataclass
+            class LLMConfig:
+                custom_prompt: str = ""
+            project.llm = LLMConfig()
+
+        project.llm.custom_prompt = prompt_text
+        project.save()
+
+        messagebox.showinfo("Success", "Prompt template saved to project")
+        logger.info("LLM prompt template saved to project")
+
     def _select_features(self) -> None:
         """Select features using LLM."""
         # Get parameters
@@ -431,6 +566,9 @@ class LLMPanel(ctk.CTkFrame):
                     'memory_kb': memory_kb
                 }
 
+                # Get custom prompt template from textbox
+                custom_prompt_template = self.prompt_textbox.get("1.0", "end-1c")
+
                 # Select features
                 if self.llm_manager and self.llm_manager.is_loaded:
                     selection = self.llm_manager.select_features(
@@ -438,7 +576,8 @@ class LLMPanel(ctk.CTkFrame):
                         feature_importance=feature_importance,
                         domain=project.domain,
                         target_count=target_count,
-                        platform_constraints=platform_constraints
+                        platform_constraints=platform_constraints,
+                        custom_prompt_template=custom_prompt_template
                     )
                 else:
                     # Use fallback

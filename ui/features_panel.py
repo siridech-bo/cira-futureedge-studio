@@ -358,31 +358,32 @@ class FeaturesPanel(ctk.CTkFrame):
         )
         self.extract_btn.pack()
 
-        # Progress bar
+        # Progress bar (2x bigger)
         self.extraction_progress = ctk.CTkProgressBar(
             tab,
-            width=400,
+            width=800,
+            height=30,
             mode="determinate"
         )
         self.extraction_progress.grid(row=2, column=0, pady=10)
         self.extraction_progress.grid_remove()  # Hidden by default
         self.extraction_progress.set(0)
 
-        # Percentage label
+        # Percentage label (bigger font)
         self.percentage_label = ctk.CTkLabel(
             tab,
             text="0%",
-            font=("Segoe UI", 14, "bold"),
+            font=("Segoe UI", 20, "bold"),
             text_color="gray"
         )
-        self.percentage_label.grid(row=3, column=0, pady=2)
+        self.percentage_label.grid(row=3, column=0, pady=5)
         self.percentage_label.grid_remove()  # Hidden by default
 
-        # Progress info
+        # Progress info (bigger font)
         self.progress_label = ctk.CTkLabel(
             tab,
             text="",
-            font=("Segoe UI", 10),
+            font=("Segoe UI", 12),
             text_color="gray"
         )
         self.progress_label.grid(row=4, column=0, pady=5)

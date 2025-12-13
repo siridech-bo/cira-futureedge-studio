@@ -549,13 +549,19 @@ Reasoning:
                 import pickle
                 from pathlib import Path
 
-                # Load extracted features
-                features_path = Path(project.features.extracted_features)
+                # Load features (use filtered features if available, otherwise extracted features)
+                if project.features.filtered_features:
+                    features_path = Path(project.features.filtered_features)
+                    logger.info("Using filtered features")
+                else:
+                    features_path = Path(project.features.extracted_features)
+                    logger.info("Using extracted features (no filtering applied)")
+
                 with open(features_path, 'rb') as f:
                     features_df = pickle.load(f)
 
                 feature_names = list(features_df.columns)
-                logger.info(f"Loaded {len(feature_names)} extracted features")
+                logger.info(f"Loaded {len(feature_names)} features for selection")
 
                 # Load windows to get class labels
                 if project.data.train_test_split_type == "manual":

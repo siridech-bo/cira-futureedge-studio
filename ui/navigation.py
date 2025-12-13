@@ -56,6 +56,7 @@ class NavigationSidebar(ctk.CTkFrame):
     STAGES = [
         {"id": "data", "name": "Data Sources", "icon": "📊"},
         {"id": "features", "name": "Feature Extraction", "icon": "🔬"},
+        {"id": "filtering", "name": "Feature Filtering", "icon": "🔍"},
         {"id": "llm", "name": "LLM Selection", "icon": "🤖"},
         {"id": "model", "name": "Training", "icon": "🎯"},
         {"id": "dsp", "name": "DSP Generation", "icon": "⚙️"},

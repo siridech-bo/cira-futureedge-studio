@@ -16,6 +16,7 @@ from ui.theme import ThemeManager
 from ui.navigation import NavigationSidebar
 from ui.data_panel import DataSourcesPanel
 from ui.features_panel import FeaturesPanel
+from ui.filtering_panel import FilteringPanel
 from ui.llm_panel import LLMPanel
 from ui.model_panel import ModelPanel
 from ui.dsp_panel import DSPPanel
@@ -294,6 +295,8 @@ class CiRAStudioApp:
             self._show_data_panel()
         elif stage_id == "features":
             self._show_features_panel()
+        elif stage_id == "filtering":
+            self._show_filtering_panel()
         elif stage_id == "llm":
             self._show_llm_panel()
         elif stage_id == "model":
@@ -344,6 +347,17 @@ class CiRAStudioApp:
 
         self.current_panel = panel
         logger.info("Feature extraction panel loaded")
+
+    def _show_filtering_panel(self) -> None:
+        """Show feature filtering panel."""
+        self._clear_content()
+
+        panel = FilteringPanel(self.content_frame, self.project_manager)
+        panel.grid(row=1, column=0, sticky="nsew", padx=0, pady=0)
+        panel.refresh()  # Refresh with current project data
+
+        self.current_panel = panel
+        logger.info("Feature filtering panel loaded")
 
     def _show_llm_panel(self) -> None:
         """Show LLM feature selection panel."""

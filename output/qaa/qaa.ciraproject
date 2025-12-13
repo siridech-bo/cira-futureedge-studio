@@ -4,7 +4,7 @@
   "domain": "rotating_machinery",
   "description": "",
   "created_at": "2025-12-13T16:07:46.504796",
-  "modified_at": "2025-12-13T21:50:19.868527",
+  "modified_at": "2025-12-13T22:05:25.206867",
   "version": "1.0.0",
   "project_path": "D:\\CiRA FES\\output\\qaa\\qaa.ciraproject",
   "data": {
@@ -25149,6 +25149,40 @@
     "feature_config": null,
     "num_features_extracted": 3108,
     "num_features_selected": 1262,
+    "num_features_filtered": 1262,
+    "filtering_applied": true,
+    "filtering_method": "basic",
+    "filtering_stats": {
+      "constant_features": 948,
+      "low_variance_features": 898,
+      "original_features": 3108,
+      "filtered_features": 1262,
+      "removed_features": 1846
+    },
+    "quality_analysis": {
+      "total_features": 3108,
+      "total_samples": 21973,
+      "constant_features": 948,
+      "nan_features": 0,
+      "nan_percentage": 0.0,
+      "variance_stats": {
+        "min": 0.0,
+        "max": 1.9315942150058623e+45,
+        "mean": 6.214910601691964e+41,
+        "median": 0.0020474028062219996
+      },
+      "low_variance_features": 1846,
+      "mi_stats": {
+        "sampled_features": 500,
+        "min": 0.0,
+        "max": 0.017016595855516403,
+        "mean": 0.002612756744003451,
+        "median": 0.0018849951048697244,
+        "features_with_mi_gt_0.01": 10,
+        "features_with_mi_gt_0.05": 0,
+        "features_with_mi_gt_0.10": 0
+      }
+    },
     "candidate_features": []
   },
   "llm": {

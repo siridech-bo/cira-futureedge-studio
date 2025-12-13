@@ -17,6 +17,7 @@ from loguru import logger
 
 from core.project import ProjectManager
 from core.llm_manager import LLMManager, LLMConfig, LLAMA_CPP_AVAILABLE
+from core.feature_names import FeatureNameDecoder
 
 
 class LLMPanel(ctk.CTkFrame):
@@ -696,8 +697,17 @@ Reasoning:
         results_text += f"{'-' * 80}\n\n"
 
         # Display detailed statistics for each selected feature
+        decoder = FeatureNameDecoder()
+
         for i, feat in enumerate(selection.selected_features, 1):
             results_text += f"{i}. {feat}\n"
+
+            # Add feature explanation
+            try:
+                feature_desc = decoder.get_short_description(feat)
+                results_text += f"   📝 {feature_desc}\n"
+            except Exception as e:
+                logger.debug(f"Could not decode feature name: {e}")
 
             # Add importance score if available
             if self.feature_importance_cache and feat in self.feature_importance_cache:

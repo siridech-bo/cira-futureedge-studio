@@ -172,7 +172,8 @@ class LLMPanel(ctk.CTkFrame):
         """Setup feature selection tab."""
         tab = self.tabview.tab("Feature Selection")
         tab.grid_columnconfigure(0, weight=1)
-        tab.grid_rowconfigure(2, weight=1)  # Make prompt section expandable
+        tab.grid_columnconfigure(1, weight=2)  # Prompt column wider
+        tab.grid_rowconfigure(1, weight=1)  # Make main content expandable
 
         # Info
         self.selection_info_label = ctk.CTkLabel(
@@ -181,11 +182,11 @@ class LLMPanel(ctk.CTkFrame):
             font=("Segoe UI", 12),
             text_color="gray"
         )
-        self.selection_info_label.grid(row=0, column=0, padx=20, pady=20)
+        self.selection_info_label.grid(row=0, column=0, columnspan=2, padx=20, pady=10)
 
-        # Selection parameters
+        # LEFT COLUMN: Selection parameters
         params_frame = ctk.CTkFrame(tab)
-        params_frame.grid(row=1, column=0, sticky="ew", padx=10, pady=10)
+        params_frame.grid(row=1, column=0, sticky="nsew", padx=(10, 5), pady=10)
         params_frame.grid_columnconfigure(1, weight=1)
 
         ctk.CTkLabel(
@@ -239,63 +240,9 @@ class LLMPanel(ctk.CTkFrame):
         )
         memory_entry.grid(row=3, column=1, padx=10, pady=(5, 10), sticky="w")
 
-        # Prompt Editor Section
-        prompt_frame = ctk.CTkFrame(tab)
-        prompt_frame.grid(row=2, column=0, sticky="nsew", padx=10, pady=10)
-        prompt_frame.grid_columnconfigure(0, weight=1)
-        prompt_frame.grid_rowconfigure(1, weight=1)
-
-        # Prompt header with buttons
-        prompt_header = ctk.CTkFrame(prompt_frame, fg_color="transparent")
-        prompt_header.grid(row=0, column=0, sticky="ew", padx=10, pady=(10, 5))
-        prompt_header.grid_columnconfigure(0, weight=1)
-
-        ctk.CTkLabel(
-            prompt_header,
-            text="📝 LLM Prompt Template:",
-            font=("Segoe UI", 14, "bold")
-        ).grid(row=0, column=0, sticky="w")
-
-        prompt_btn_frame = ctk.CTkFrame(prompt_header, fg_color="transparent")
-        prompt_btn_frame.grid(row=0, column=1, sticky="e")
-
-        self.reset_prompt_btn = ctk.CTkButton(
-            prompt_btn_frame,
-            text="↺ Reset to Default",
-            command=self._reset_prompt,
-            width=130,
-            height=28,
-            font=("Segoe UI", 11)
-        )
-        self.reset_prompt_btn.pack(side="left", padx=5)
-
-        self.save_prompt_btn = ctk.CTkButton(
-            prompt_btn_frame,
-            text="💾 Save Prompt",
-            command=self._save_prompt,
-            width=120,
-            height=28,
-            font=("Segoe UI", 11),
-            fg_color="green",
-            hover_color="darkgreen"
-        )
-        self.save_prompt_btn.pack(side="left", padx=5)
-
-        # Prompt textbox
-        self.prompt_textbox = ctk.CTkTextbox(
-            prompt_frame,
-            font=("Consolas", 10),
-            wrap="word",
-            height=300
-        )
-        self.prompt_textbox.grid(row=1, column=0, sticky="nsew", padx=10, pady=5)
-
-        # Load default prompt
-        self._load_default_prompt()
-
-        # Select button
-        select_frame = ctk.CTkFrame(tab, fg_color="transparent")
-        select_frame.grid(row=3, column=0, pady=20)
+        # Select button (in left column, below parameters)
+        select_frame = ctk.CTkFrame(params_frame, fg_color="transparent")
+        select_frame.grid(row=4, column=0, columnspan=2, pady=20)
 
         self.select_btn = ctk.CTkButton(
             select_frame,
@@ -308,13 +255,66 @@ class LLMPanel(ctk.CTkFrame):
         )
         self.select_btn.pack()
 
-        # Progress
+        # Progress (in left column)
         self.selection_progress_label = ctk.CTkLabel(
-            tab,
+            params_frame,
             text="",
             font=("Segoe UI", 11)
         )
-        self.selection_progress_label.grid(row=3, column=0, pady=5)
+        self.selection_progress_label.grid(row=5, column=0, columnspan=2, pady=5)
+
+        # RIGHT COLUMN: Prompt Editor
+        prompt_frame = ctk.CTkFrame(tab)
+        prompt_frame.grid(row=1, column=1, sticky="nsew", padx=(5, 10), pady=10)
+        prompt_frame.grid_columnconfigure(0, weight=1)
+        prompt_frame.grid_rowconfigure(1, weight=1)
+
+        # Prompt header with buttons
+        prompt_header = ctk.CTkFrame(prompt_frame, fg_color="transparent")
+        prompt_header.grid(row=0, column=0, sticky="ew", padx=10, pady=(10, 5))
+        prompt_header.grid_columnconfigure(0, weight=1)
+
+        ctk.CTkLabel(
+            prompt_header,
+            text="📝 Prompt Template",
+            font=("Segoe UI", 14, "bold")
+        ).grid(row=0, column=0, sticky="w")
+
+        prompt_btn_frame = ctk.CTkFrame(prompt_header, fg_color="transparent")
+        prompt_btn_frame.grid(row=0, column=1, sticky="e")
+
+        self.reset_prompt_btn = ctk.CTkButton(
+            prompt_btn_frame,
+            text="↺ Reset",
+            command=self._reset_prompt,
+            width=80,
+            height=28,
+            font=("Segoe UI", 11)
+        )
+        self.reset_prompt_btn.pack(side="left", padx=5)
+
+        self.save_prompt_btn = ctk.CTkButton(
+            prompt_btn_frame,
+            text="💾 Save",
+            command=self._save_prompt,
+            width=80,
+            height=28,
+            font=("Segoe UI", 11),
+            fg_color="green",
+            hover_color="darkgreen"
+        )
+        self.save_prompt_btn.pack(side="left", padx=5)
+
+        # Prompt textbox
+        self.prompt_textbox = ctk.CTkTextbox(
+            prompt_frame,
+            font=("Consolas", 9),
+            wrap="word"
+        )
+        self.prompt_textbox.grid(row=1, column=0, sticky="nsew", padx=10, pady=5)
+
+        # Load default prompt
+        self._load_default_prompt()
 
     def _setup_results_tab(self) -> None:
         """Setup results tab."""

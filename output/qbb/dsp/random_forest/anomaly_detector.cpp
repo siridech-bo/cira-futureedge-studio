@@ -1,6 +1,6 @@
 /**
- * CiRA FutureEdge Studio - Anomaly Detector Implementation
- * Algorithm: MLP_CLASSIFIER
+ * CiRA FutureEdge Studio - Classifier Implementation
+ * Algorithm: RANDOM_FOREST
  */
 
 #include "anomaly_detector.h"
@@ -9,19 +9,19 @@
 
 // Scaler parameters (mean and std for each feature)
 static const float feature_means[NUM_FEATURES] = {
-    20.139307f,
-    14.600396f,
-    14.600396f,
-    16.235344f,
-    4.534796f
+    6037.022628f,
+    5216.024496f,
+    1968.764098f,
+    528.640081f,
+    516.185921f
 };
 
 static const float feature_stds[NUM_FEATURES] = {
-    82.344539f,
-    11.987504f,
-    11.987504f,
-    9.658438f,
-    5.740522f
+    5026.242754f,
+    6395.179406f,
+    3406.122881f,
+    751.341201f,
+    729.297685f
 };
 
 #define ANOMALY_THRESHOLD 2.0f

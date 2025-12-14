@@ -1,7 +1,7 @@
 /**
- * CiRA FutureEdge Studio - Anomaly Detector
+ * CiRA FutureEdge Studio - Classifier
  * Generated for cortex-m4
- * Algorithm: RANDOM_FOREST_CLASSIFIER
+ * Algorithm: RANDOM_FOREST
  */
 
 #ifndef ANOMALY_DETECTOR_H

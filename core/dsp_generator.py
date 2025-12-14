@@ -99,9 +99,12 @@ class DSPGenerator:
         features = self._generate_features(selected_features)
         config_h = self._generate_config()
 
+        # Use appropriate filenames based on model type
+        base_name = "classifier" if is_classifier else "anomaly_detector"
+
         # Write files
-        header_path = output_dir / "anomaly_detector.h"
-        source_path = output_dir / "anomaly_detector.cpp"
+        header_path = output_dir / f"{base_name}.h"
+        source_path = output_dir / f"{base_name}.cpp"
         features_path = output_dir / "features.cpp"
         config_path = output_dir / "config.h"
 
@@ -129,16 +132,18 @@ class DSPGenerator:
         )
 
     def _generate_header(self, algorithm: str, features: List[str]) -> str:
-        """Generate anomaly_detector.h header file."""
+        """Generate classifier.h or anomaly_detector.h header file."""
         model_type = "Classifier" if self.is_classifier else "Anomaly Detector"
+        header_guard = "CLASSIFIER_H" if self.is_classifier else "ANOMALY_DETECTOR_H"
+
         code = f"""/**
  * CiRA FutureEdge Studio - {model_type}
  * Generated for {self.config.target_platform}
  * Algorithm: {algorithm.upper()}
  */
 
-#ifndef ANOMALY_DETECTOR_H
-#define ANOMALY_DETECTOR_H
+#ifndef {header_guard}
+#define {header_guard}
 
 #include <stdint.h>
 #include "config.h"
@@ -179,19 +184,21 @@ float normalize_feature(float value, float mean, float std);
 }
 #endif
 
-#endif // ANOMALY_DETECTOR_H
+#endif // {header_guard}
 """
         return code
 
     def _generate_source(self, algorithm: str, features: List[str]) -> str:
-        """Generate anomaly_detector.cpp source file."""
+        """Generate classifier.cpp or anomaly_detector.cpp source file."""
         model_type = "Classifier" if self.is_classifier else "Anomaly Detector"
+        header_file = "classifier.h" if self.is_classifier else "anomaly_detector.h"
+
         code = f"""/**
  * CiRA FutureEdge Studio - {model_type} Implementation
  * Algorithm: {algorithm.upper()}
  */
 
-#include "anomaly_detector.h"
+#include "{header_file}"
 #include <math.h>
 #include <string.h>
 
@@ -394,12 +401,14 @@ float compute_anomaly_score(const float* features) {
 
     def _generate_features(self, features: List[str]) -> str:
         """Generate features.cpp with feature extraction code."""
-        code = """/**
+        header_file = "classifier.h" if self.is_classifier else "anomaly_detector.h"
+
+        code = f"""/**
  * CiRA FutureEdge Studio - Feature Extraction
  * Implements selected tsfresh features
  */
 
-#include "anomaly_detector.h"
+#include "{header_file}"
 #include <math.h>
 
 void extract_features(const float* window, uint16_t window_size, float* features) {

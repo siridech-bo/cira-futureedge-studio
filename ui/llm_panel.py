@@ -66,11 +66,13 @@ class LLMPanel(ctk.CTkFrame):
         self.tabview.add("Model Setup")
         self.tabview.add("Feature Selection")
         self.tabview.add("Results")
+        self.tabview.add("LLM Analysis")
 
         # Setup each tab
         self._setup_model_tab()
         self._setup_selection_tab()
         self._setup_results_tab()
+        self._setup_analysis_tab()
 
     def _setup_model_tab(self) -> None:
         """Setup model management tab."""
@@ -341,7 +343,7 @@ class LLMPanel(ctk.CTkFrame):
 
         self.results_text = ctk.CTkTextbox(
             results_frame,
-            font=("Courier New", 10),
+            font=("Courier New", 12),  # Increased from 10 to 12
             wrap="word"
         )
         self.results_text.pack(fill="both", expand=True)
@@ -357,6 +359,47 @@ class LLMPanel(ctk.CTkFrame):
             state="disabled"
         )
         self.export_btn.pack()
+
+    def _setup_analysis_tab(self) -> None:
+        """Setup LLM Analysis tab for AI-powered recommendations."""
+        tab = self.tabview.tab("LLM Analysis")
+        tab.grid_columnconfigure(0, weight=1)
+        tab.grid_rowconfigure(1, weight=1)
+
+        # Info label
+        self.analysis_info_label = ctk.CTkLabel(
+            tab,
+            text="",
+            font=("Segoe UI", 12),
+            text_color="gray"
+        )
+        self.analysis_info_label.grid(row=0, column=0, padx=20, pady=10)
+
+        # Analysis display
+        analysis_frame = ctk.CTkScrollableFrame(tab)
+        analysis_frame.grid(row=1, column=0, sticky="nsew", padx=10, pady=10)
+        analysis_frame.grid_columnconfigure(0, weight=1)
+
+        self.analysis_text = ctk.CTkTextbox(
+            analysis_frame,
+            font=("Segoe UI", 12),
+            wrap="word"
+        )
+        self.analysis_text.pack(fill="both", expand=True)
+
+        # Analyze button
+        button_frame = ctk.CTkFrame(tab, fg_color="transparent")
+        button_frame.grid(row=2, column=0, pady=10)
+
+        self.analyze_btn = ctk.CTkButton(
+            button_frame,
+            text="🤖 Generate LLM Analysis",
+            command=self._generate_llm_analysis,
+            font=("Segoe UI", 14, "bold"),
+            height=40,
+            state="disabled"
+        )
+        self.analyze_btn.pack()
 
     def _browse_model(self) -> None:
         """Browse for model file."""
@@ -756,6 +799,14 @@ Reasoning:
 
         self.export_btn.configure(state="normal")
 
+        # Enable LLM analysis button if LLM is loaded
+        if self.llm_manager and self.llm_manager.is_loaded:
+            self.analyze_btn.configure(state="normal")
+            self.analysis_info_label.configure(
+                text="✓ Ready to generate LLM analysis and recommendations",
+                text_color="green"
+            )
+
         # Switch to Results tab
         self.tabview.set("Results")
 
@@ -828,6 +879,137 @@ Reasoning:
 
         self.selection_info_label.configure(text=info_text)
         self.select_btn.configure(state="normal")
+
+    def _generate_llm_analysis(self) -> None:
+        """Generate LLM-powered analysis and recommendations for selected features."""
+        if not self.selected_features:
+            messagebox.showwarning("No Features", "Please select features first.")
+            return
+
+        if not self.llm_manager or not self.llm_manager.is_loaded:
+            messagebox.showwarning("No LLM", "Please load the LLM model first.")
+            return
+
+        self.analyze_btn.configure(state="disabled")
+        self.analysis_info_label.configure(text="Generating analysis...", text_color="blue")
+
+        def analysis_thread():
+            try:
+                project = self.project_manager.current_project
+
+                # Build feature summary with statistics
+                feature_summary = []
+                for i, feat in enumerate(self.selected_features, 1):
+                    summary = f"{i}. {feat}"
+
+                    if self.feature_importance_cache and feat in self.feature_importance_cache:
+                        importance = self.feature_importance_cache[feat]
+                        summary += f" (Importance: {importance:.4f})"
+
+                    if self.feature_stats_cache and feat in self.feature_stats_cache:
+                        stats = self.feature_stats_cache[feat]
+                        if 'mi_score' in stats:
+                            mi_score = stats['mi_score']
+                            summary += f" (MI: {mi_score:.4f})"
+
+                        # Add class means
+                        class_labels = [k for k in stats.keys() if k != 'mi_score']
+                        if len(class_labels) >= 2:
+                            means = {label: stats[label]['mean'] for label in class_labels}
+                            summary += f" [Means: {', '.join([f'{k}={v:.2f}' for k, v in means.items()])}]"
+
+                    feature_summary.append(summary)
+
+                # Build analysis prompt
+                analysis_prompt = f"""<|begin_of_text|><|start_header_id|>system<|end_header_id|>
+
+You are an expert in embedded machine learning and time series analysis. Analyze the selected features and provide actionable recommendations.
+
+<|eot_id|><|start_header_id|>user<|end_header_id|>
+
+I have selected the following {len(self.selected_features)} features for anomaly detection:
+
+{chr(10).join(feature_summary)}
+
+Application Domain: {project.domain}
+Target Platform: Resource-constrained embedded device (Cortex-M4, 256KB RAM)
+
+Please provide a comprehensive analysis covering:
+
+1. **Feature Quality Assessment**
+   - Evaluate the MI (Mutual Information) scores
+   - Assess class separation capability
+   - Identify any potential issues or concerns
+
+2. **Recommendations**
+   - Are these features suitable for the application?
+   - What improvements could be made?
+   - Should we try different filtering thresholds?
+   - Are there any redundant features?
+
+3. **Next Steps**
+   - What should the user do next?
+   - Any specific actions to improve results?
+   - Expected model performance with these features
+
+4. **Risk Assessment**
+   - Potential problems with current selection
+   - Suggestions for validation
+   - Alternative approaches to consider
+
+Be specific, actionable, and explain your reasoning clearly.
+
+<|eot_id|><|start_header_id|>assistant<|end_header_id|>"""
+
+                # Generate analysis with LLM
+                logger.info("Generating LLM analysis...")
+                response = self.llm_manager.llm(
+                    analysis_prompt,
+                    max_tokens=2048,
+                    temperature=0.7,
+                    stop=["<|eot_id|>", "<|end_of_text|>"]
+                )
+
+                analysis_text = response['choices'][0]['text'].strip()
+
+                self.after(0, lambda: self._display_analysis(analysis_text))
+
+            except Exception as e:
+                logger.error(f"LLM analysis failed: {e}")
+                self.after(0, lambda: self._analysis_error(str(e)))
+
+        thread = threading.Thread(target=analysis_thread, daemon=True)
+        thread.start()
+
+    def _display_analysis(self, analysis_text: str) -> None:
+        """Display LLM analysis results."""
+        self.analysis_info_label.configure(
+            text="✓ Analysis complete",
+            text_color="green"
+        )
+        self.analyze_btn.configure(state="normal")
+
+        # Format the analysis text
+        formatted_text = "LLM Feature Analysis & Recommendations\n"
+        formatted_text += "=" * 80 + "\n\n"
+        formatted_text += analysis_text
+
+        self.analysis_text.delete("1.0", "end")
+        self.analysis_text.insert("1.0", formatted_text)
+
+        # Switch to Analysis tab
+        self.tabview.set("LLM Analysis")
+
+        logger.info("LLM analysis displayed")
+
+    def _analysis_error(self, error: str) -> None:
+        """Handle analysis error."""
+        self.analysis_info_label.configure(
+            text=f"✗ Error: {error}",
+            text_color="red"
+        )
+        self.analyze_btn.configure(state="normal")
+        messagebox.showerror("Analysis Error", f"Failed to generate analysis:\n{error}")
 
     def refresh(self) -> None:
         """Refresh panel with current project data."""

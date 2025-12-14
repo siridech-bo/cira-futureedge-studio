@@ -4,7 +4,7 @@
   "domain": "rotating_machinery",
   "description": "",
   "created_at": "2025-12-13T16:07:46.504796",
-  "modified_at": "2025-12-13T22:16:49.090414",
+  "modified_at": "2025-12-14T07:22:14.578669",
   "version": "1.0.0",
   "project_path": "D:\\CiRA FES\\output\\qaa\\qaa.ciraproject",
   "data": {
@@ -25149,15 +25149,18 @@
     "feature_config": null,
     "num_features_extracted": 3108,
     "num_features_selected": 1262,
-    "num_features_filtered": 663,
+    "num_features_filtered": 100,
     "filtering_applied": true,
-    "filtering_method": "tsfresh",
+    "filtering_method": "mutual_information",
     "filtering_stats": {
       "original_features": 3108,
-      "filtered_features": 663,
-      "removed_features": 2445,
-      "fdr_level": 0.05,
-      "hypotheses_independent": true
+      "filtered_features": 100,
+      "removed_features": 3008,
+      "min_mi_score": 0.011854871100035247,
+      "max_mi_score": 0.033315152101883294,
+      "mean_mi_score": 0.019849822516932725,
+      "threshold_used": 0.01,
+      "top_k": 100
     },
     "quality_analysis": {
       "total_features": 3108,
@@ -25189,11 +25192,11 @@
     "model_name": "Llama-3.2-3B-Instruct-Q4_K_M.gguf",
     "use_llm": true,
     "selected_features": [
-      "x__range_count__max_1__min_-1",
-      "y__range_count__max_1__min_-1",
-      "z__range_count__max_1__min_-1",
-      "audio__friedrich_coefficients__coeff_0__m_3__r_30",
-      "audio__variation_coefficient"
+      "z__abs_energy",
+      "z__fft_coefficient__attr_\"real\"__coeff_0",
+      "z__sum_values",
+      "z__fft_coefficient__attr_\"abs\"__coeff_0",
+      "x__fft_coefficient__attr_\"abs\"__coeff_1"
     ],
     "num_selected": 5,
     "selection_reasoning": "",

@@ -715,15 +715,19 @@ class ModelPanel(ctk.CTkFrame):
             self.explorer_z_menu.configure(values=results.feature_names)
 
             # Auto-select top 3 features by importance
-            if len(results.feature_names) >= 3:
+            num_features = min(3, len(results.feature_names))
+            if num_features >= 3:
                 sorted_indices = np.argsort(results.feature_importances)[::-1]
-                top_3_features = [results.feature_names[i] for i in sorted_indices[:3]]
+                top_features = [results.feature_names[i] for i in sorted_indices[:num_features]]
 
-                self.explorer_x_var.set(top_3_features[0])
-                self.explorer_y_var.set(top_3_features[1])
-                self.explorer_z_var.set(top_3_features[2])
+                if len(top_features) >= 1:
+                    self.explorer_x_var.set(top_features[0])
+                if len(top_features) >= 2:
+                    self.explorer_y_var.set(top_features[1])
+                if len(top_features) >= 3:
+                    self.explorer_z_var.set(top_features[2])
 
-                logger.info(f"Explorer tab updated with top 3 features: {top_3_features}")
+                logger.info(f"Explorer tab updated with top {num_features} features: {top_features}")
 
         project.save()
 
@@ -989,7 +993,7 @@ class ModelPanel(ctk.CTkFrame):
 
         try:
             # Load features
-            if not self.features_df or self.features_df.empty:
+            if self.features_df is None or self.features_df.empty:
                 messagebox.showwarning("No Features", "No feature data loaded. Train model first.")
                 return
 
@@ -1192,15 +1196,19 @@ class ModelPanel(ctk.CTkFrame):
                 self.explorer_z_menu.configure(values=feature_names)
 
                 # Auto-select top 3 features
-                if len(feature_names) >= 3:
+                num_features = min(3, len(feature_names))
+                if num_features >= 3:
                     sorted_indices = np.argsort(importances)[::-1]
-                    top_3_features = [feature_names[i] for i in sorted_indices[:3]]
+                    top_features = [feature_names[i] for i in sorted_indices[:num_features]]
 
-                    self.explorer_x_var.set(top_3_features[0])
-                    self.explorer_y_var.set(top_3_features[1])
-                    self.explorer_z_var.set(top_3_features[2])
+                    if len(top_features) >= 1:
+                        self.explorer_x_var.set(top_features[0])
+                    if len(top_features) >= 2:
+                        self.explorer_y_var.set(top_features[1])
+                    if len(top_features) >= 3:
+                        self.explorer_z_var.set(top_features[2])
 
-                    logger.info(f"Explorer tab loaded with top 3 features from existing model: {top_3_features}")
+                    logger.info(f"Explorer tab loaded with top {num_features} features from existing model: {top_features}")
 
         except Exception as e:
             logger.warning(f"Could not load model for Explorer tab: {e}")

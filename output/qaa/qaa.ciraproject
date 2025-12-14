@@ -4,7 +4,7 @@
   "domain": "rotating_machinery",
   "description": "",
   "created_at": "2025-12-13T16:07:46.504796",
-  "modified_at": "2025-12-14T09:09:39.465254",
+  "modified_at": "2025-12-14T09:13:37.469172",
   "version": "1.0.0",
   "project_path": "D:\\CiRA FES\\output\\qaa\\qaa.ciraproject",
   "data": {
@@ -25205,15 +25205,15 @@
     "llm_reasoning": ""
   },
   "model": {
-    "algorithm": "random_forest",
+    "algorithm": "gradient_boosting",
     "hyperparameters": {},
     "metrics": {
-      "accuracy": 0.9883624272651704,
+      "accuracy": 0.9860764754779717,
       "precision_macro": 0.5,
-      "recall_macro": 0.4941812136325852,
-      "f1_macro": 0.49707357859531776
+      "recall_macro": 0.49303823773898586,
+      "f1_macro": 0.4964947159150361
     },
-    "model_path": "D:\\CiRA FES\\output\\qaa\\models\\random_forest_classifier.pkl",
+    "model_path": "D:\\CiRA FES\\output\\qaa\\models\\gradient_boosting_classifier.pkl",
     "scaler_path": null,
     "trained": true,
     "model_params": {},
@@ -25224,15 +25224,15 @@
       "grind",
       "idle"
     ],
-    "label_encoder_path": "D:\\CiRA FES\\output\\qaa\\models\\random_forest_encoder.pkl",
+    "label_encoder_path": "D:\\CiRA FES\\output\\qaa\\models\\gradient_boosting_encoder.pkl",
     "confusion_matrix": [
       [
         0,
         0
       ],
       [
-        56,
-        4756
+        67,
+        4745
       ]
     ],
     "per_class_metrics": {}

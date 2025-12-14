@@ -358,66 +358,66 @@ class ModelPanel(ctk.CTkFrame):
         plot_container.grid_rowconfigure(0, weight=1)
 
         # Left control panel with zoom buttons
-        left_controls = ctk.CTkFrame(plot_container, width=80, fg_color="transparent")
+        left_controls = ctk.CTkFrame(plot_container, width=100, fg_color="transparent")
         left_controls.grid(row=0, column=0, sticky="ns", padx=(0, 2), pady=0)
         left_controls.grid_propagate(False)
 
         ctk.CTkLabel(
             left_controls,
             text="Zoom",
-            font=("Segoe UI", 11, "bold")
-        ).pack(pady=(10, 5))
+            font=("Segoe UI", 10, "bold")
+        ).pack(pady=(5, 3))
 
         self.zoom_in_btn = ctk.CTkButton(
             left_controls,
-            text="➕",
-            width=60,
-            height=60,
-            font=("Segoe UI", 24),
+            text="➕ Zoom In",
+            width=95,
+            height=32,
+            font=("Segoe UI", 11),
             command=self._zoom_in_3d,
             fg_color="#2B7A0B",
             hover_color="#1F5A08"
         )
-        self.zoom_in_btn.pack(pady=5)
+        self.zoom_in_btn.pack(pady=2)
 
         self.zoom_out_btn = ctk.CTkButton(
             left_controls,
-            text="➖",
-            width=60,
-            height=60,
-            font=("Segoe UI", 24),
+            text="➖ Zoom Out",
+            width=95,
+            height=32,
+            font=("Segoe UI", 11),
             command=self._zoom_out_3d,
             fg_color="#1F538D",
             hover_color="#14375E"
         )
-        self.zoom_out_btn.pack(pady=5)
+        self.zoom_out_btn.pack(pady=2)
 
         self.zoom_reset_btn = ctk.CTkButton(
             left_controls,
-            text="↻",
-            width=60,
-            height=40,
-            font=("Segoe UI", 20),
+            text="↻ Reset",
+            width=95,
+            height=28,
+            font=("Segoe UI", 10),
             command=self._reset_zoom_3d,
             fg_color="#555555",
             hover_color="#333333"
         )
-        self.zoom_reset_btn.pack(pady=5)
+        self.zoom_reset_btn.pack(pady=2)
 
         # Pan controls separator
         ctk.CTkLabel(
             left_controls,
             text="Pan",
-            font=("Segoe UI", 11, "bold")
-        ).pack(pady=(15, 5))
+            font=("Segoe UI", 10, "bold")
+        ).pack(pady=(8, 3))
 
         # Pan up button
         self.pan_up_btn = ctk.CTkButton(
             left_controls,
-            text="▲",
-            width=60,
-            height=35,
-            font=("Segoe UI", 16),
+            text="▲ Up",
+            width=95,
+            height=28,
+            font=("Segoe UI", 10),
             command=self._pan_up_3d,
             fg_color="#6A0DAD",
             hover_color="#4B0082"
@@ -431,9 +431,9 @@ class ModelPanel(ctk.CTkFrame):
         self.pan_left_btn = ctk.CTkButton(
             pan_lr_frame,
             text="◄",
-            width=28,
-            height=35,
-            font=("Segoe UI", 14),
+            width=45,
+            height=28,
+            font=("Segoe UI", 11),
             command=self._pan_left_3d,
             fg_color="#6A0DAD",
             hover_color="#4B0082"
@@ -443,9 +443,9 @@ class ModelPanel(ctk.CTkFrame):
         self.pan_right_btn = ctk.CTkButton(
             pan_lr_frame,
             text="►",
-            width=28,
-            height=35,
-            font=("Segoe UI", 14),
+            width=45,
+            height=28,
+            font=("Segoe UI", 11),
             command=self._pan_right_3d,
             fg_color="#6A0DAD",
             hover_color="#4B0082"
@@ -455,10 +455,10 @@ class ModelPanel(ctk.CTkFrame):
         # Pan down button
         self.pan_down_btn = ctk.CTkButton(
             left_controls,
-            text="▼",
-            width=60,
-            height=35,
-            font=("Segoe UI", 16),
+            text="▼ Down",
+            width=95,
+            height=28,
+            font=("Segoe UI", 10),
             command=self._pan_down_3d,
             fg_color="#6A0DAD",
             hover_color="#4B0082"
@@ -493,63 +493,63 @@ class ModelPanel(ctk.CTkFrame):
         self.explorer_canvas.get_tk_widget().grid(row=0, column=0, sticky="nsew", padx=0, pady=0)
 
         # Right control panel with rotation buttons
-        right_controls = ctk.CTkFrame(plot_container, width=80, fg_color="transparent")
+        right_controls = ctk.CTkFrame(plot_container, width=100, fg_color="transparent")
         right_controls.grid(row=0, column=2, sticky="ns", padx=(2, 0), pady=0)
         right_controls.grid_propagate(False)
 
         ctk.CTkLabel(
             right_controls,
             text="Rotate",
-            font=("Segoe UI", 11, "bold")
-        ).pack(pady=(10, 5))
+            font=("Segoe UI", 10, "bold")
+        ).pack(pady=(5, 3))
 
         self.rotate_left_btn = ctk.CTkButton(
             right_controls,
-            text="⬅",
-            width=60,
-            height=50,
-            font=("Segoe UI", 20),
+            text="⬅ Left",
+            width=95,
+            height=32,
+            font=("Segoe UI", 11),
             command=self._rotate_left_3d,
             fg_color="#8B4513",
             hover_color="#654321"
         )
-        self.rotate_left_btn.pack(pady=5)
+        self.rotate_left_btn.pack(pady=2)
 
         self.rotate_right_btn = ctk.CTkButton(
             right_controls,
-            text="➡",
-            width=60,
-            height=50,
-            font=("Segoe UI", 20),
+            text="➡ Right",
+            width=95,
+            height=32,
+            font=("Segoe UI", 11),
             command=self._rotate_right_3d,
             fg_color="#8B4513",
             hover_color="#654321"
         )
-        self.rotate_right_btn.pack(pady=5)
+        self.rotate_right_btn.pack(pady=2)
 
         self.rotate_up_btn = ctk.CTkButton(
             right_controls,
-            text="⬆",
-            width=60,
-            height=50,
-            font=("Segoe UI", 20),
+            text="⬆ Up",
+            width=95,
+            height=32,
+            font=("Segoe UI", 11),
             command=self._rotate_up_3d,
             fg_color="#8B4513",
             hover_color="#654321"
         )
-        self.rotate_up_btn.pack(pady=5)
+        self.rotate_up_btn.pack(pady=2)
 
         self.rotate_down_btn = ctk.CTkButton(
             right_controls,
-            text="⬇",
-            width=60,
-            height=50,
-            font=("Segoe UI", 20),
+            text="⬇ Down",
+            width=95,
+            height=32,
+            font=("Segoe UI", 11),
             command=self._rotate_down_3d,
             fg_color="#8B4513",
             hover_color="#654321"
         )
-        self.rotate_down_btn.pack(pady=5)
+        self.rotate_down_btn.pack(pady=2)
 
     def _create_export_tab(self):
         """Create model export tab."""

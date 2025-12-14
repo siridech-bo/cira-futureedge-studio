@@ -357,10 +357,9 @@ class ModelPanel(ctk.CTkFrame):
         plot_container.grid_columnconfigure(1, weight=1)  # Graph column expands
         plot_container.grid_rowconfigure(0, weight=1)
 
-        # LEFT COLUMN: All control panels in one column
-        controls_column = ctk.CTkFrame(plot_container, width=110, fg_color="transparent")
-        controls_column.grid(row=0, column=0, sticky="ns", padx=(0, 5), pady=0)
-        controls_column.grid_propagate(False)
+        # LEFT COLUMN: All control panels in one scrollable column
+        controls_column = ctk.CTkScrollableFrame(plot_container, width=110, fg_color="transparent")
+        controls_column.grid(row=0, column=0, sticky="nsew", padx=(0, 5), pady=0)
 
         # Zoom controls
         ctk.CTkLabel(
@@ -531,7 +530,8 @@ class ModelPanel(ctk.CTkFrame):
 
         # Create figure that will resize with window
         self.explorer_fig = Figure(dpi=100)
-        self.explorer_fig.subplots_adjust(left=0.05, right=0.98, top=0.96, bottom=0.05)
+        # Minimize all margins to eliminate whitespace
+        self.explorer_fig.subplots_adjust(left=0.0, right=1.0, top=0.98, bottom=0.0)
 
         self.explorer_ax = self.explorer_fig.add_subplot(111, projection='3d')
         self.explorer_ax.set_title("Select features and click 'Visualize in 3D'", fontsize=14)

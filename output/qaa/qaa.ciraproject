@@ -4,7 +4,7 @@
   "domain": "rotating_machinery",
   "description": "",
   "created_at": "2025-12-13T16:07:46.504796",
-  "modified_at": "2025-12-14T09:19:43.992535",
+  "modified_at": "2025-12-14T09:23:00.507915",
   "version": "1.0.0",
   "project_path": "D:\\CiRA FES\\output\\qaa\\qaa.ciraproject",
   "data": {
@@ -25205,15 +25205,15 @@
     "llm_reasoning": ""
   },
   "model": {
-    "algorithm": "mlp",
+    "algorithm": "random_forest",
     "hyperparameters": {},
     "metrics": {
-      "accuracy": 0.994804655029094,
+      "accuracy": 0.9883624272651704,
       "precision_macro": 0.5,
-      "recall_macro": 0.497402327514547,
-      "f1_macro": 0.49869778101885615
+      "recall_macro": 0.4941812136325852,
+      "f1_macro": 0.49707357859531776
     },
-    "model_path": "D:\\CiRA FES\\output\\qaa\\models\\mlp_classifier.pkl",
+    "model_path": "D:\\CiRA FES\\output\\qaa\\models\\random_forest_classifier.pkl",
     "scaler_path": null,
     "trained": true,
     "model_params": {},
@@ -25224,15 +25224,15 @@
       "grind",
       "idle"
     ],
-    "label_encoder_path": "D:\\CiRA FES\\output\\qaa\\models\\mlp_encoder.pkl",
+    "label_encoder_path": "D:\\CiRA FES\\output\\qaa\\models\\random_forest_encoder.pkl",
     "confusion_matrix": [
       [
         0,
         0
       ],
       [
-        25,
-        4787
+        56,
+        4756
       ]
     ],
     "per_class_metrics": {}

@@ -343,9 +343,62 @@ class ModelPanel(ctk.CTkFrame):
         )
         self.explorer_visualize_btn.grid(row=2, column=0, columnspan=6, padx=10, pady=10)
 
-        # 3D Plot (embedded Matplotlib) - now takes more space
-        plot_frame = ctk.CTkFrame(tab)
-        plot_frame.grid(row=1, column=0, sticky="nsew", padx=10, pady=(5, 10))
+        # 3D Plot with zoom controls - now takes more space
+        plot_container = ctk.CTkFrame(tab)
+        plot_container.grid(row=1, column=0, sticky="nsew", padx=10, pady=(5, 10))
+        plot_container.grid_columnconfigure(1, weight=1)
+        plot_container.grid_rowconfigure(0, weight=1)
+
+        # Left control panel with zoom buttons
+        left_controls = ctk.CTkFrame(plot_container, width=80, fg_color="transparent")
+        left_controls.grid(row=0, column=0, sticky="ns", padx=(5, 0), pady=5)
+        left_controls.grid_propagate(False)
+
+        ctk.CTkLabel(
+            left_controls,
+            text="Zoom",
+            font=("Segoe UI", 11, "bold")
+        ).pack(pady=(10, 5))
+
+        self.zoom_in_btn = ctk.CTkButton(
+            left_controls,
+            text="➕",
+            width=60,
+            height=60,
+            font=("Segoe UI", 24),
+            command=self._zoom_in_3d,
+            fg_color="#2B7A0B",
+            hover_color="#1F5A08"
+        )
+        self.zoom_in_btn.pack(pady=5)
+
+        self.zoom_out_btn = ctk.CTkButton(
+            left_controls,
+            text="➖",
+            width=60,
+            height=60,
+            font=("Segoe UI", 24),
+            command=self._zoom_out_3d,
+            fg_color="#1F538D",
+            hover_color="#14375E"
+        )
+        self.zoom_out_btn.pack(pady=5)
+
+        self.zoom_reset_btn = ctk.CTkButton(
+            left_controls,
+            text="↻",
+            width=60,
+            height=40,
+            font=("Segoe UI", 20),
+            command=self._reset_zoom_3d,
+            fg_color="#555555",
+            hover_color="#333333"
+        )
+        self.zoom_reset_btn.pack(pady=5)
+
+        # Center: 3D plot
+        plot_frame = ctk.CTkFrame(plot_container)
+        plot_frame.grid(row=0, column=1, sticky="nsew", padx=5, pady=5)
         plot_frame.grid_columnconfigure(0, weight=1)
         plot_frame.grid_rowconfigure(0, weight=1)
 
@@ -360,9 +413,71 @@ class ModelPanel(ctk.CTkFrame):
         self.explorer_ax.set_ylabel("Y")
         self.explorer_ax.set_zlabel("Z")
 
+        # Store initial view limits for zoom
+        self.explorer_zoom_level = 1.0
+
         self.explorer_canvas = FigureCanvasTkAgg(self.explorer_fig, master=plot_frame)
         self.explorer_canvas.draw()
         self.explorer_canvas.get_tk_widget().grid(row=0, column=0, sticky="nsew", padx=5, pady=5)
+
+        # Right control panel with rotation buttons
+        right_controls = ctk.CTkFrame(plot_container, width=80, fg_color="transparent")
+        right_controls.grid(row=0, column=2, sticky="ns", padx=(0, 5), pady=5)
+        right_controls.grid_propagate(False)
+
+        ctk.CTkLabel(
+            right_controls,
+            text="Rotate",
+            font=("Segoe UI", 11, "bold")
+        ).pack(pady=(10, 5))
+
+        self.rotate_left_btn = ctk.CTkButton(
+            right_controls,
+            text="⬅",
+            width=60,
+            height=50,
+            font=("Segoe UI", 20),
+            command=self._rotate_left_3d,
+            fg_color="#8B4513",
+            hover_color="#654321"
+        )
+        self.rotate_left_btn.pack(pady=5)
+
+        self.rotate_right_btn = ctk.CTkButton(
+            right_controls,
+            text="➡",
+            width=60,
+            height=50,
+            font=("Segoe UI", 20),
+            command=self._rotate_right_3d,
+            fg_color="#8B4513",
+            hover_color="#654321"
+        )
+        self.rotate_right_btn.pack(pady=5)
+
+        self.rotate_up_btn = ctk.CTkButton(
+            right_controls,
+            text="⬆",
+            width=60,
+            height=50,
+            font=("Segoe UI", 20),
+            command=self._rotate_up_3d,
+            fg_color="#8B4513",
+            hover_color="#654321"
+        )
+        self.rotate_up_btn.pack(pady=5)
+
+        self.rotate_down_btn = ctk.CTkButton(
+            right_controls,
+            text="⬇",
+            width=60,
+            height=50,
+            font=("Segoe UI", 20),
+            command=self._rotate_down_3d,
+            fg_color="#8B4513",
+            hover_color="#654321"
+        )
+        self.rotate_down_btn.pack(pady=5)
 
     def _create_export_tab(self):
         """Create model export tab."""
@@ -1061,6 +1176,126 @@ class ModelPanel(ctk.CTkFrame):
             import traceback
             traceback.print_exc()
             messagebox.showerror("Visualization Error", f"Failed to create visualization:\n{str(e)}")
+
+    def _zoom_in_3d(self):
+        """Zoom in on 3D plot."""
+        try:
+            # Get current axis limits
+            xlim = self.explorer_ax.get_xlim()
+            ylim = self.explorer_ax.get_ylim()
+            zlim = self.explorer_ax.get_zlim()
+
+            # Calculate zoom factor (zoom in by 20%)
+            zoom_factor = 0.8
+
+            # Calculate centers
+            x_center = (xlim[0] + xlim[1]) / 2
+            y_center = (ylim[0] + ylim[1]) / 2
+            z_center = (zlim[0] + zlim[1]) / 2
+
+            # Calculate new ranges
+            x_range = (xlim[1] - xlim[0]) * zoom_factor / 2
+            y_range = (ylim[1] - ylim[0]) * zoom_factor / 2
+            z_range = (zlim[1] - zlim[0]) * zoom_factor / 2
+
+            # Set new limits
+            self.explorer_ax.set_xlim(x_center - x_range, x_center + x_range)
+            self.explorer_ax.set_ylim(y_center - y_range, y_center + y_range)
+            self.explorer_ax.set_zlim(z_center - z_range, z_center + z_range)
+
+            self.explorer_canvas.draw()
+            logger.info("Zoomed in on 3D plot")
+
+        except Exception as e:
+            logger.error(f"Failed to zoom in: {e}")
+
+    def _zoom_out_3d(self):
+        """Zoom out on 3D plot."""
+        try:
+            # Get current axis limits
+            xlim = self.explorer_ax.get_xlim()
+            ylim = self.explorer_ax.get_ylim()
+            zlim = self.explorer_ax.get_zlim()
+
+            # Calculate zoom factor (zoom out by 20%)
+            zoom_factor = 1.25
+
+            # Calculate centers
+            x_center = (xlim[0] + xlim[1]) / 2
+            y_center = (ylim[0] + ylim[1]) / 2
+            z_center = (zlim[0] + zlim[1]) / 2
+
+            # Calculate new ranges
+            x_range = (xlim[1] - xlim[0]) * zoom_factor / 2
+            y_range = (ylim[1] - ylim[0]) * zoom_factor / 2
+            z_range = (zlim[1] - zlim[0]) * zoom_factor / 2
+
+            # Set new limits
+            self.explorer_ax.set_xlim(x_center - x_range, x_center + x_range)
+            self.explorer_ax.set_ylim(y_center - y_range, y_center + y_range)
+            self.explorer_ax.set_zlim(z_center - z_range, z_center + z_range)
+
+            self.explorer_canvas.draw()
+            logger.info("Zoomed out on 3D plot")
+
+        except Exception as e:
+            logger.error(f"Failed to zoom out: {e}")
+
+    def _reset_zoom_3d(self):
+        """Reset zoom to original view."""
+        try:
+            # Redraw the current visualization to reset zoom
+            self._visualize_3d_explorer()
+            logger.info("Reset zoom on 3D plot")
+
+        except Exception as e:
+            logger.error(f"Failed to reset zoom: {e}")
+
+    def _rotate_left_3d(self):
+        """Rotate 3D plot to the left."""
+        try:
+            elev, azim = self.explorer_ax.elev, self.explorer_ax.azim
+            self.explorer_ax.view_init(elev=elev, azim=azim - 15)
+            self.explorer_canvas.draw()
+            logger.info(f"Rotated 3D plot left (azim={azim - 15})")
+
+        except Exception as e:
+            logger.error(f"Failed to rotate left: {e}")
+
+    def _rotate_right_3d(self):
+        """Rotate 3D plot to the right."""
+        try:
+            elev, azim = self.explorer_ax.elev, self.explorer_ax.azim
+            self.explorer_ax.view_init(elev=elev, azim=azim + 15)
+            self.explorer_canvas.draw()
+            logger.info(f"Rotated 3D plot right (azim={azim + 15})")
+
+        except Exception as e:
+            logger.error(f"Failed to rotate right: {e}")
+
+    def _rotate_up_3d(self):
+        """Rotate 3D plot upward."""
+        try:
+            elev, azim = self.explorer_ax.elev, self.explorer_ax.azim
+            new_elev = min(elev + 15, 90)  # Limit to 90 degrees
+            self.explorer_ax.view_init(elev=new_elev, azim=azim)
+            self.explorer_canvas.draw()
+            logger.info(f"Rotated 3D plot up (elev={new_elev})")
+
+        except Exception as e:
+            logger.error(f"Failed to rotate up: {e}")
+
+    def _rotate_down_3d(self):
+        """Rotate 3D plot downward."""
+        try:
+            elev, azim = self.explorer_ax.elev, self.explorer_ax.azim
+            new_elev = max(elev - 15, -90)  # Limit to -90 degrees
+            self.explorer_ax.view_init(elev=new_elev, azim=azim)
+            self.explorer_canvas.draw()
+            logger.info(f"Rotated 3D plot down (elev={new_elev})")
+
+        except Exception as e:
+            logger.error(f"Failed to rotate down: {e}")
 
     def _open_model_dir(self):
         """Open the model directory in file explorer."""

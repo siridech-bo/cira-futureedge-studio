@@ -4,7 +4,7 @@
   "domain": "rotating_machinery",
   "description": "",
   "created_at": "2025-12-13T16:07:46.504796",
-  "modified_at": "2025-12-14T07:22:14.578669",
+  "modified_at": "2025-12-14T07:29:37.626659",
   "version": "1.0.0",
   "project_path": "D:\\CiRA FES\\output\\qaa\\qaa.ciraproject",
   "data": {
@@ -25229,6 +25229,7 @@
   "current_stage": "data",
   "completed_stages": [
     "data",
-    "features"
+    "features",
+    "llm"
   ]
 }

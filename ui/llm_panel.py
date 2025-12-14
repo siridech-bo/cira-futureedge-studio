@@ -963,7 +963,7 @@ Be specific, actionable, and explain your reasoning clearly.
 
                 # Generate analysis with LLM
                 logger.info("Generating LLM analysis...")
-                response = self.llm_manager.llm(
+                response = self.llm_manager.model(
                     analysis_prompt,
                     max_tokens=2048,
                     temperature=0.7,

@@ -353,13 +353,13 @@ class ModelPanel(ctk.CTkFrame):
 
         # 3D Plot with zoom controls - now takes more space
         plot_container = ctk.CTkFrame(tab)
-        plot_container.grid(row=1, column=0, sticky="nsew", padx=10, pady=(5, 10))
+        plot_container.grid(row=1, column=0, sticky="nsew", padx=5, pady=5)
         plot_container.grid_columnconfigure(1, weight=1)
         plot_container.grid_rowconfigure(0, weight=1)
 
         # Left control panel with zoom buttons
         left_controls = ctk.CTkFrame(plot_container, width=80, fg_color="transparent")
-        left_controls.grid(row=0, column=0, sticky="ns", padx=(5, 0), pady=5)
+        left_controls.grid(row=0, column=0, sticky="ns", padx=(0, 2), pady=0)
         left_controls.grid_propagate(False)
 
         ctk.CTkLabel(
@@ -467,7 +467,7 @@ class ModelPanel(ctk.CTkFrame):
 
         # Center: 3D plot
         plot_frame = ctk.CTkFrame(plot_container)
-        plot_frame.grid(row=0, column=1, sticky="nsew", padx=5, pady=5)
+        plot_frame.grid(row=0, column=1, sticky="nsew", padx=2, pady=0)
         plot_frame.grid_columnconfigure(0, weight=1)
         plot_frame.grid_rowconfigure(0, weight=1)
 
@@ -475,7 +475,10 @@ class ModelPanel(ctk.CTkFrame):
         from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
         from matplotlib.figure import Figure
 
-        self.explorer_fig = Figure(figsize=(9, 6), dpi=100)
+        # Create figure with tight layout to minimize whitespace
+        self.explorer_fig = Figure(figsize=(10, 7), dpi=100)
+        self.explorer_fig.subplots_adjust(left=0.05, right=0.95, top=0.95, bottom=0.05)
+
         self.explorer_ax = self.explorer_fig.add_subplot(111, projection='3d')
         self.explorer_ax.set_title("Select features and click 'Visualize in 3D'", fontsize=14)
         self.explorer_ax.set_xlabel("X")
@@ -487,11 +490,11 @@ class ModelPanel(ctk.CTkFrame):
 
         self.explorer_canvas = FigureCanvasTkAgg(self.explorer_fig, master=plot_frame)
         self.explorer_canvas.draw()
-        self.explorer_canvas.get_tk_widget().grid(row=0, column=0, sticky="nsew", padx=5, pady=5)
+        self.explorer_canvas.get_tk_widget().grid(row=0, column=0, sticky="nsew", padx=0, pady=0)
 
         # Right control panel with rotation buttons
         right_controls = ctk.CTkFrame(plot_container, width=80, fg_color="transparent")
-        right_controls.grid(row=0, column=2, sticky="ns", padx=(0, 5), pady=5)
+        right_controls.grid(row=0, column=2, sticky="ns", padx=(2, 0), pady=0)
         right_controls.grid_propagate(False)
 
         ctk.CTkLabel(

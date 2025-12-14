@@ -56,7 +56,8 @@ class DSPGenerator:
         scaler_path: Path,
         selected_features: List[str],
         config: DSPConfig,
-        output_dir: Path
+        output_dir: Path,
+        task_type: str = "anomaly_detection"
     ) -> GeneratedCode:
         """
         Generate C++ code from trained model.
@@ -67,11 +68,12 @@ class DSPGenerator:
             selected_features: List of selected feature names
             config: DSP generation configuration
             output_dir: Directory to save generated files
+            task_type: Task mode ("anomaly_detection" or "classification")
 
         Returns:
             GeneratedCode with file paths and metadata
         """
-        logger.info(f"Generating DSP code for {model_path.stem}")
+        logger.info(f"Generating DSP code for {model_path.stem} (task_type: {task_type})")
         self.config = config
 
         # Load model and scaler
@@ -85,10 +87,10 @@ class DSPGenerator:
         # Create output directory
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        # Determine algorithm type and model mode
-        is_classifier = '_classifier' in model_path.stem
+        # Determine model mode from task_type (single source of truth)
+        is_classifier = (task_type == "classification")
         algorithm = model_path.stem.replace('_classifier', '').replace('_model', '')
-        logger.info(f"Detected algorithm: {algorithm}, is_classifier: {is_classifier}")
+        logger.info(f"Algorithm: {algorithm}, is_classifier: {is_classifier}")
 
         # Store model type for header generation
         self.is_classifier = is_classifier
@@ -531,7 +533,8 @@ def generate_dsp_code(
     scaler_path: Path,
     selected_features: List[str],
     config: DSPConfig,
-    output_dir: Path
+    output_dir: Path,
+    task_type: str = "anomaly_detection"
 ) -> GeneratedCode:
     """
     Convenience function to generate DSP code.
@@ -542,9 +545,10 @@ def generate_dsp_code(
         selected_features: Selected feature names
         config: DSP configuration
         output_dir: Output directory
+        task_type: Task mode ("anomaly_detection" or "classification")
 
     Returns:
         GeneratedCode object
     """
     generator = DSPGenerator()
-    return generator.generate(model_path, scaler_path, selected_features, config, output_dir)
+    return generator.generate(model_path, scaler_path, selected_features, config, output_dir, task_type)

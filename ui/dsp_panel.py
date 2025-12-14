@@ -136,7 +136,8 @@ class DSPPanel(ctk.CTkFrame):
         """Create code generation tab."""
         tab = self.notebook.tab("Generation")
         tab.grid_columnconfigure(0, weight=1)
-        tab.grid_rowconfigure(2, weight=1)
+        tab.grid_columnconfigure(1, weight=1)
+        tab.grid_rowconfigure(1, weight=1)
 
         # Title
         title = ctk.CTkLabel(
@@ -144,55 +145,58 @@ class DSPPanel(ctk.CTkFrame):
             text="Generate Embedded C++ Code",
             font=ctk.CTkFont(size=16, weight="bold")
         )
-        title.grid(row=0, column=0, padx=20, pady=(20, 10), sticky="w")
+        title.grid(row=0, column=0, columnspan=2, padx=20, pady=(20, 10), sticky="w")
+
+        # LEFT COLUMN: Model selection and settings
+        settings_frame = ctk.CTkFrame(tab)
+        settings_frame.grid(row=1, column=0, padx=(20, 10), pady=10, sticky="nsew")
+        settings_frame.grid_columnconfigure(1, weight=1)
 
         # Model selection
-        model_select_frame = ctk.CTkFrame(tab)
-        model_select_frame.grid(row=1, column=0, padx=20, pady=10, sticky="ew")
-        model_select_frame.grid_columnconfigure(1, weight=1)
+        ctk.CTkLabel(
+            settings_frame,
+            text="Model Selection",
+            font=ctk.CTkFont(size=14, weight="bold")
+        ).grid(row=0, column=0, columnspan=2, padx=10, pady=10, sticky="w")
 
-        ctk.CTkLabel(model_select_frame, text="Select Model:").grid(
-            row=0, column=0, padx=10, pady=10, sticky="w"
+        ctk.CTkLabel(settings_frame, text="Select Model:").grid(
+            row=1, column=0, padx=10, pady=5, sticky="w"
         )
 
         self.model_var = ctk.StringVar(value="No models available")
         self.model_menu = ctk.CTkOptionMenu(
-            model_select_frame,
+            settings_frame,
             variable=self.model_var,
             values=["No models available"],
             command=self._on_model_change
         )
-        self.model_menu.grid(row=0, column=1, padx=10, pady=10, sticky="w")
+        self.model_menu.grid(row=1, column=1, padx=10, pady=5, sticky="w")
         self.model_menu.configure(state="disabled")
 
         # Status
-        status_frame = ctk.CTkFrame(tab)
-        status_frame.grid(row=2, column=0, padx=20, pady=10, sticky="ew")
-        status_frame.grid_columnconfigure(1, weight=1)
-
-        ctk.CTkLabel(status_frame, text="Algorithm:").grid(
-            row=0, column=0, padx=10, pady=5, sticky="w"
+        ctk.CTkLabel(settings_frame, text="Algorithm:").grid(
+            row=2, column=0, padx=10, pady=5, sticky="w"
         )
         self.model_status_label = ctk.CTkLabel(
-            status_frame,
+            settings_frame,
             text="No model selected",
             text_color="gray"
         )
-        self.model_status_label.grid(row=0, column=1, padx=10, pady=5, sticky="w")
+        self.model_status_label.grid(row=2, column=1, padx=10, pady=5, sticky="w")
 
-        ctk.CTkLabel(status_frame, text="Features:").grid(
-            row=1, column=0, padx=10, pady=5, sticky="w"
+        ctk.CTkLabel(settings_frame, text="Features:").grid(
+            row=3, column=0, padx=10, pady=5, sticky="w"
         )
         self.features_status_label = ctk.CTkLabel(
-            status_frame,
+            settings_frame,
             text="0 features",
             text_color="gray"
         )
-        self.features_status_label.grid(row=1, column=1, padx=10, pady=5, sticky="w")
+        self.features_status_label.grid(row=3, column=1, padx=10, pady=5, sticky="w")
 
         # Generate button
         self.generate_btn = ctk.CTkButton(
-            tab,
+            settings_frame,
             text="Generate C++ Code",
             command=self._generate_code,
             fg_color="green",
@@ -200,14 +204,14 @@ class DSPPanel(ctk.CTkFrame):
             height=40,
             state="disabled"
         )
-        self.generate_btn.grid(row=2, column=0, padx=20, pady=20)
+        self.generate_btn.grid(row=4, column=0, columnspan=2, padx=10, pady=20)
 
-        self.generate_status_label = ctk.CTkLabel(tab, text="")
-        self.generate_status_label.grid(row=3, column=0, padx=20, pady=5)
+        self.generate_status_label = ctk.CTkLabel(settings_frame, text="")
+        self.generate_status_label.grid(row=5, column=0, columnspan=2, padx=10, pady=5)
 
-        # Log
+        # RIGHT COLUMN: Generation log
         log_frame = ctk.CTkFrame(tab)
-        log_frame.grid(row=4, column=0, padx=20, pady=10, sticky="nsew")
+        log_frame.grid(row=1, column=1, padx=(10, 20), pady=10, sticky="nsew")
         log_frame.grid_columnconfigure(0, weight=1)
         log_frame.grid_rowconfigure(1, weight=1)
 
@@ -241,13 +245,13 @@ class DSPPanel(ctk.CTkFrame):
         ctk.CTkLabel(file_frame, text="File:").pack(side="left", padx=10)
 
         self.preview_file_var = ctk.StringVar(value="anomaly_detector.h")
-        file_menu = ctk.CTkOptionMenu(
+        self.preview_file_menu = ctk.CTkOptionMenu(
             file_frame,
             variable=self.preview_file_var,
             values=["anomaly_detector.h", "anomaly_detector.cpp", "features.cpp", "config.h"],
             command=self._on_preview_file_change
         )
-        file_menu.pack(side="left", padx=10)
+        self.preview_file_menu.pack(side="left", padx=10)
 
         # Preview
         preview_frame = ctk.CTkFrame(tab)
@@ -374,9 +378,13 @@ class DSPPanel(ctk.CTkFrame):
         if not self.generated_code:
             return
 
+        # Build dynamic file map based on actual generated filenames
+        header_filename = Path(self.generated_code.header_file).name
+        source_filename = Path(self.generated_code.source_file).name
+
         file_map = {
-            "anomaly_detector.h": self.generated_code.header_file,
-            "anomaly_detector.cpp": self.generated_code.source_file,
+            header_filename: self.generated_code.header_file,
+            source_filename: self.generated_code.source_file,
             "features.cpp": self.generated_code.features_file,
             "config.h": self.generated_code.config_file
         }
@@ -452,14 +460,15 @@ class DSPPanel(ctk.CTkFrame):
                 self._log(f"Features: {len(project.llm.selected_features)}")
                 self._log(f"Platform: {config.target_platform}")
 
-                # Generate
+                # Generate (pass task_type from project)
                 generator = DSPGenerator()
                 self.generated_code = generator.generate(
                     model_path,
                     scaler_path,
                     project.llm.selected_features,
                     config,
-                    output_dir
+                    output_dir,
+                    task_type=project.data.task_type
                 )
 
                 self.after(0, lambda: self._generation_complete(self.generated_code))
@@ -502,6 +511,13 @@ class DSPPanel(ctk.CTkFrame):
         self.ram_usage_label.configure(text=f"{result.ram_usage_estimate / 1024:.1f} KB")
         self.open_folder_btn.configure(state="normal")
         self.complete_btn.configure(state="normal")
+
+        # Update preview dropdown with actual generated filenames
+        header_filename = Path(result.header_file).name
+        source_filename = Path(result.source_file).name
+        file_list = [header_filename, source_filename, "features.cpp", "config.h"]
+        self.preview_file_menu.configure(values=file_list)
+        self.preview_file_var.set(header_filename)
 
         # Update preview
         self._on_preview_file_change(self.preview_file_var.get())

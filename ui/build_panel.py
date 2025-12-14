@@ -125,7 +125,7 @@ class BuildPanel(ctk.CTkFrame):
         """Create build generation tab."""
         tab = self.notebook.tab("Generate")
         tab.grid_columnconfigure(0, weight=1)
-        tab.grid_rowconfigure(2, weight=1)
+        tab.grid_rowconfigure(3, weight=1)  # Log frame expands, not button row
 
         # Title
         title = ctk.CTkLabel(
@@ -164,9 +164,12 @@ class BuildPanel(ctk.CTkFrame):
         self.model_menu.grid(row=1, column=1, padx=10, pady=5, sticky="w")
         self.model_menu.configure(state="disabled")
 
-        # Generate button
+        # Generate button and status in a frame
+        button_frame = ctk.CTkFrame(tab, fg_color="transparent")
+        button_frame.grid(row=2, column=0, padx=20, pady=10)
+
         self.generate_btn = ctk.CTkButton(
-            tab,
+            button_frame,
             text="Generate Build Files",
             command=self._generate_build,
             fg_color="green",
@@ -174,14 +177,14 @@ class BuildPanel(ctk.CTkFrame):
             height=40,
             state="disabled"
         )
-        self.generate_btn.grid(row=2, column=0, padx=20, pady=20)
+        self.generate_btn.pack(pady=5)
 
-        self.generate_status_label = ctk.CTkLabel(tab, text="")
-        self.generate_status_label.grid(row=3, column=0, padx=20, pady=5)
+        self.generate_status_label = ctk.CTkLabel(button_frame, text="")
+        self.generate_status_label.pack(pady=5)
 
         # Log
         log_frame = ctk.CTkFrame(tab)
-        log_frame.grid(row=4, column=0, padx=20, pady=10, sticky="nsew")
+        log_frame.grid(row=3, column=0, padx=20, pady=10, sticky="nsew")
         log_frame.grid_columnconfigure(0, weight=1)
         log_frame.grid_rowconfigure(1, weight=1)
 

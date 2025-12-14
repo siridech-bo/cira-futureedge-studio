@@ -178,6 +178,8 @@ class ModelPanel(ctk.CTkFrame):
         """Create training configuration tab."""
         tab = self.notebook.tab("Training")
         tab.grid_columnconfigure(0, weight=1)
+        tab.grid_columnconfigure(1, weight=1)
+        tab.grid_rowconfigure(1, weight=1)
 
         # Title
         title = ctk.CTkLabel(
@@ -185,36 +187,43 @@ class ModelPanel(ctk.CTkFrame):
             text="Training Configuration",
             font=ctk.CTkFont(size=16, weight="bold")
         )
-        title.grid(row=0, column=0, padx=20, pady=(20, 10), sticky="w")
+        title.grid(row=0, column=0, columnspan=2, padx=20, pady=(20, 10), sticky="w")
 
-        # Configuration frame
+        # LEFT COLUMN: Configuration
         config_frame = ctk.CTkFrame(tab)
-        config_frame.grid(row=1, column=0, padx=20, pady=10, sticky="ew")
+        config_frame.grid(row=1, column=0, padx=(20, 10), pady=10, sticky="nsew")
         config_frame.grid_columnconfigure(1, weight=1)
+
+        ctk.CTkLabel(
+            config_frame,
+            text="Parameters",
+            font=ctk.CTkFont(size=14, weight="bold")
+        ).grid(row=0, column=0, columnspan=2, padx=10, pady=10, sticky="w")
 
         # Test size
         ctk.CTkLabel(config_frame, text="Test Size:").grid(
-            row=0, column=0, padx=10, pady=10, sticky="w"
+            row=1, column=0, padx=10, pady=5, sticky="w"
         )
         self.test_size_var = ctk.StringVar(value="0.3")
         test_size_entry = ctk.CTkEntry(config_frame, textvariable=self.test_size_var, width=100)
-        test_size_entry.grid(row=0, column=1, padx=10, pady=10, sticky="w")
-        ctk.CTkLabel(config_frame, text="(0.1-0.5)", text_color="gray").grid(
-            row=0, column=2, padx=5, pady=10, sticky="w"
+        test_size_entry.grid(row=1, column=1, padx=10, pady=5, sticky="w")
+        ctk.CTkLabel(config_frame, text="(0.1-0.5)", text_color="gray", font=ctk.CTkFont(size=10)).grid(
+            row=2, column=0, columnspan=2, padx=10, pady=(0, 5), sticky="w"
         )
 
         # Contamination
         ctk.CTkLabel(config_frame, text="Contamination:").grid(
-            row=1, column=0, padx=10, pady=10, sticky="w"
+            row=3, column=0, padx=10, pady=5, sticky="w"
         )
         self.contamination_var = ctk.StringVar(value="0.1")
         contam_entry = ctk.CTkEntry(config_frame, textvariable=self.contamination_var, width=100)
-        contam_entry.grid(row=1, column=1, padx=10, pady=10, sticky="w")
+        contam_entry.grid(row=3, column=1, padx=10, pady=5, sticky="w")
         ctk.CTkLabel(
             config_frame,
             text="Expected anomaly rate (0.01-0.5)",
-            text_color="gray"
-        ).grid(row=1, column=2, padx=5, pady=10, sticky="w")
+            text_color="gray",
+            font=ctk.CTkFont(size=10)
+        ).grid(row=4, column=0, columnspan=2, padx=10, pady=(0, 5), sticky="w")
 
         # Normalize
         self.normalize_var = ctk.BooleanVar(value=True)
@@ -223,47 +232,45 @@ class ModelPanel(ctk.CTkFrame):
             text="Normalize features (recommended)",
             variable=self.normalize_var
         )
-        normalize_check.grid(row=2, column=0, columnspan=3, padx=10, pady=10, sticky="w")
+        normalize_check.grid(row=5, column=0, columnspan=2, padx=10, pady=10, sticky="w")
 
         # Random state
         ctk.CTkLabel(config_frame, text="Random Seed:").grid(
-            row=3, column=0, padx=10, pady=10, sticky="w"
+            row=6, column=0, padx=10, pady=5, sticky="w"
         )
         self.random_state_var = ctk.StringVar(value="42")
         random_entry = ctk.CTkEntry(config_frame, textvariable=self.random_state_var, width=100)
-        random_entry.grid(row=3, column=1, padx=10, pady=10, sticky="w")
+        random_entry.grid(row=6, column=1, padx=10, pady=5, sticky="w")
         ctk.CTkLabel(
             config_frame,
             text="For reproducibility",
-            text_color="gray"
-        ).grid(row=3, column=2, padx=5, pady=10, sticky="w")
+            text_color="gray",
+            font=ctk.CTkFont(size=10)
+        ).grid(row=7, column=0, columnspan=2, padx=10, pady=(0, 10), sticky="w")
 
-        # Training controls
-        controls_frame = ctk.CTkFrame(tab)
-        controls_frame.grid(row=2, column=0, padx=20, pady=10, sticky="ew")
-
+        # Training button
         self.train_btn = ctk.CTkButton(
-            controls_frame,
+            config_frame,
             text="Start Training",
             command=self._start_training,
             fg_color="green",
             hover_color="darkgreen",
             height=40
         )
-        self.train_btn.pack(side="left", padx=10, pady=10)
+        self.train_btn.grid(row=8, column=0, columnspan=2, padx=10, pady=10)
 
         self.progress_label = ctk.CTkLabel(
-            controls_frame,
+            config_frame,
             text="",
             text_color="blue"
         )
-        self.progress_label.pack(side="left", padx=10, pady=10)
+        self.progress_label.grid(row=9, column=0, columnspan=2, padx=10, pady=(0, 10))
 
-        # Training status
+        # RIGHT COLUMN: Training status
         status_frame = ctk.CTkFrame(tab)
-        status_frame.grid(row=3, column=0, padx=20, pady=10, sticky="nsew")
+        status_frame.grid(row=1, column=1, padx=(10, 20), pady=10, sticky="nsew")
         status_frame.grid_columnconfigure(0, weight=1)
-        tab.grid_rowconfigure(3, weight=1)
+        status_frame.grid_rowconfigure(1, weight=1)
 
         ctk.CTkLabel(
             status_frame,
@@ -273,7 +280,6 @@ class ModelPanel(ctk.CTkFrame):
 
         self.training_log = ctk.CTkTextbox(status_frame, height=200)
         self.training_log.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
-        status_frame.grid_rowconfigure(1, weight=1)
 
     def _create_evaluation_tab(self):
         """Create evaluation results tab."""

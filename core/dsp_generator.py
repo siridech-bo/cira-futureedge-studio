@@ -411,7 +411,8 @@ float compute_anomaly_score(const float* features) {
 #include "{header_file}"
 #include <math.h>
 
-void extract_features(const float* window, uint16_t window_size, float* features) {
+"""
+        code += """void extract_features(const float* window, uint16_t window_size, float* features) {
     int feat_idx = 0;
 
 """

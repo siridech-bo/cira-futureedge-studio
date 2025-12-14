@@ -476,8 +476,8 @@ class ModelPanel(ctk.CTkFrame):
         from matplotlib.figure import Figure
 
         # Create figure with tight layout to minimize whitespace
-        self.explorer_fig = Figure(figsize=(10, 7), dpi=100)
-        self.explorer_fig.subplots_adjust(left=0.05, right=0.95, top=0.95, bottom=0.05)
+        self.explorer_fig = Figure(figsize=(11, 7.5), dpi=100)
+        self.explorer_fig.subplots_adjust(left=0.0, right=1.0, top=0.98, bottom=0.02)
 
         self.explorer_ax = self.explorer_fig.add_subplot(111, projection='3d')
         self.explorer_ax.set_title("Select features and click 'Visualize in 3D'", fontsize=14)

@@ -519,18 +519,18 @@ class ModelPanel(ctk.CTkFrame):
         )
         self.rotate_down_btn.pack(pady=2)
 
-        # RIGHT COLUMN: 3D plot (full width)
+        # RIGHT COLUMN: 3D plot (full width, responsive)
         plot_frame = ctk.CTkFrame(plot_container)
         plot_frame.grid(row=0, column=1, sticky="nsew", padx=0, pady=0)
         plot_frame.grid_columnconfigure(0, weight=1)
         plot_frame.grid_rowconfigure(0, weight=1)
 
         # Import matplotlib for embedded 3D plot
-        from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+        from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
         from matplotlib.figure import Figure
 
-        # Create figure with tight layout to minimize whitespace
-        self.explorer_fig = Figure(figsize=(12, 8), dpi=100)
+        # Create figure that will resize with window
+        self.explorer_fig = Figure(dpi=100)
         self.explorer_fig.subplots_adjust(left=0.05, right=0.98, top=0.96, bottom=0.05)
 
         self.explorer_ax = self.explorer_fig.add_subplot(111, projection='3d')
@@ -544,7 +544,8 @@ class ModelPanel(ctk.CTkFrame):
 
         self.explorer_canvas = FigureCanvasTkAgg(self.explorer_fig, master=plot_frame)
         self.explorer_canvas.draw()
-        self.explorer_canvas.get_tk_widget().grid(row=0, column=0, sticky="nsew", padx=0, pady=0)
+        # Pack instead of grid to allow responsive resizing
+        self.explorer_canvas.get_tk_widget().pack(fill="both", expand=True)
 
     def _create_export_tab(self):
         """Create model export tab."""

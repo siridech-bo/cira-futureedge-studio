@@ -396,6 +396,67 @@ class ModelPanel(ctk.CTkFrame):
         )
         self.zoom_reset_btn.pack(pady=5)
 
+        # Pan controls separator
+        ctk.CTkLabel(
+            left_controls,
+            text="Pan",
+            font=("Segoe UI", 11, "bold")
+        ).pack(pady=(15, 5))
+
+        # Pan up button
+        self.pan_up_btn = ctk.CTkButton(
+            left_controls,
+            text="▲",
+            width=60,
+            height=35,
+            font=("Segoe UI", 16),
+            command=self._pan_up_3d,
+            fg_color="#6A0DAD",
+            hover_color="#4B0082"
+        )
+        self.pan_up_btn.pack(pady=2)
+
+        # Pan left/right container
+        pan_lr_frame = ctk.CTkFrame(left_controls, fg_color="transparent")
+        pan_lr_frame.pack(pady=2)
+
+        self.pan_left_btn = ctk.CTkButton(
+            pan_lr_frame,
+            text="◄",
+            width=28,
+            height=35,
+            font=("Segoe UI", 14),
+            command=self._pan_left_3d,
+            fg_color="#6A0DAD",
+            hover_color="#4B0082"
+        )
+        self.pan_left_btn.pack(side="left", padx=1)
+
+        self.pan_right_btn = ctk.CTkButton(
+            pan_lr_frame,
+            text="►",
+            width=28,
+            height=35,
+            font=("Segoe UI", 14),
+            command=self._pan_right_3d,
+            fg_color="#6A0DAD",
+            hover_color="#4B0082"
+        )
+        self.pan_right_btn.pack(side="left", padx=1)
+
+        # Pan down button
+        self.pan_down_btn = ctk.CTkButton(
+            left_controls,
+            text="▼",
+            width=60,
+            height=35,
+            font=("Segoe UI", 16),
+            command=self._pan_down_3d,
+            fg_color="#6A0DAD",
+            hover_color="#4B0082"
+        )
+        self.pan_down_btn.pack(pady=2)
+
         # Center: 3D plot
         plot_frame = ctk.CTkFrame(plot_container)
         plot_frame.grid(row=0, column=1, sticky="nsew", padx=5, pady=5)
@@ -1296,6 +1357,62 @@ class ModelPanel(ctk.CTkFrame):
 
         except Exception as e:
             logger.error(f"Failed to rotate down: {e}")
+
+    def _pan_left_3d(self):
+        """Pan 3D plot to the left (move view left along X axis)."""
+        try:
+            xlim = self.explorer_ax.get_xlim()
+            x_range = xlim[1] - xlim[0]
+            pan_amount = x_range * 0.1  # Pan by 10% of range
+
+            self.explorer_ax.set_xlim(xlim[0] - pan_amount, xlim[1] - pan_amount)
+            self.explorer_canvas.draw()
+            logger.info("Panned 3D plot left")
+
+        except Exception as e:
+            logger.error(f"Failed to pan left: {e}")
+
+    def _pan_right_3d(self):
+        """Pan 3D plot to the right (move view right along X axis)."""
+        try:
+            xlim = self.explorer_ax.get_xlim()
+            x_range = xlim[1] - xlim[0]
+            pan_amount = x_range * 0.1  # Pan by 10% of range
+
+            self.explorer_ax.set_xlim(xlim[0] + pan_amount, xlim[1] + pan_amount)
+            self.explorer_canvas.draw()
+            logger.info("Panned 3D plot right")
+
+        except Exception as e:
+            logger.error(f"Failed to pan right: {e}")
+
+    def _pan_up_3d(self):
+        """Pan 3D plot upward (move view up along Y axis)."""
+        try:
+            ylim = self.explorer_ax.get_ylim()
+            y_range = ylim[1] - ylim[0]
+            pan_amount = y_range * 0.1  # Pan by 10% of range
+
+            self.explorer_ax.set_ylim(ylim[0] + pan_amount, ylim[1] + pan_amount)
+            self.explorer_canvas.draw()
+            logger.info("Panned 3D plot up")
+
+        except Exception as e:
+            logger.error(f"Failed to pan up: {e}")
+
+    def _pan_down_3d(self):
+        """Pan 3D plot downward (move view down along Y axis)."""
+        try:
+            ylim = self.explorer_ax.get_ylim()
+            y_range = ylim[1] - ylim[0]
+            pan_amount = y_range * 0.1  # Pan by 10% of range
+
+            self.explorer_ax.set_ylim(ylim[0] - pan_amount, ylim[1] - pan_amount)
+            self.explorer_canvas.draw()
+            logger.info("Panned 3D plot down")
+
+        except Exception as e:
+            logger.error(f"Failed to pan down: {e}")
 
     def _open_model_dir(self):
         """Open the model directory in file explorer."""

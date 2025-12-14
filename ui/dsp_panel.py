@@ -46,6 +46,7 @@ class DSPPanel(ctk.CTkFrame):
         """Create platform configuration tab."""
         tab = self.notebook.tab("Platform")
         tab.grid_columnconfigure(0, weight=1)
+        tab.grid_columnconfigure(1, weight=1)
 
         # Title
         title = ctk.CTkLabel(
@@ -53,72 +54,82 @@ class DSPPanel(ctk.CTkFrame):
             text="Target Platform Configuration",
             font=ctk.CTkFont(size=16, weight="bold")
         )
-        title.grid(row=0, column=0, padx=20, pady=(20, 10), sticky="w")
+        title.grid(row=0, column=0, columnspan=2, padx=20, pady=(20, 10), sticky="w")
+
+        # LEFT COLUMN: Platform and Memory Settings
+        left_frame = ctk.CTkFrame(tab)
+        left_frame.grid(row=1, column=0, padx=(20, 10), pady=10, sticky="nsew")
+        left_frame.grid_columnconfigure(1, weight=1)
 
         # Platform selection
-        platform_frame = ctk.CTkFrame(tab)
-        platform_frame.grid(row=1, column=0, padx=20, pady=10, sticky="ew")
-        platform_frame.grid_columnconfigure(1, weight=1)
+        ctk.CTkLabel(
+            left_frame,
+            text="Platform Settings",
+            font=ctk.CTkFont(size=14, weight="bold")
+        ).grid(row=0, column=0, columnspan=2, padx=10, pady=10, sticky="w")
 
-        ctk.CTkLabel(platform_frame, text="Target Platform:").grid(
-            row=0, column=0, padx=10, pady=10, sticky="w"
+        ctk.CTkLabel(left_frame, text="Target Platform:").grid(
+            row=1, column=0, padx=10, pady=5, sticky="w"
         )
 
         self.platform_var = ctk.StringVar(value="cortex-m4")
         platform_menu = ctk.CTkOptionMenu(
-            platform_frame,
+            left_frame,
             variable=self.platform_var,
             values=["cortex-m4", "cortex-m7", "esp32", "esp32-s3", "x86"],
             command=self._on_platform_change
         )
-        platform_menu.grid(row=0, column=1, padx=10, pady=10, sticky="w")
+        platform_menu.grid(row=1, column=1, padx=10, pady=5, sticky="w")
 
         self.platform_info_label = ctk.CTkLabel(
-            platform_frame,
+            left_frame,
             text="32-bit ARM Cortex-M4, 64KB RAM typical",
-            text_color="gray"
+            text_color="gray",
+            font=ctk.CTkFont(size=10)
         )
-        self.platform_info_label.grid(row=0, column=2, padx=10, pady=10, sticky="w")
+        self.platform_info_label.grid(row=2, column=0, columnspan=2, padx=10, pady=(0, 10), sticky="w")
 
         # Memory settings
-        memory_frame = ctk.CTkFrame(tab)
-        memory_frame.grid(row=2, column=0, padx=20, pady=10, sticky="ew")
-        memory_frame.grid_columnconfigure(1, weight=1)
+        ctk.CTkLabel(
+            left_frame,
+            text="Memory & Signal Settings",
+            font=ctk.CTkFont(size=14, weight="bold")
+        ).grid(row=3, column=0, columnspan=2, padx=10, pady=(10, 10), sticky="w")
 
-        ctk.CTkLabel(memory_frame, text="RAM Limit (KB):").grid(
-            row=0, column=0, padx=10, pady=10, sticky="w"
+        ctk.CTkLabel(left_frame, text="RAM Limit (KB):").grid(
+            row=4, column=0, padx=10, pady=5, sticky="w"
         )
         self.ram_limit_var = ctk.StringVar(value="64")
-        ram_entry = ctk.CTkEntry(memory_frame, textvariable=self.ram_limit_var, width=100)
-        ram_entry.grid(row=1, column=1, padx=10, pady=10, sticky="w")
+        ram_entry = ctk.CTkEntry(left_frame, textvariable=self.ram_limit_var, width=100)
+        ram_entry.grid(row=4, column=1, padx=10, pady=5, sticky="w")
 
-        ctk.CTkLabel(memory_frame, text="Window Size:").grid(
-            row=1, column=0, padx=10, pady=10, sticky="w"
+        ctk.CTkLabel(left_frame, text="Window Size:").grid(
+            row=5, column=0, padx=10, pady=5, sticky="w"
         )
         self.window_size_var = ctk.StringVar(value="128")
-        window_entry = ctk.CTkEntry(memory_frame, textvariable=self.window_size_var, width=100)
-        window_entry.grid(row=1, column=1, padx=10, pady=10, sticky="w")
+        window_entry = ctk.CTkEntry(left_frame, textvariable=self.window_size_var, width=100)
+        window_entry.grid(row=5, column=1, padx=10, pady=5, sticky="w")
 
-        ctk.CTkLabel(memory_frame, text="Sample Rate (Hz):").grid(
-            row=2, column=0, padx=10, pady=10, sticky="w"
+        ctk.CTkLabel(left_frame, text="Sample Rate (Hz):").grid(
+            row=6, column=0, padx=10, pady=5, sticky="w"
         )
         self.sample_rate_var = ctk.StringVar(value="1000")
-        rate_entry = ctk.CTkEntry(memory_frame, textvariable=self.sample_rate_var, width=100)
-        rate_entry.grid(row=2, column=1, padx=10, pady=10, sticky="w")
+        rate_entry = ctk.CTkEntry(left_frame, textvariable=self.sample_rate_var, width=100)
+        rate_entry.grid(row=6, column=1, padx=10, pady=5, sticky="w")
 
-        # Optimization settings
-        opt_frame = ctk.CTkFrame(tab)
-        opt_frame.grid(row=3, column=0, padx=20, pady=10, sticky="ew")
+        # RIGHT COLUMN: Optimization settings
+        right_frame = ctk.CTkFrame(tab)
+        right_frame.grid(row=1, column=1, padx=(10, 20), pady=10, sticky="nsew")
 
         ctk.CTkLabel(
-            opt_frame,
+            right_frame,
             text="Optimizations:",
             font=ctk.CTkFont(size=14, weight="bold")
         ).grid(row=0, column=0, padx=10, pady=10, sticky="w")
 
         self.fixed_point_var = ctk.BooleanVar(value=True)
         fixed_point_check = ctk.CTkCheckBox(
-            opt_frame,
+            right_frame,
             text="Use fixed-point arithmetic (faster on MCU)",
             variable=self.fixed_point_var
         )
@@ -126,7 +137,7 @@ class DSPPanel(ctk.CTkFrame):
 
         self.optimize_size_var = ctk.BooleanVar(value=True)
         size_check = ctk.CTkCheckBox(
-            opt_frame,
+            right_frame,
             text="Optimize for code size (vs speed)",
             variable=self.optimize_size_var
         )

@@ -302,24 +302,9 @@ class ModelPanel(ctk.CTkFrame):
         tab.grid_columnconfigure(0, weight=1)
         tab.grid_rowconfigure(1, weight=1)  # Give 3D plot more space
 
-        # Top section: Feature importance chart
-        importance_frame = ctk.CTkFrame(tab)
-        importance_frame.grid(row=0, column=0, sticky="ew", padx=10, pady=(10, 5))
-        importance_frame.grid_columnconfigure(0, weight=1)
-
-        ctk.CTkLabel(
-            importance_frame,
-            text="📊 Feature Importance",
-            font=("Segoe UI", 16, "bold")
-        ).grid(row=0, column=0, sticky="w", padx=10, pady=5)
-
-        # Feature importance chart (will be populated after training)
-        self.explorer_fi_widget = FeatureImportanceChart(importance_frame, width=900, height=300)
-        self.explorer_fi_widget.grid(row=1, column=0, padx=10, pady=5, sticky="ew")
-
-        # Middle section: Feature selection for 3D
+        # Feature selection for 3D (removed feature importance chart)
         selection_frame = ctk.CTkFrame(tab)
-        selection_frame.grid(row=1, column=0, sticky="ew", padx=10, pady=5)
+        selection_frame.grid(row=0, column=0, sticky="ew", padx=10, pady=(10, 5))
         selection_frame.grid_columnconfigure((1, 3, 5), weight=1)
 
         ctk.CTkLabel(
@@ -358,9 +343,9 @@ class ModelPanel(ctk.CTkFrame):
         )
         self.explorer_visualize_btn.grid(row=2, column=0, columnspan=6, padx=10, pady=10)
 
-        # Bottom section: 3D Plot (embedded Matplotlib)
+        # 3D Plot (embedded Matplotlib) - now takes more space
         plot_frame = ctk.CTkFrame(tab)
-        plot_frame.grid(row=2, column=0, sticky="nsew", padx=10, pady=(5, 10))
+        plot_frame.grid(row=1, column=0, sticky="nsew", padx=10, pady=(5, 10))
         plot_frame.grid_columnconfigure(0, weight=1)
         plot_frame.grid_rowconfigure(0, weight=1)
 
@@ -722,11 +707,8 @@ class ModelPanel(ctk.CTkFrame):
                 "f1_macro": results.f1_macro
             }
 
-        # Update Explorer tab with feature importance and dropdowns
+        # Update Explorer tab with feature dropdowns
         if task_mode == "classification" and hasattr(results, 'feature_importances') and hasattr(results, 'feature_names'):
-            # Update feature importance chart in Explorer tab
-            self.explorer_fi_widget.plot_importance(results.feature_names, results.feature_importances)
-
             # Update feature dropdowns
             self.explorer_x_menu.configure(values=results.feature_names)
             self.explorer_y_menu.configure(values=results.feature_names)
@@ -1203,9 +1185,6 @@ class ModelPanel(ctk.CTkFrame):
 
             if model and hasattr(model, 'feature_importances_') and feature_names:
                 importances = model.feature_importances_
-
-                # Update Explorer tab feature importance chart
-                self.explorer_fi_widget.plot_importance(feature_names, importances)
 
                 # Update feature dropdowns
                 self.explorer_x_menu.configure(values=feature_names)

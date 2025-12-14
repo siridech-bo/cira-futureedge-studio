@@ -85,9 +85,13 @@ class DSPGenerator:
         # Create output directory
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        # Determine algorithm type
-        algorithm = model_path.stem.replace('_model', '')
-        logger.info(f"Detected algorithm: {algorithm}")
+        # Determine algorithm type and model mode
+        is_classifier = '_classifier' in model_path.stem
+        algorithm = model_path.stem.replace('_classifier', '').replace('_model', '')
+        logger.info(f"Detected algorithm: {algorithm}, is_classifier: {is_classifier}")
+
+        # Store model type for header generation
+        self.is_classifier = is_classifier
 
         # Generate files
         header = self._generate_header(algorithm, selected_features)
@@ -126,8 +130,9 @@ class DSPGenerator:
 
     def _generate_header(self, algorithm: str, features: List[str]) -> str:
         """Generate anomaly_detector.h header file."""
+        model_type = "Classifier" if self.is_classifier else "Anomaly Detector"
         code = f"""/**
- * CiRA FutureEdge Studio - Anomaly Detector
+ * CiRA FutureEdge Studio - {model_type}
  * Generated for {self.config.target_platform}
  * Algorithm: {algorithm.upper()}
  */
@@ -180,8 +185,9 @@ float normalize_feature(float value, float mean, float std);
 
     def _generate_source(self, algorithm: str, features: List[str]) -> str:
         """Generate anomaly_detector.cpp source file."""
+        model_type = "Classifier" if self.is_classifier else "Anomaly Detector"
         code = f"""/**
- * CiRA FutureEdge Studio - Anomaly Detector Implementation
+ * CiRA FutureEdge Studio - {model_type} Implementation
  * Algorithm: {algorithm.upper()}
  */
 

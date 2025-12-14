@@ -431,7 +431,12 @@ class DSPPanel(ctk.CTkFrame):
 
                 # Get paths for selected model
                 model_dir = project.get_project_dir() / "models"
-                model_path = model_dir / f"{selected_model}_model.pkl"
+
+                # Try classifier pattern first, then anomaly model pattern
+                model_path = model_dir / f"{selected_model}_classifier.pkl"
+                if not model_path.exists():
+                    model_path = model_dir / f"{selected_model}_model.pkl"
+
                 scaler_path = model_dir / f"{selected_model}_scaler.pkl"
 
                 if not model_path.exists():
@@ -560,12 +565,13 @@ class DSPPanel(ctk.CTkFrame):
         if not project:
             return
 
-        # Find all trained models
+        # Find all trained models (classifiers or anomaly models)
         model_dir = project.get_project_dir() / "models"
         if model_dir.exists():
-            models = list(model_dir.glob("*_model.pkl"))
+            # Look for both classifier and anomaly model patterns
+            models = list(model_dir.glob("*_classifier.pkl")) + list(model_dir.glob("*_model.pkl"))
             if models:
-                model_names = [m.stem.replace('_model', '') for m in models]
+                model_names = [m.stem.replace('_classifier', '').replace('_model', '') for m in models]
 
                 # Update dropdown
                 self.model_menu.configure(values=model_names, state="normal")

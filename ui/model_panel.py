@@ -358,15 +358,12 @@ class ModelPanel(ctk.CTkFrame):
         # Control buttons
         ctk.CTkLabel(
             left_column,
-            text="Controls:",
+            text="Zoom Controls:",
             font=("Segoe UI", 11, "bold")
         ).grid(row=9, column=0, sticky="w", padx=10, pady=(5, 3))
 
-        # ZOOM controls
-        ctk.CTkLabel(left_column, text="Zoom", font=("Segoe UI", 9, "bold"), text_color="gray").grid(row=10, column=0, sticky="w", padx=10, pady=(3, 2))
-
         zoom_frame = ctk.CTkFrame(left_column, fg_color="transparent")
-        zoom_frame.grid(row=11, column=0, padx=10, pady=2, sticky="ew")
+        zoom_frame.grid(row=10, column=0, padx=10, pady=2, sticky="ew")
 
         self.zoom_in_btn = ctk.CTkButton(zoom_frame, text="➕ In", width=65, height=28, font=("Segoe UI", 9),
                                           command=self._zoom_in_3d, fg_color="#2B7A0B", hover_color="#1F5A08")
@@ -379,50 +376,6 @@ class ModelPanel(ctk.CTkFrame):
         self.zoom_reset_btn = ctk.CTkButton(zoom_frame, text="↻", width=45, height=28, font=("Segoe UI", 12),
                                              command=self._reset_zoom_3d, fg_color="#555555", hover_color="#333333")
         self.zoom_reset_btn.pack(side="left", padx=2)
-
-        # PAN controls
-        ctk.CTkLabel(left_column, text="Pan", font=("Segoe UI", 9, "bold"), text_color="gray").grid(row=12, column=0, sticky="w", padx=10, pady=(5, 2))
-
-        pan_frame = ctk.CTkFrame(left_column, fg_color="transparent")
-        pan_frame.grid(row=13, column=0, padx=10, pady=2, sticky="ew")
-
-        self.pan_up_btn = ctk.CTkButton(pan_frame, text="▲", width=45, height=26, font=("Segoe UI", 11),
-                                         command=self._pan_up_3d, fg_color="#6A0DAD", hover_color="#4B0082")
-        self.pan_up_btn.pack(side="left", padx=2)
-
-        self.pan_left_btn = ctk.CTkButton(pan_frame, text="◄", width=45, height=26, font=("Segoe UI", 11),
-                                           command=self._pan_left_3d, fg_color="#6A0DAD", hover_color="#4B0082")
-        self.pan_left_btn.pack(side="left", padx=2)
-
-        self.pan_down_btn = ctk.CTkButton(pan_frame, text="▼", width=45, height=26, font=("Segoe UI", 11),
-                                           command=self._pan_down_3d, fg_color="#6A0DAD", hover_color="#4B0082")
-        self.pan_down_btn.pack(side="left", padx=2)
-
-        self.pan_right_btn = ctk.CTkButton(pan_frame, text="►", width=45, height=26, font=("Segoe UI", 11),
-                                            command=self._pan_right_3d, fg_color="#6A0DAD", hover_color="#4B0082")
-        self.pan_right_btn.pack(side="left", padx=2)
-
-        # ROTATE controls
-        ctk.CTkLabel(left_column, text="Rotate", font=("Segoe UI", 9, "bold"), text_color="gray").grid(row=14, column=0, sticky="w", padx=10, pady=(5, 2))
-
-        rotate_frame = ctk.CTkFrame(left_column, fg_color="transparent")
-        rotate_frame.grid(row=15, column=0, padx=10, pady=2, sticky="ew")
-
-        self.rotate_left_btn = ctk.CTkButton(rotate_frame, text="⬅", width=45, height=26, font=("Segoe UI", 11),
-                                               command=self._rotate_left_3d, fg_color="#8B4513", hover_color="#654321")
-        self.rotate_left_btn.pack(side="left", padx=2)
-
-        self.rotate_up_btn = ctk.CTkButton(rotate_frame, text="⬆", width=45, height=26, font=("Segoe UI", 11),
-                                             command=self._rotate_up_3d, fg_color="#8B4513", hover_color="#654321")
-        self.rotate_up_btn.pack(side="left", padx=2)
-
-        self.rotate_down_btn = ctk.CTkButton(rotate_frame, text="⬇", width=45, height=26, font=("Segoe UI", 11),
-                                               command=self._rotate_down_3d, fg_color="#8B4513", hover_color="#654321")
-        self.rotate_down_btn.pack(side="left", padx=2)
-
-        self.rotate_right_btn = ctk.CTkButton(rotate_frame, text="➡", width=45, height=26, font=("Segoe UI", 11),
-                                                command=self._rotate_right_3d, fg_color="#8B4513", hover_color="#654321")
-        self.rotate_right_btn.pack(side="left", padx=2)
 
         # RIGHT COLUMN: 3D plot only
         plot_frame = ctk.CTkFrame(tab)
@@ -440,7 +393,7 @@ class ModelPanel(ctk.CTkFrame):
         self.explorer_fig.subplots_adjust(left=0.0, right=1.0, top=0.98, bottom=0.0)
 
         self.explorer_ax = self.explorer_fig.add_subplot(111, projection='3d')
-        self.explorer_ax.set_title("Select features and click 'Visualize in 3D'", fontsize=14)
+        # No title to maximize graph space
         self.explorer_ax.set_xlabel("X")
         self.explorer_ax.set_ylabel("Y")
         self.explorer_ax.set_zlabel("Z")
@@ -1147,7 +1100,7 @@ class ModelPanel(ctk.CTkFrame):
             self.explorer_ax.set_xlabel(x_feature, fontsize=10)
             self.explorer_ax.set_ylabel(y_feature, fontsize=10)
             self.explorer_ax.set_zlabel(z_feature, fontsize=10)
-            self.explorer_ax.set_title(f"3D Feature Space ({len(labels)} samples)", fontsize=14, fontweight='bold')
+            # No title to maximize graph space
             self.explorer_ax.legend(loc='upper right', fontsize=9)
 
             # Redraw canvas
@@ -1431,17 +1384,37 @@ class ModelPanel(ctk.CTkFrame):
 
         # Check if model already trained
         if project.model.trained and project.model.model_path:
-            # Find all trained models
+            logger.info(f"Loading existing trained model: {project.model.model_path}")
+
+            # Find all trained models (classifiers or anomaly models)
             model_dir = project.get_project_dir() / "models"
             if model_dir.exists():
-                models = list(model_dir.glob("*_model.pkl"))
+                # Look for both classifier and anomaly model patterns
+                models = list(model_dir.glob("*_classifier.pkl")) + list(model_dir.glob("*_model.pkl"))
                 if models:
+                    logger.info(f"Found {len(models)} trained model(s)")
+
+                    # Update Training tab - show trained status
+                    self.progress_label.configure(
+                        text="✓ Model already trained",
+                        text_color="green"
+                    )
+                    self.train_btn.configure(state="normal", text="Re-train Model")
+
+                    # Load and display training metrics if available
+                    if project.model.metrics:
+                        metrics_text = "Training Metrics:\n"
+                        for key, value in project.model.metrics.items():
+                            metrics_text += f"  {key}: {value:.4f}\n"
+                        self._log_training(metrics_text)
+
+                    # Update Export tab
                     self.export_status_label.configure(
                         text=f"✓ {len(models)} model(s) trained",
                         text_color="green"
                     )
                     # Show all models in the label
-                    model_names = [m.stem.replace('_model', '') for m in models]
+                    model_names = [m.stem.replace('_classifier', '').replace('_model', '') for m in models]
                     self.model_path_label.configure(
                         text=f"Algorithms: {', '.join(model_names)}"
                     )
@@ -1451,6 +1424,10 @@ class ModelPanel(ctk.CTkFrame):
                     # Load model to populate Explorer tab (classification only)
                     if project.data.task_type == "classification":
                         self._load_existing_model_for_explorer(models[0])
+                else:
+                    logger.warning(f"Model marked as trained but no model files found in {model_dir}")
+            else:
+                logger.warning(f"Model marked as trained but model directory doesn't exist: {model_dir}")
 
     def _load_existing_model_for_explorer(self, model_path: Path):
         """Load existing trained model and populate Explorer tab."""

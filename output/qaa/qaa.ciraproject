@@ -4,7 +4,7 @@
   "domain": "rotating_machinery",
   "description": "",
   "created_at": "2025-12-13T16:07:46.504796",
-  "modified_at": "2025-12-14T09:54:02.649847",
+  "modified_at": "2025-12-14T14:46:48.380036",
   "version": "1.0.0",
   "project_path": "D:\\CiRA FES\\output\\qaa\\qaa.ciraproject",
   "data": {
@@ -25238,15 +25238,17 @@
     "per_class_metrics": {}
   },
   "build": {
-    "target_platform": "x86",
+    "target_platform": "cortex-m4",
     "build_type": "Release",
-    "output_dir": null,
+    "output_dir": "D:\\CiRA FES\\output\\qaa\\firmware\\mlp",
     "firmware_file": null
   },
   "current_stage": "data",
   "completed_stages": [
     "data",
     "features",
-    "llm"
+    "llm",
+    "model",
+    "build"
   ]
 }

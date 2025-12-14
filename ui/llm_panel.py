@@ -1039,4 +1039,88 @@ Be specific, actionable, and explain your reasoning clearly.
             )
             self._selection_complete(selection)
 
+            # Try to load feature stats cache if available
+            try:
+                if project.features.filtered_features:
+                    features_path = Path(project.features.filtered_features)
+                else:
+                    features_path = Path(project.features.extracted_features)
+
+                if features_path.exists():
+                    import pickle
+                    with open(features_path, 'rb') as f:
+                        features_df = pickle.load(f)
+
+                    # Load windows for labels
+                    if project.data.train_test_split_type == "manual":
+                        if project.data.train_windows_file:
+                            with open(project.data.train_windows_file, 'rb') as f:
+                                train_windows = pickle.load(f)
+                            windows = train_windows
+                            if project.data.test_windows_file:
+                                with open(project.data.test_windows_file, 'rb') as f:
+                                    test_windows = pickle.load(f)
+                                windows = train_windows + test_windows
+                        else:
+                            windows = []
+                    else:
+                        windows = project.load_windows()
+
+                    labels = [w.class_label if hasattr(w, 'class_label') and w.class_label else "unknown" for w in windows]
+
+                    # Calculate stats for selected features only
+                    import numpy as np
+                    from sklearn.feature_selection import mutual_info_classif
+                    from sklearn.preprocessing import LabelEncoder
+
+                    self.feature_importance_cache = {}
+                    self.feature_stats_cache = {}
+
+                    unique_labels = sorted(set(labels))
+                    for feat in self.selected_features:
+                        if feat in features_df.columns:
+                            # Importance
+                            self.feature_importance_cache[feat] = features_df[feat].abs().mean()
+
+                            # Per-class stats
+                            class_stats = {}
+                            for label in unique_labels:
+                                label_mask = [l == label for l in labels]
+                                class_data = features_df[feat][label_mask]
+                                class_stats[label] = {
+                                    'mean': float(class_data.mean()),
+                                    'std': float(class_data.std()),
+                                    'min': float(class_data.min()),
+                                    'max': float(class_data.max())
+                                }
+                            self.feature_stats_cache[feat] = class_stats
+
+                    # Calculate MI scores
+                    X_selected = features_df[self.selected_features].values
+                    le = LabelEncoder()
+                    y_encoded = le.fit_transform(labels)
+                    mi_scores = mutual_info_classif(X_selected, y_encoded, random_state=42)
+
+                    for feat, mi_score in zip(self.selected_features, mi_scores):
+                        if feat in self.feature_stats_cache:
+                            self.feature_stats_cache[feat]['mi_score'] = float(mi_score)
+
+                    logger.info("Feature stats cache loaded successfully")
+
+            except Exception as e:
+                logger.warning(f"Could not load feature stats cache: {e}")
+
+            # Enable analysis button if LLM is loaded and features are selected
+            if self.llm_manager and self.llm_manager.is_loaded and self.selected_features:
+                self.analyze_btn.configure(state="normal")
+                self.analysis_info_label.configure(
+                    text="✓ Ready to generate LLM analysis and recommendations",
+                    text_color="green"
+                )
+            elif self.selected_features:
+                self.analysis_info_label.configure(
+                    text="⚠️ Load LLM model first to generate analysis",
+                    text_color="orange"
+                )
+
         self._update_selection_info()

@@ -57,24 +57,32 @@ class ModelPanel(ctk.CTkFrame):
         """Create algorithm selection tab."""
         tab = self.notebook.tab("Algorithm")
         tab.grid_columnconfigure(0, weight=1)
+        tab.grid_columnconfigure(1, weight=1)
+        tab.grid_rowconfigure(1, weight=1)
 
         # Get task mode from project
         task_mode = "anomaly_detection"
         if self.project_manager.current_project:
             task_mode = self.project_manager.current_project.data.task_type
 
-        # Title (dynamic based on task mode)
+        # Title (dynamic based on task mode) - spans both columns
         title_text = "Select Classification Algorithm" if task_mode == "classification" else "Select Anomaly Detection Algorithm"
         self.title_label = ctk.CTkLabel(
             tab,
             text=title_text,
             font=ctk.CTkFont(size=16, weight="bold")
         )
-        self.title_label.grid(row=0, column=0, padx=20, pady=(20, 10), sticky="w")
+        self.title_label.grid(row=0, column=0, columnspan=2, padx=20, pady=(20, 10), sticky="w")
 
-        # Algorithm info frame
-        info_frame = ctk.CTkFrame(tab)
-        info_frame.grid(row=1, column=0, padx=20, pady=10, sticky="ew")
+        # LEFT COLUMN: Algorithm selection
+        left_column = ctk.CTkFrame(tab)
+        left_column.grid(row=1, column=0, padx=(20, 5), pady=10, sticky="nsew")
+        left_column.grid_columnconfigure(0, weight=1)
+        left_column.grid_rowconfigure(1, weight=1)
+
+        # Algorithm info frame (in left column)
+        info_frame = ctk.CTkFrame(left_column)
+        info_frame.grid(row=0, column=0, padx=10, pady=10, sticky="ew")
         info_frame.grid_columnconfigure(1, weight=1)
 
         ctk.CTkLabel(info_frame, text="Selected Features:").grid(
@@ -101,11 +109,11 @@ class ModelPanel(ctk.CTkFrame):
         )
         self.recommendation_label.grid(row=2, column=1, padx=10, pady=5, sticky="w")
 
-        # Algorithm selection
-        selection_frame = ctk.CTkFrame(tab)
-        selection_frame.grid(row=2, column=0, padx=20, pady=10, sticky="nsew")
+        # Algorithm selection list (in left column)
+        selection_frame = ctk.CTkFrame(left_column)
+        selection_frame.grid(row=1, column=0, padx=10, pady=(0, 10), sticky="nsew")
         selection_frame.grid_columnconfigure(0, weight=1)
-        tab.grid_rowconfigure(2, weight=1)
+        selection_frame.grid_rowconfigure(1, weight=1)
 
         ctk.CTkLabel(
             selection_frame,
@@ -114,10 +122,9 @@ class ModelPanel(ctk.CTkFrame):
         ).grid(row=0, column=0, padx=10, pady=10, sticky="w")
 
         # Scrollable frame for algorithms
-        scroll_frame = ctk.CTkScrollableFrame(selection_frame, height=300)
-        scroll_frame.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
+        scroll_frame = ctk.CTkScrollableFrame(selection_frame)
+        scroll_frame.grid(row=1, column=0, padx=10, pady=(0, 10), sticky="nsew")
         scroll_frame.grid_columnconfigure(0, weight=1)
-        selection_frame.grid_rowconfigure(1, weight=1)
 
         # Algorithm radio buttons (dynamic based on task mode)
         algorithms = CLASSIFIERS if task_mode == "classification" else ALGORITHMS
@@ -141,28 +148,29 @@ class ModelPanel(ctk.CTkFrame):
 
             desc = ctk.CTkLabel(
                 frame,
-                text=f"{algo_info['description']} • {algo_info['recommended_for']}",
+                text=f"{algo_info['description']}",
                 text_color="gray",
-                wraplength=400,
+                wraplength=350,
                 justify="left"
             )
             desc.grid(row=0, column=1, padx=10, sticky="w")
 
             row += 1
 
-        # Algorithm details
-        details_frame = ctk.CTkFrame(tab)
-        details_frame.grid(row=3, column=0, padx=20, pady=10, sticky="ew")
-        details_frame.grid_columnconfigure(0, weight=1)
+        # RIGHT COLUMN: Algorithm details
+        right_column = ctk.CTkFrame(tab)
+        right_column.grid(row=1, column=1, padx=(5, 20), pady=10, sticky="nsew")
+        right_column.grid_columnconfigure(0, weight=1)
+        right_column.grid_rowconfigure(1, weight=1)
 
         ctk.CTkLabel(
-            details_frame,
+            right_column,
             text="Algorithm Details:",
             font=ctk.CTkFont(size=14, weight="bold")
         ).grid(row=0, column=0, padx=10, pady=10, sticky="w")
 
-        self.algo_details_text = ctk.CTkTextbox(details_frame, height=100)
-        self.algo_details_text.grid(row=1, column=0, padx=10, pady=10, sticky="ew")
+        self.algo_details_text = ctk.CTkTextbox(right_column)
+        self.algo_details_text.grid(row=1, column=0, padx=10, pady=(0, 10), sticky="nsew")
 
         self._on_algorithm_change()
 
@@ -622,11 +630,18 @@ class ModelPanel(ctk.CTkFrame):
         algorithms = CLASSIFIERS if task_mode == "classification" else ALGORITHMS
         algo_info = algorithms.get(algo_id, algorithms[list(algorithms.keys())[0]])
 
-        # Update details
-        details = f"Algorithm: {algo_info['name']}\n\n"
-        details += f"Description: {algo_info['description']}\n\n"
-        details += f"Recommended for: {algo_info['recommended_for']}\n\n"
-        details += f"Default parameters: {algo_info['params']}"
+        # Update details with better formatting
+        details = f"═══ {algo_info['name']} ═══\n\n"
+        details += f"📝 Description:\n{algo_info['description']}\n\n"
+        details += f"🎯 Recommended for:\n{algo_info['recommended_for']}\n\n"
+        details += f"⚙️ Default Parameters:\n"
+
+        # Format parameters nicely
+        if isinstance(algo_info['params'], dict):
+            for key, value in algo_info['params'].items():
+                details += f"  • {key}: {value}\n"
+        else:
+            details += f"{algo_info['params']}\n"
 
         self.algo_details_text.delete("1.0", "end")
         self.algo_details_text.insert("1.0", details)

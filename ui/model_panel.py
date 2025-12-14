@@ -307,59 +307,126 @@ class ModelPanel(ctk.CTkFrame):
     def _create_explorer_tab(self):
         """Create feature explorer tab with 3D visualization."""
         tab = self.notebook.tab("Explorer")
-        tab.grid_columnconfigure(0, weight=1)
-        tab.grid_rowconfigure(1, weight=1)  # Give 3D plot more space
+        tab.grid_columnconfigure(0, weight=0)  # Left column fixed width
+        tab.grid_columnconfigure(1, weight=1)  # Right column expands
+        tab.grid_rowconfigure(0, weight=1)
 
-        # Feature selection for 3D (removed feature importance chart)
-        selection_frame = ctk.CTkFrame(tab)
-        selection_frame.grid(row=0, column=0, sticky="ew", padx=10, pady=(10, 5))
-        selection_frame.grid_columnconfigure((1, 3, 5), weight=1)
+        # LEFT COLUMN: All settings and controls
+        left_column = ctk.CTkFrame(tab)
+        left_column.grid(row=0, column=0, sticky="nsew", padx=(10, 5), pady=10)
 
+        # Feature selection
         ctk.CTkLabel(
-            selection_frame,
-            text="Select 3 features to visualize:",
+            left_column,
+            text="Select 3 features:",
             font=("Segoe UI", 12, "bold")
-        ).grid(row=0, column=0, columnspan=6, sticky="w", padx=10, pady=(10, 5))
+        ).grid(row=0, column=0, sticky="w", padx=10, pady=(10, 5))
 
         # X-Axis
-        ctk.CTkLabel(selection_frame, text="X-Axis:", font=("Segoe UI", 11)).grid(row=1, column=0, padx=(10, 5), pady=5, sticky="e")
+        ctk.CTkLabel(left_column, text="X-Axis:", font=("Segoe UI", 10)).grid(row=1, column=0, padx=10, pady=3, sticky="w")
         self.explorer_x_var = ctk.StringVar(value="No features available")
-        self.explorer_x_menu = ctk.CTkOptionMenu(selection_frame, variable=self.explorer_x_var, values=["No features available"], width=250)
-        self.explorer_x_menu.grid(row=1, column=1, padx=5, pady=5, sticky="ew")
+        self.explorer_x_menu = ctk.CTkOptionMenu(left_column, variable=self.explorer_x_var, values=["No features available"], width=200)
+        self.explorer_x_menu.grid(row=2, column=0, padx=10, pady=3, sticky="ew")
 
         # Y-Axis
-        ctk.CTkLabel(selection_frame, text="Y-Axis:", font=("Segoe UI", 11)).grid(row=1, column=2, padx=(10, 5), pady=5, sticky="e")
+        ctk.CTkLabel(left_column, text="Y-Axis:", font=("Segoe UI", 10)).grid(row=3, column=0, padx=10, pady=3, sticky="w")
         self.explorer_y_var = ctk.StringVar(value="No features available")
-        self.explorer_y_menu = ctk.CTkOptionMenu(selection_frame, variable=self.explorer_y_var, values=["No features available"], width=250)
-        self.explorer_y_menu.grid(row=1, column=3, padx=5, pady=5, sticky="ew")
+        self.explorer_y_menu = ctk.CTkOptionMenu(left_column, variable=self.explorer_y_var, values=["No features available"], width=200)
+        self.explorer_y_menu.grid(row=4, column=0, padx=10, pady=3, sticky="ew")
 
         # Z-Axis
-        ctk.CTkLabel(selection_frame, text="Z-Axis:", font=("Segoe UI", 11)).grid(row=1, column=4, padx=(10, 5), pady=5, sticky="e")
+        ctk.CTkLabel(left_column, text="Z-Axis:", font=("Segoe UI", 10)).grid(row=5, column=0, padx=10, pady=3, sticky="w")
         self.explorer_z_var = ctk.StringVar(value="No features available")
-        self.explorer_z_menu = ctk.CTkOptionMenu(selection_frame, variable=self.explorer_z_var, values=["No features available"], width=250)
-        self.explorer_z_menu.grid(row=1, column=5, padx=5, pady=5, sticky="ew")
+        self.explorer_z_menu = ctk.CTkOptionMenu(left_column, variable=self.explorer_z_var, values=["No features available"], width=200)
+        self.explorer_z_menu.grid(row=6, column=0, padx=10, pady=3, sticky="ew")
 
         # Visualize button
         self.explorer_visualize_btn = ctk.CTkButton(
-            selection_frame,
+            left_column,
             text="🚀 Visualize in 3D",
             command=self._visualize_3d_explorer,
-            height=35,
+            height=40,
             font=("Segoe UI", 12, "bold"),
             fg_color="green",
             hover_color="darkgreen"
         )
-        self.explorer_visualize_btn.grid(row=2, column=0, columnspan=6, padx=10, pady=10)
+        self.explorer_visualize_btn.grid(row=7, column=0, padx=10, pady=(10, 5), sticky="ew")
 
-        # 3D Plot container with two rows: graph (top) and controls (bottom)
-        plot_container = ctk.CTkFrame(tab)
-        plot_container.grid(row=1, column=0, sticky="nsew", padx=5, pady=5)
-        plot_container.grid_columnconfigure(0, weight=1)  # Full width
-        plot_container.grid_rowconfigure(0, weight=1)     # Graph row expands
+        # Separator
+        ctk.CTkLabel(left_column, text="─" * 30, text_color="gray").grid(row=8, column=0, pady=5)
 
-        # TOP ROW: 3D plot (full width, responsive)
-        plot_frame = ctk.CTkFrame(plot_container)
-        plot_frame.grid(row=0, column=0, sticky="nsew", padx=0, pady=(0, 5))
+        # Control buttons
+        ctk.CTkLabel(
+            left_column,
+            text="Controls:",
+            font=("Segoe UI", 11, "bold")
+        ).grid(row=9, column=0, sticky="w", padx=10, pady=(5, 3))
+
+        # ZOOM controls
+        ctk.CTkLabel(left_column, text="Zoom", font=("Segoe UI", 9, "bold"), text_color="gray").grid(row=10, column=0, sticky="w", padx=10, pady=(3, 2))
+
+        zoom_frame = ctk.CTkFrame(left_column, fg_color="transparent")
+        zoom_frame.grid(row=11, column=0, padx=10, pady=2, sticky="ew")
+
+        self.zoom_in_btn = ctk.CTkButton(zoom_frame, text="➕ In", width=65, height=28, font=("Segoe UI", 9),
+                                          command=self._zoom_in_3d, fg_color="#2B7A0B", hover_color="#1F5A08")
+        self.zoom_in_btn.pack(side="left", padx=2)
+
+        self.zoom_out_btn = ctk.CTkButton(zoom_frame, text="➖ Out", width=65, height=28, font=("Segoe UI", 9),
+                                           command=self._zoom_out_3d, fg_color="#1F538D", hover_color="#14375E")
+        self.zoom_out_btn.pack(side="left", padx=2)
+
+        self.zoom_reset_btn = ctk.CTkButton(zoom_frame, text="↻", width=45, height=28, font=("Segoe UI", 12),
+                                             command=self._reset_zoom_3d, fg_color="#555555", hover_color="#333333")
+        self.zoom_reset_btn.pack(side="left", padx=2)
+
+        # PAN controls
+        ctk.CTkLabel(left_column, text="Pan", font=("Segoe UI", 9, "bold"), text_color="gray").grid(row=12, column=0, sticky="w", padx=10, pady=(5, 2))
+
+        pan_frame = ctk.CTkFrame(left_column, fg_color="transparent")
+        pan_frame.grid(row=13, column=0, padx=10, pady=2, sticky="ew")
+
+        self.pan_up_btn = ctk.CTkButton(pan_frame, text="▲", width=45, height=26, font=("Segoe UI", 11),
+                                         command=self._pan_up_3d, fg_color="#6A0DAD", hover_color="#4B0082")
+        self.pan_up_btn.pack(side="left", padx=2)
+
+        self.pan_left_btn = ctk.CTkButton(pan_frame, text="◄", width=45, height=26, font=("Segoe UI", 11),
+                                           command=self._pan_left_3d, fg_color="#6A0DAD", hover_color="#4B0082")
+        self.pan_left_btn.pack(side="left", padx=2)
+
+        self.pan_down_btn = ctk.CTkButton(pan_frame, text="▼", width=45, height=26, font=("Segoe UI", 11),
+                                           command=self._pan_down_3d, fg_color="#6A0DAD", hover_color="#4B0082")
+        self.pan_down_btn.pack(side="left", padx=2)
+
+        self.pan_right_btn = ctk.CTkButton(pan_frame, text="►", width=45, height=26, font=("Segoe UI", 11),
+                                            command=self._pan_right_3d, fg_color="#6A0DAD", hover_color="#4B0082")
+        self.pan_right_btn.pack(side="left", padx=2)
+
+        # ROTATE controls
+        ctk.CTkLabel(left_column, text="Rotate", font=("Segoe UI", 9, "bold"), text_color="gray").grid(row=14, column=0, sticky="w", padx=10, pady=(5, 2))
+
+        rotate_frame = ctk.CTkFrame(left_column, fg_color="transparent")
+        rotate_frame.grid(row=15, column=0, padx=10, pady=2, sticky="ew")
+
+        self.rotate_left_btn = ctk.CTkButton(rotate_frame, text="⬅", width=45, height=26, font=("Segoe UI", 11),
+                                               command=self._rotate_left_3d, fg_color="#8B4513", hover_color="#654321")
+        self.rotate_left_btn.pack(side="left", padx=2)
+
+        self.rotate_up_btn = ctk.CTkButton(rotate_frame, text="⬆", width=45, height=26, font=("Segoe UI", 11),
+                                             command=self._rotate_up_3d, fg_color="#8B4513", hover_color="#654321")
+        self.rotate_up_btn.pack(side="left", padx=2)
+
+        self.rotate_down_btn = ctk.CTkButton(rotate_frame, text="⬇", width=45, height=26, font=("Segoe UI", 11),
+                                               command=self._rotate_down_3d, fg_color="#8B4513", hover_color="#654321")
+        self.rotate_down_btn.pack(side="left", padx=2)
+
+        self.rotate_right_btn = ctk.CTkButton(rotate_frame, text="➡", width=45, height=26, font=("Segoe UI", 11),
+                                                command=self._rotate_right_3d, fg_color="#8B4513", hover_color="#654321")
+        self.rotate_right_btn.pack(side="left", padx=2)
+
+        # RIGHT COLUMN: 3D plot only
+        plot_frame = ctk.CTkFrame(tab)
+        plot_frame.grid(row=0, column=1, sticky="nsew", padx=(5, 10), pady=10)
         plot_frame.grid_columnconfigure(0, weight=1)
         plot_frame.grid_rowconfigure(0, weight=1)
 
@@ -388,188 +455,6 @@ class ModelPanel(ctk.CTkFrame):
         self.explorer_canvas.draw()
         # Pack instead of grid to allow responsive resizing
         self.explorer_canvas.get_tk_widget().pack(fill="both", expand=True)
-
-        # BOTTOM ROW: All controls in horizontal layout (no scrolling)
-        controls_row = ctk.CTkFrame(plot_container, fg_color="transparent")
-        controls_row.grid(row=1, column=0, sticky="ew", padx=0, pady=0)
-
-        # Organize controls in groups horizontally
-        col = 0
-
-        # ZOOM GROUP
-        ctk.CTkLabel(
-            controls_row,
-            text="Zoom:",
-            font=("Segoe UI", 10, "bold")
-        ).grid(row=0, column=col, padx=(5, 3), pady=5, sticky="e")
-        col += 1
-
-        self.zoom_in_btn = ctk.CTkButton(
-            controls_row,
-            text="➕ In",
-            width=60,
-            height=32,
-            font=("Segoe UI", 9),
-            command=self._zoom_in_3d,
-            fg_color="#2B7A0B",
-            hover_color="#1F5A08"
-        )
-        self.zoom_in_btn.grid(row=0, column=col, padx=2, pady=5)
-        col += 1
-
-        self.zoom_out_btn = ctk.CTkButton(
-            controls_row,
-            text="➖ Out",
-            width=60,
-            height=32,
-            font=("Segoe UI", 9),
-            command=self._zoom_out_3d,
-            fg_color="#1F538D",
-            hover_color="#14375E"
-        )
-        self.zoom_out_btn.grid(row=0, column=col, padx=2, pady=5)
-        col += 1
-
-        self.zoom_reset_btn = ctk.CTkButton(
-            controls_row,
-            text="↻",
-            width=40,
-            height=32,
-            font=("Segoe UI", 12),
-            command=self._reset_zoom_3d,
-            fg_color="#555555",
-            hover_color="#333333"
-        )
-        self.zoom_reset_btn.grid(row=0, column=col, padx=2, pady=5)
-        col += 1
-
-        # SEPARATOR
-        ctk.CTkLabel(controls_row, text="|", font=("Segoe UI", 14), text_color="gray").grid(row=0, column=col, padx=8, pady=5)
-        col += 1
-
-        # PAN GROUP
-        ctk.CTkLabel(
-            controls_row,
-            text="Pan:",
-            font=("Segoe UI", 10, "bold")
-        ).grid(row=0, column=col, padx=(5, 3), pady=5, sticky="e")
-        col += 1
-
-        self.pan_up_btn = ctk.CTkButton(
-            controls_row,
-            text="▲",
-            width=40,
-            height=32,
-            font=("Segoe UI", 12),
-            command=self._pan_up_3d,
-            fg_color="#6A0DAD",
-            hover_color="#4B0082"
-        )
-        self.pan_up_btn.grid(row=0, column=col, padx=2, pady=5)
-        col += 1
-
-        self.pan_left_btn = ctk.CTkButton(
-            controls_row,
-            text="◄",
-            width=40,
-            height=32,
-            font=("Segoe UI", 12),
-            command=self._pan_left_3d,
-            fg_color="#6A0DAD",
-            hover_color="#4B0082"
-        )
-        self.pan_left_btn.grid(row=0, column=col, padx=2, pady=5)
-        col += 1
-
-        self.pan_down_btn = ctk.CTkButton(
-            controls_row,
-            text="▼",
-            width=40,
-            height=32,
-            font=("Segoe UI", 12),
-            command=self._pan_down_3d,
-            fg_color="#6A0DAD",
-            hover_color="#4B0082"
-        )
-        self.pan_down_btn.grid(row=0, column=col, padx=2, pady=5)
-        col += 1
-
-        self.pan_right_btn = ctk.CTkButton(
-            controls_row,
-            text="►",
-            width=40,
-            height=32,
-            font=("Segoe UI", 12),
-            command=self._pan_right_3d,
-            fg_color="#6A0DAD",
-            hover_color="#4B0082"
-        )
-        self.pan_right_btn.grid(row=0, column=col, padx=2, pady=5)
-        col += 1
-
-        # SEPARATOR
-        ctk.CTkLabel(controls_row, text="|", font=("Segoe UI", 14), text_color="gray").grid(row=0, column=col, padx=8, pady=5)
-        col += 1
-
-        # ROTATE GROUP
-        ctk.CTkLabel(
-            controls_row,
-            text="Rotate:",
-            font=("Segoe UI", 10, "bold")
-        ).grid(row=0, column=col, padx=(5, 3), pady=5, sticky="e")
-        col += 1
-
-        self.rotate_left_btn = ctk.CTkButton(
-            controls_row,
-            text="⬅",
-            width=40,
-            height=32,
-            font=("Segoe UI", 12),
-            command=self._rotate_left_3d,
-            fg_color="#8B4513",
-            hover_color="#654321"
-        )
-        self.rotate_left_btn.grid(row=0, column=col, padx=2, pady=5)
-        col += 1
-
-        self.rotate_up_btn = ctk.CTkButton(
-            controls_row,
-            text="⬆",
-            width=40,
-            height=32,
-            font=("Segoe UI", 12),
-            command=self._rotate_up_3d,
-            fg_color="#8B4513",
-            hover_color="#654321"
-        )
-        self.rotate_up_btn.grid(row=0, column=col, padx=2, pady=5)
-        col += 1
-
-        self.rotate_down_btn = ctk.CTkButton(
-            controls_row,
-            text="⬇",
-            width=40,
-            height=32,
-            font=("Segoe UI", 12),
-            command=self._rotate_down_3d,
-            fg_color="#8B4513",
-            hover_color="#654321"
-        )
-        self.rotate_down_btn.grid(row=0, column=col, padx=2, pady=5)
-        col += 1
-
-        self.rotate_right_btn = ctk.CTkButton(
-            controls_row,
-            text="➡",
-            width=40,
-            height=32,
-            font=("Segoe UI", 12),
-            command=self._rotate_right_3d,
-            fg_color="#8B4513",
-            hover_color="#654321"
-        )
-        self.rotate_right_btn.grid(row=0, column=col, padx=2, pady=5)
-        col += 1
 
     def _create_export_tab(self):
         """Create model export tab."""

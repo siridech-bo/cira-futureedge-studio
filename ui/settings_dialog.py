@@ -708,6 +708,54 @@ class SettingsDialog(ctk.CTkToplevel):
             ctk.CTkLabel(status_frame, text=hw_id, font=ctk.CTkFont(size=10)).grid(
                 row=row, column=1, padx=10, pady=2, sticky="w"
             )
+            row += 1
+
+        # Usage Tracking (FREE tier only)
+        if current_license and current_license.tier.name == "FREE":
+            # Add separator
+            ctk.CTkLabel(status_frame, text="", font=ctk.CTkFont(size=2)).grid(
+                row=row, column=0, columnspan=2, pady=3
+            )
+            row += 1
+
+            # Usage header
+            ctk.CTkLabel(
+                status_frame,
+                text="Trial Usage:",
+                font=ctk.CTkFont(size=11, weight="bold")
+            ).grid(row=row, column=0, columnspan=2, padx=10, pady=(3, 2), sticky="w")
+            row += 1
+
+            # Deep Learning usage
+            dl_used, dl_max = self.license_mgr.get_usage_info("dl")
+            dl_remaining = dl_max - dl_used
+            dl_color = "green" if dl_used < 7 else ("orange" if dl_used < 10 else "red")
+
+            ctk.CTkLabel(status_frame, text="Deep Learning:", font=ctk.CTkFont(size=10)).grid(
+                row=row, column=0, padx=10, pady=2, sticky="w"
+            )
+            ctk.CTkLabel(
+                status_frame,
+                text=f"{dl_used}/{dl_max} used ({dl_remaining} remaining)",
+                font=ctk.CTkFont(size=10),
+                text_color=dl_color
+            ).grid(row=row, column=1, padx=10, pady=2, sticky="w")
+            row += 1
+
+            # LLM usage
+            llm_used, llm_max = self.license_mgr.get_usage_info("llm")
+            llm_remaining = llm_max - llm_used
+            llm_color = "green" if llm_used < 7 else ("orange" if llm_used < 10 else "red")
+
+            ctk.CTkLabel(status_frame, text="LLM Analysis:", font=ctk.CTkFont(size=10)).grid(
+                row=row, column=0, padx=10, pady=2, sticky="w"
+            )
+            ctk.CTkLabel(
+                status_frame,
+                text=f"{llm_used}/{llm_max} used ({llm_remaining} remaining)",
+                font=ctk.CTkFont(size=10),
+                text_color=llm_color
+            ).grid(row=row, column=1, padx=10, pady=2, sticky="w")
 
         # Activation Frame
         activation_frame = ctk.CTkFrame(left_column)

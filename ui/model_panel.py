@@ -203,11 +203,33 @@ class ModelPanel(ctk.CTkFrame):
             text="🧠 Deep Learning Model - TimesNet",
             font=ctk.CTkFont(size=16, weight="bold")
         )
-        title_label.grid(row=0, column=0, columnspan=2, padx=20, pady=(20, 10), sticky="w")
+        title_label.grid(row=0, column=0, columnspan=2, padx=20, pady=(20, 5), sticky="w")
+
+        # Usage indicator (for FREE tier)
+        license_mgr = get_license_manager()
+        is_available, message, used, max_count = license_mgr.check_feature("dl")
+
+        if max_count > 0:  # FREE tier with limits
+            usage_color = "green" if used < 7 else ("orange" if used < 10 else "red")
+            self.dl_usage_label = ctk.CTkLabel(
+                tab,
+                text=f"🎯 Trial Usage: {used}/{max_count} trainings used - {message}",
+                font=ctk.CTkFont(size=11),
+                text_color=usage_color
+            )
+            self.dl_usage_label.grid(row=1, column=0, columnspan=2, padx=20, pady=(0, 10), sticky="w")
+        else:  # PRO/ENTERPRISE
+            self.dl_usage_label = ctk.CTkLabel(
+                tab,
+                text="✨ Unlimited deep learning training available",
+                font=ctk.CTkFont(size=11),
+                text_color="green"
+            )
+            self.dl_usage_label.grid(row=1, column=0, columnspan=2, padx=20, pady=(0, 10), sticky="w")
 
         # LEFT COLUMN: Data info
         left_column = ctk.CTkFrame(tab)
-        left_column.grid(row=1, column=0, padx=(20, 5), pady=10, sticky="nsew")
+        left_column.grid(row=2, column=0, padx=(20, 5), pady=10, sticky="nsew")
         left_column.grid_columnconfigure(0, weight=1)
 
         # Data info frame
@@ -276,7 +298,7 @@ class ModelPanel(ctk.CTkFrame):
 
         # RIGHT COLUMN: Info
         right_column = ctk.CTkFrame(tab)
-        right_column.grid(row=1, column=1, padx=(5, 20), pady=10, sticky="nsew")
+        right_column.grid(row=2, column=1, padx=(5, 20), pady=10, sticky="nsew")
         right_column.grid_columnconfigure(0, weight=1)
         right_column.grid_rowconfigure(1, weight=1)
 
@@ -735,16 +757,28 @@ class ModelPanel(ctk.CTkFrame):
 
     def _start_dl_training(self):
         """Start deep learning training with TimesNet."""
-        # Check license
+        # Check license and usage limits
         license_mgr = get_license_manager()
-        if not license_mgr.check_feature("dl"):
-            messagebox.showerror(
-                "Feature Locked",
-                "Deep Learning training requires a PRO or ENTERPRISE license.\n\n"
-                "Current tier: FREE (Community)\n\n"
-                "Please upgrade your license to access this feature.\n"
-                "Go to Settings > License to activate your license key."
-            )
+        is_available, message, used, max_count = license_mgr.check_feature("dl")
+
+        if not is_available:
+            if max_count > 0:  # FREE tier limit reached
+                messagebox.showerror(
+                    "Trial Limit Reached",
+                    f"Deep Learning Training - FREE Tier\n\n"
+                    f"{message}\n\n"
+                    f"You have used all {max_count} trial trainings.\n"
+                    f"Upgrade to PRO for unlimited deep learning training.\n\n"
+                    f"Go to Settings > License to activate your license key."
+                )
+            else:  # Feature not available in tier
+                messagebox.showerror(
+                    "Feature Locked",
+                    "Deep Learning training requires a PRO or ENTERPRISE license.\n\n"
+                    "Current tier: FREE (Community)\n\n"
+                    "Please upgrade your license to access this feature.\n"
+                    "Go to Settings > License to activate your license key."
+                )
             return
 
         project = self.project_manager.current_project
@@ -906,6 +940,18 @@ class ModelPanel(ctk.CTkFrame):
                 project.save()
 
                 self.training_results = results
+
+                # Increment usage counter for FREE tier
+                license_mgr.increment_usage("dl")
+
+                # Update usage indicator
+                is_available, message, used, max_count = license_mgr.check_feature("dl")
+                if max_count > 0:  # FREE tier
+                    usage_color = "green" if used < 7 else ("orange" if used < 10 else "red")
+                    self.dl_usage_label.configure(
+                        text=f"🎯 Trial Usage: {used}/{max_count} trainings used - {message}",
+                        text_color=usage_color
+                    )
 
                 # Re-enable controls
                 self.train_btn.configure(state="normal")

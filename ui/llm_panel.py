@@ -188,11 +188,33 @@ class LLMPanel(ctk.CTkFrame):
             font=("Segoe UI", 12),
             text_color="gray"
         )
-        self.selection_info_label.grid(row=0, column=0, columnspan=2, padx=20, pady=10)
+        self.selection_info_label.grid(row=0, column=0, columnspan=2, padx=20, pady=(10, 5))
+
+        # Usage indicator (for FREE tier)
+        license_mgr = get_license_manager()
+        is_available, message, used, max_count = license_mgr.check_feature("llm")
+
+        if max_count > 0:  # FREE tier with limits
+            usage_color = "green" if used < 7 else ("orange" if used < 10 else "red")
+            self.llm_usage_label = ctk.CTkLabel(
+                tab,
+                text=f"🎯 Trial Usage: {used}/{max_count} analyses used - {message}",
+                font=ctk.CTkFont(size=11),
+                text_color=usage_color
+            )
+            self.llm_usage_label.grid(row=1, column=0, columnspan=2, padx=20, pady=(0, 10))
+        else:  # PRO/ENTERPRISE
+            self.llm_usage_label = ctk.CTkLabel(
+                tab,
+                text="✨ Unlimited LLM-assisted feature selection available",
+                font=ctk.CTkFont(size=11),
+                text_color="green"
+            )
+            self.llm_usage_label.grid(row=1, column=0, columnspan=2, padx=20, pady=(0, 10))
 
         # LEFT COLUMN: Selection parameters
         params_frame = ctk.CTkFrame(tab)
-        params_frame.grid(row=1, column=0, sticky="nsew", padx=(10, 5), pady=10)
+        params_frame.grid(row=2, column=0, sticky="nsew", padx=(10, 5), pady=10)
         params_frame.grid_columnconfigure(1, weight=1)
 
         ctk.CTkLabel(
@@ -271,7 +293,7 @@ class LLMPanel(ctk.CTkFrame):
 
         # RIGHT COLUMN: Prompt Editor
         prompt_frame = ctk.CTkFrame(tab)
-        prompt_frame.grid(row=1, column=1, sticky="nsew", padx=(5, 10), pady=10)
+        prompt_frame.grid(row=2, column=1, sticky="nsew", padx=(5, 10), pady=10)
         prompt_frame.grid_columnconfigure(0, weight=1)
         prompt_frame.grid_rowconfigure(1, weight=1)
 
@@ -565,17 +587,30 @@ Reasoning:
 
     def _select_features(self) -> None:
         """Select features using LLM."""
-        # Check license
+        # Check license and usage limits
         license_mgr = get_license_manager()
-        if not license_mgr.check_feature("llm"):
-            messagebox.showerror(
-                "Feature Locked",
-                "LLM-assisted feature selection requires a PRO or ENTERPRISE license.\n\n"
-                "Current tier: FREE (Community)\n\n"
-                "You can still use statistical feature selection methods.\n"
-                "Please upgrade your license to access LLM features.\n"
-                "Go to Settings > License to activate your license key."
-            )
+        is_available, message, used, max_count = license_mgr.check_feature("llm")
+
+        if not is_available:
+            if max_count > 0:  # FREE tier limit reached
+                messagebox.showerror(
+                    "Trial Limit Reached",
+                    f"LLM Feature Selection - FREE Tier\n\n"
+                    f"{message}\n\n"
+                    f"You have used all {max_count} trial analyses.\n"
+                    f"Upgrade to PRO for unlimited LLM-assisted feature selection.\n\n"
+                    f"You can still use statistical feature selection methods.\n"
+                    f"Go to Settings > License to activate your license key."
+                )
+            else:  # Feature not available in tier
+                messagebox.showerror(
+                    "Feature Locked",
+                    "LLM-assisted feature selection requires a PRO or ENTERPRISE license.\n\n"
+                    "Current tier: FREE (Community)\n\n"
+                    "You can still use statistical feature selection methods.\n"
+                    "Please upgrade your license to access LLM features.\n"
+                    "Go to Settings > License to activate your license key."
+                )
             return
 
         # Get parameters
@@ -732,6 +767,19 @@ Reasoning:
 
     def _selection_complete(self, selection) -> None:
         """Handle successful feature selection."""
+        # Increment usage counter for FREE tier
+        license_mgr = get_license_manager()
+        license_mgr.increment_usage("llm")
+
+        # Update usage indicator
+        is_available, message, used, max_count = license_mgr.check_feature("llm")
+        if max_count > 0:  # FREE tier
+            usage_color = "green" if used < 7 else ("orange" if used < 10 else "red")
+            self.llm_usage_label.configure(
+                text=f"🎯 Trial Usage: {used}/{max_count} analyses used - {message}",
+                text_color=usage_color
+            )
+
         self.selection_progress_label.configure(
             text=f"✓ Selected {len(selection.selected_features)} features",
             text_color="green"

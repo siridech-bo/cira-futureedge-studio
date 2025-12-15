@@ -320,6 +320,115 @@ class LicenseManager:
 
         return base64.b64encode(bytes(encrypted)).decode()
 
+    def check_feature(self, feature_name: str) -> Tuple[bool, str, int, int]:
+        """
+        Check if feature is available, considering usage limits for FREE tier.
+
+        Args:
+            feature_name: Feature identifier (ml, dl, onnx, llm, etc.)
+
+        Returns:
+            Tuple of (is_available, message, used_count, max_count)
+            - is_available: True if feature can be used
+            - message: Status message for display
+            - used_count: Current usage count (0 for paid tiers)
+            - max_count: Maximum allowed (0 for paid tiers = unlimited)
+        """
+        license = self.get_current_license()
+
+        # For PRO/ENTERPRISE licenses, all features are unlimited
+        if license.tier.name != "FREE":
+            if license.has_feature(feature_name):
+                return True, "Unlimited", 0, 0
+            else:
+                return False, "Feature not available in this tier", 0, 0
+
+        # FREE tier: Check usage limits
+        if feature_name == "dl":
+            used = license.dl_training_count
+            max_allowed = 10
+            remaining = max_allowed - used
+
+            if remaining > 0:
+                return True, f"{remaining} trainings remaining", used, max_allowed
+            else:
+                return False, "Trial limit reached (10/10). Upgrade to PRO for unlimited.", used, max_allowed
+
+        elif feature_name == "llm":
+            used = license.llm_analysis_count
+            max_allowed = 10
+            remaining = max_allowed - used
+
+            if remaining > 0:
+                return True, f"{remaining} analyses remaining", used, max_allowed
+            else:
+                return False, "Trial limit reached (10/10). Upgrade to PRO for unlimited.", used, max_allowed
+
+        # Other features: use standard check
+        if license.has_feature(feature_name):
+            return True, "Available", 0, 0
+        else:
+            return False, "Feature not available in FREE tier", 0, 0
+
+    def increment_usage(self, feature_name: str) -> bool:
+        """
+        Increment usage counter for a feature (FREE tier only).
+
+        Args:
+            feature_name: Feature identifier (dl, llm)
+
+        Returns:
+            True if increment successful, False if limit reached
+        """
+        license = self.get_current_license()
+
+        # Only track usage for FREE tier
+        if license.tier.name != "FREE":
+            return True
+
+        if feature_name == "dl":
+            if license.dl_training_count < 10:
+                license.dl_training_count += 1
+                self._save_license()
+                logger.info(f"DL training usage: {license.dl_training_count}/10")
+                return True
+            else:
+                return False
+
+        elif feature_name == "llm":
+            if license.llm_analysis_count < 10:
+                license.llm_analysis_count += 1
+                self._save_license()
+                logger.info(f"LLM analysis usage: {license.llm_analysis_count}/10")
+                return True
+            else:
+                return False
+
+        return True
+
+    def get_usage_info(self, feature_name: str) -> Tuple[int, int]:
+        """
+        Get usage information for a feature.
+
+        Args:
+            feature_name: Feature identifier (dl, llm)
+
+        Returns:
+            Tuple of (used_count, max_count). Returns (0, 0) for paid tiers (unlimited).
+        """
+        license = self.get_current_license()
+
+        # Paid tiers have unlimited usage
+        if license.tier.name != "FREE":
+            return 0, 0
+
+        if feature_name == "dl":
+            return license.dl_training_count, 10
+        elif feature_name == "llm":
+            return license.llm_analysis_count, 10
+
+        return 0, 0
+
     def _decrypt(self, encrypted: str) -> str:
         """Simple XOR decryption."""
         key = self.SECRET_SALT.encode()

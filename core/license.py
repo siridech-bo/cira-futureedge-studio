@@ -133,6 +133,10 @@ class License:
     seats: int = 1
     is_trial: bool = False
 
+    # Usage tracking (FREE tier only)
+    dl_training_count: int = 0
+    llm_analysis_count: int = 0
+
     @property
     def status(self) -> LicenseStatus:
         """Get current license status."""
@@ -190,6 +194,8 @@ class License:
             "email": self.email,
             "seats": self.seats,
             "is_trial": self.is_trial,
+            "dl_training_count": self.dl_training_count,
+            "llm_analysis_count": self.llm_analysis_count,
         }
 
     @classmethod
@@ -209,6 +215,8 @@ class License:
             email=data.get("email", ""),
             seats=data.get("seats", 1),
             is_trial=data.get("is_trial", False),
+            dl_training_count=data.get("dl_training_count", 0),
+            llm_analysis_count=data.get("llm_analysis_count", 0),
         )
 
 

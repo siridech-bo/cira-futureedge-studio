@@ -18,6 +18,7 @@ from loguru import logger
 from core.project import ProjectManager
 from core.llm_manager import LLMManager, LLMConfig, LLAMA_CPP_AVAILABLE
 from core.feature_names import FeatureNameDecoder
+from core.license_manager import get_license_manager
 
 
 class LLMPanel(ctk.CTkFrame):
@@ -564,6 +565,19 @@ Reasoning:
 
     def _select_features(self) -> None:
         """Select features using LLM."""
+        # Check license
+        license_mgr = get_license_manager()
+        if not license_mgr.check_feature("llm"):
+            messagebox.showerror(
+                "Feature Locked",
+                "LLM-assisted feature selection requires a PRO or ENTERPRISE license.\n\n"
+                "Current tier: FREE (Community)\n\n"
+                "You can still use statistical feature selection methods.\n"
+                "Please upgrade your license to access LLM features.\n"
+                "Go to Settings > License to activate your license key."
+            )
+            return
+
         # Get parameters
         try:
             target_count = int(self.feature_count_var.get())

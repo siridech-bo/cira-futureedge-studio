@@ -17,6 +17,7 @@ from core.project import ProjectManager
 from core.model_trainer import ModelTrainer, TrainingConfig, ALGORITHMS
 from core.classification_trainer import ClassificationTrainer, ClassificationConfig, CLASSIFIERS
 from core.timeseries_trainer import TimeSeriesTrainer, TimeSeriesConfig
+from core.license_manager import get_license_manager
 from ui.widgets import ConfusionMatrixWidget, FeatureImportanceChart
 from loguru import logger
 
@@ -734,6 +735,18 @@ class ModelPanel(ctk.CTkFrame):
 
     def _start_dl_training(self):
         """Start deep learning training with TimesNet."""
+        # Check license
+        license_mgr = get_license_manager()
+        if not license_mgr.check_feature("dl"):
+            messagebox.showerror(
+                "Feature Locked",
+                "Deep Learning training requires a PRO or ENTERPRISE license.\n\n"
+                "Current tier: FREE (Community)\n\n"
+                "Please upgrade your license to access this feature.\n"
+                "Go to Settings > License to activate your license key."
+            )
+            return
+
         project = self.project_manager.current_project
 
         # Validate data

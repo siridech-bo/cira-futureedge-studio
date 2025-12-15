@@ -12,6 +12,7 @@ from loguru import logger
 
 from core.config import Config
 from core.project import ProjectManager, Project
+from core.license_manager import get_license_manager
 from ui.theme import ThemeManager
 from ui.navigation import NavigationSidebar
 from ui.data_panel import DataSourcesPanel
@@ -73,7 +74,8 @@ class CiRAStudioApp:
         # Navigation sidebar
         self.sidebar = NavigationSidebar(
             self.root,
-            on_stage_change=self._on_stage_change
+            on_stage_change=self._on_stage_change,
+            config=self.config
         )
         self.sidebar.grid(row=0, column=0, sticky="nsw")
 
@@ -181,6 +183,25 @@ class CiRAStudioApp:
             anchor="w"
         )
         self.status_label.pack(side="left", padx=10, pady=5)
+
+        # License status
+        license_mgr = get_license_manager()
+        current_license = license_mgr.get_current_license()
+
+        if current_license and current_license.is_valid:
+            license_text = f"🔑 {current_license.tier.name}"
+            license_color = "green"
+        else:
+            license_text = "🔑 FREE"
+            license_color = "orange"
+
+        self.license_label = ctk.CTkLabel(
+            self.status_bar,
+            text=license_text,
+            font=("Segoe UI", 10, "bold"),
+            text_color=license_color
+        )
+        self.license_label.pack(side="right", padx=10, pady=5)
 
     def _setup_menu(self) -> None:
         """Setup application menu."""

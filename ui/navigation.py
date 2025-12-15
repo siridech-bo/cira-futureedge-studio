@@ -8,6 +8,8 @@ import customtkinter as ctk
 from typing import Callable, List, Dict, Any, Optional
 from loguru import logger
 
+from core.config import Config
+
 
 class NavigationButton(ctk.CTkButton):
     """Custom navigation button with active/inactive states."""
@@ -82,17 +84,19 @@ class NavigationSidebar(ctk.CTkFrame):
         {"id": "build", "name": "Build Firmware", "icon": "🚀"},
     ]
 
-    def __init__(self, master, on_stage_change: Callable[[str], None], **kwargs):
+    def __init__(self, master, on_stage_change: Callable[[str], None], config: Config, **kwargs):
         """
         Initialize navigation sidebar.
 
         Args:
             master: Parent widget
             on_stage_change: Callback when stage changes (receives stage_id)
+            config: Application configuration
         """
         super().__init__(master, width=220, corner_radius=0, **kwargs)
 
         self.on_stage_change = on_stage_change
+        self.config = config
         self.current_stage: Optional[str] = None
         self.buttons: Dict[str, NavigationButton] = {}
 
@@ -172,7 +176,15 @@ class NavigationSidebar(ctk.CTkFrame):
     def _on_settings_click(self) -> None:
         """Handle settings button click."""
         logger.info("Navigation: Opening settings")
-        # TODO: Implement settings dialog
+        from ui.settings_dialog import SettingsDialog
+
+        dialog = SettingsDialog(self.master, self.config)
+        dialog.wait_window()  # Wait for dialog to close
+
+        # Check if settings were modified
+        if dialog.modified:
+            logger.info("Settings were modified, config reloaded")
+            # Config is already updated in the dialog
 
     def set_active_stage(self, stage_id: str) -> None:
         """

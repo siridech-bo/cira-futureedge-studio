@@ -47,13 +47,13 @@ class SettingsDialog(ctk.CTkToplevel):
 
         # Create main container
         main_container = ctk.CTkFrame(self)
-        main_container.grid(row=0, column=0, sticky="nsew", padx=10, pady=(10, 5))
+        main_container.grid(row=0, column=0, sticky="nsew", padx=10, pady=(5, 5))
         main_container.grid_columnconfigure(0, weight=1)
         main_container.grid_rowconfigure(0, weight=1)
 
         # Create tabview
         self.tabview = ctk.CTkTabview(main_container)
-        self.tabview.grid(row=0, column=0, sticky="nsew", pady=(0, 5))
+        self.tabview.grid(row=0, column=0, sticky="nsew", pady=(0, 3))
 
         # Add tabs
         self.tabview.add("LLM")
@@ -112,11 +112,11 @@ class SettingsDialog(ctk.CTkToplevel):
             tab,
             text="🤖 LLM Configuration",
             font=ctk.CTkFont(size=16, weight="bold")
-        ).grid(row=0, column=0, padx=20, pady=(10, 5), sticky="w")
+        ).grid(row=0, column=0, padx=20, pady=(5, 3), sticky="w")
 
         # Settings frame
         settings_frame = ctk.CTkFrame(tab)
-        settings_frame.grid(row=1, column=0, padx=20, pady=5, sticky="ew")
+        settings_frame.grid(row=1, column=0, padx=20, pady=3, sticky="ew")
         settings_frame.grid_columnconfigure(1, weight=1)
 
         row = 0
@@ -218,11 +218,11 @@ class SettingsDialog(ctk.CTkToplevel):
             tab,
             text="🛠️ Build Configuration",
             font=ctk.CTkFont(size=16, weight="bold")
-        ).grid(row=0, column=0, padx=20, pady=(10, 5), sticky="w")
+        ).grid(row=0, column=0, padx=20, pady=(5, 3), sticky="w")
 
         # Settings frame
         settings_frame = ctk.CTkFrame(tab)
-        settings_frame.grid(row=1, column=0, padx=20, pady=5, sticky="ew")
+        settings_frame.grid(row=1, column=0, padx=20, pady=3, sticky="ew")
         settings_frame.grid_columnconfigure(1, weight=1)
 
         row = 0
@@ -334,11 +334,11 @@ class SettingsDialog(ctk.CTkToplevel):
             tab,
             text="📂 File Locations",
             font=ctk.CTkFont(size=16, weight="bold")
-        ).grid(row=0, column=0, padx=20, pady=(10, 5), sticky="w")
+        ).grid(row=0, column=0, padx=20, pady=(5, 3), sticky="w")
 
         # Settings frame
         settings_frame = ctk.CTkFrame(tab)
-        settings_frame.grid(row=1, column=0, padx=20, pady=5, sticky="ew")
+        settings_frame.grid(row=1, column=0, padx=20, pady=3, sticky="ew")
         settings_frame.grid_columnconfigure(1, weight=1)
 
         row = 0
@@ -447,11 +447,11 @@ class SettingsDialog(ctk.CTkToplevel):
             tab,
             text="🚀 Performance Settings",
             font=ctk.CTkFont(size=16, weight="bold")
-        ).grid(row=0, column=0, padx=20, pady=(10, 5), sticky="w")
+        ).grid(row=0, column=0, padx=20, pady=(5, 3), sticky="w")
 
         # Settings frame
         settings_frame = ctk.CTkFrame(tab)
-        settings_frame.grid(row=1, column=0, padx=20, pady=5, sticky="ew")
+        settings_frame.grid(row=1, column=0, padx=20, pady=3, sticky="ew")
         settings_frame.grid_columnconfigure(1, weight=1)
 
         row = 0
@@ -536,11 +536,11 @@ class SettingsDialog(ctk.CTkToplevel):
             tab,
             text="📊 Logging Settings",
             font=ctk.CTkFont(size=16, weight="bold")
-        ).grid(row=0, column=0, padx=20, pady=(10, 5), sticky="w")
+        ).grid(row=0, column=0, padx=20, pady=(5, 3), sticky="w")
 
         # Settings frame
         settings_frame = ctk.CTkFrame(tab)
-        settings_frame.grid(row=1, column=0, padx=20, pady=5, sticky="ew")
+        settings_frame.grid(row=1, column=0, padx=20, pady=3, sticky="ew")
         settings_frame.grid_columnconfigure(1, weight=1)
 
         row = 0
@@ -619,7 +619,7 @@ class SettingsDialog(ctk.CTkToplevel):
             tab,
             text="🔑 License Activation",
             font=ctk.CTkFont(size=16, weight="bold")
-        ).grid(row=0, column=0, columnspan=2, padx=20, pady=(10, 5), sticky="w")
+        ).grid(row=0, column=0, columnspan=2, padx=20, pady=(5, 3), sticky="w")
 
         # Get license manager
         self.license_mgr = get_license_manager()

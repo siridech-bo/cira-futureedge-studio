@@ -3,6 +3,25 @@
 
 ---
 
+## 🎯 NEW: FREE Tier Trial Usage
+
+**Update (2025-12-15)**: The license system now includes trial limits for FREE tier users!
+
+**Trial Limits**:
+- 🧠 **Deep Learning (TimesNet)**: 10 training sessions
+- 🤖 **LLM Feature Selection**: 10 analyses
+- ✅ **ML Algorithms**: Unlimited (always free)
+
+**Benefits**:
+- Users can try premium features before buying
+- Usage indicators show remaining trials
+- Clear upgrade prompts when limit reached
+- Seamless experience for paid users (unlimited)
+
+👉 See [FREE_TIER_TRIAL_USAGE.md](FREE_TIER_TRIAL_USAGE.md) for complete details!
+
+---
+
 ## 📋 Table of Contents
 
 1. [Overview](#overview)

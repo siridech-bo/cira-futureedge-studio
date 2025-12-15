@@ -611,28 +611,35 @@ class SettingsDialog(ctk.CTkToplevel):
         """Create license activation tab."""
         tab = self.tabview.tab("License")
         tab.grid_columnconfigure(0, weight=1)
+        tab.grid_columnconfigure(1, weight=1)
+        tab.grid_rowconfigure(1, weight=1)
 
         # Title
         ctk.CTkLabel(
             tab,
             text="🔑 License Activation",
             font=ctk.CTkFont(size=16, weight="bold")
-        ).grid(row=0, column=0, padx=20, pady=(10, 5), sticky="w")
+        ).grid(row=0, column=0, columnspan=2, padx=20, pady=(10, 5), sticky="w")
 
         # Get license manager
         self.license_mgr = get_license_manager()
 
+        # LEFT COLUMN: Status & Activation
+        left_column = ctk.CTkFrame(tab)
+        left_column.grid(row=1, column=0, padx=(20, 10), pady=5, sticky="nsew")
+        left_column.grid_columnconfigure(0, weight=1)
+
         # License Status Frame
-        status_frame = ctk.CTkFrame(tab)
-        status_frame.grid(row=1, column=0, padx=20, pady=5, sticky="ew")
+        status_frame = ctk.CTkFrame(left_column)
+        status_frame.grid(row=0, column=0, padx=5, pady=5, sticky="ew")
         status_frame.grid_columnconfigure(1, weight=1)
 
         # Current Status
         ctk.CTkLabel(
             status_frame,
             text="License Status:",
-            font=ctk.CTkFont(weight="bold")
-        ).grid(row=0, column=0, padx=10, pady=5, sticky="w")
+            font=ctk.CTkFont(size=12, weight="bold")
+        ).grid(row=0, column=0, padx=10, pady=3, sticky="w")
 
         current_license = self.license_mgr.get_current_license()
         if current_license and current_license.is_valid:
@@ -646,9 +653,9 @@ class SettingsDialog(ctk.CTkToplevel):
             status_frame,
             text=status_text,
             text_color=status_color,
-            font=ctk.CTkFont(weight="bold")
+            font=ctk.CTkFont(size=11, weight="bold")
         )
-        self.license_status_label.grid(row=0, column=1, padx=10, pady=5, sticky="w")
+        self.license_status_label.grid(row=0, column=1, padx=10, pady=3, sticky="w")
 
         # License Details
         if current_license:
@@ -656,99 +663,102 @@ class SettingsDialog(ctk.CTkToplevel):
 
             # Licensed To
             if current_license.licensed_to:
-                ctk.CTkLabel(status_frame, text="Licensed To:").grid(
-                    row=row, column=0, padx=10, pady=5, sticky="w"
+                ctk.CTkLabel(status_frame, text="Licensed To:", font=ctk.CTkFont(size=10)).grid(
+                    row=row, column=0, padx=10, pady=2, sticky="w"
                 )
-                ctk.CTkLabel(status_frame, text=current_license.licensed_to).grid(
-                    row=row, column=1, padx=10, pady=5, sticky="w"
+                ctk.CTkLabel(status_frame, text=current_license.licensed_to, font=ctk.CTkFont(size=10)).grid(
+                    row=row, column=1, padx=10, pady=2, sticky="w"
                 )
                 row += 1
 
             # Organization
             if current_license.organization:
-                ctk.CTkLabel(status_frame, text="Organization:").grid(
-                    row=row, column=0, padx=10, pady=5, sticky="w"
+                ctk.CTkLabel(status_frame, text="Organization:", font=ctk.CTkFont(size=10)).grid(
+                    row=row, column=0, padx=10, pady=2, sticky="w"
                 )
-                ctk.CTkLabel(status_frame, text=current_license.organization).grid(
-                    row=row, column=1, padx=10, pady=5, sticky="w"
+                ctk.CTkLabel(status_frame, text=current_license.organization, font=ctk.CTkFont(size=10)).grid(
+                    row=row, column=1, padx=10, pady=2, sticky="w"
                 )
                 row += 1
 
             # Expiry
             if current_license.expiry_date:
-                ctk.CTkLabel(status_frame, text="Expires:").grid(
-                    row=row, column=0, padx=10, pady=5, sticky="w"
+                ctk.CTkLabel(status_frame, text="Expires:", font=ctk.CTkFont(size=10)).grid(
+                    row=row, column=0, padx=10, pady=2, sticky="w"
                 )
                 expiry_text = current_license.expiry_date.strftime("%Y-%m-%d")
-                ctk.CTkLabel(status_frame, text=expiry_text).grid(
-                    row=row, column=1, padx=10, pady=5, sticky="w"
+                ctk.CTkLabel(status_frame, text=expiry_text, font=ctk.CTkFont(size=10)).grid(
+                    row=row, column=1, padx=10, pady=2, sticky="w"
                 )
                 row += 1
             else:
-                ctk.CTkLabel(status_frame, text="Expires:").grid(
-                    row=row, column=0, padx=10, pady=5, sticky="w"
+                ctk.CTkLabel(status_frame, text="Expires:", font=ctk.CTkFont(size=10)).grid(
+                    row=row, column=0, padx=10, pady=2, sticky="w"
                 )
-                ctk.CTkLabel(status_frame, text="Lifetime").grid(
-                    row=row, column=1, padx=10, pady=5, sticky="w"
+                ctk.CTkLabel(status_frame, text="Lifetime", font=ctk.CTkFont(size=10)).grid(
+                    row=row, column=1, padx=10, pady=2, sticky="w"
                 )
                 row += 1
 
             # Hardware ID
-            ctk.CTkLabel(status_frame, text="Hardware ID:").grid(
-                row=row, column=0, padx=10, pady=5, sticky="w"
+            ctk.CTkLabel(status_frame, text="Hardware ID:", font=ctk.CTkFont(size=10)).grid(
+                row=row, column=0, padx=10, pady=2, sticky="w"
             )
             hw_id = current_license.hardware_id[:19] if current_license.hardware_id else "N/A"
-            ctk.CTkLabel(status_frame, text=hw_id).grid(
-                row=row, column=1, padx=10, pady=5, sticky="w"
+            ctk.CTkLabel(status_frame, text=hw_id, font=ctk.CTkFont(size=10)).grid(
+                row=row, column=1, padx=10, pady=2, sticky="w"
             )
 
         # Activation Frame
-        activation_frame = ctk.CTkFrame(tab)
-        activation_frame.grid(row=2, column=0, padx=20, pady=5, sticky="ew")
+        activation_frame = ctk.CTkFrame(left_column)
+        activation_frame.grid(row=1, column=0, padx=5, pady=5, sticky="ew")
         activation_frame.grid_columnconfigure(1, weight=1)
 
         ctk.CTkLabel(
             activation_frame,
             text="Activate New License",
-            font=ctk.CTkFont(size=14, weight="bold")
-        ).grid(row=0, column=0, columnspan=2, padx=10, pady=(10, 5), sticky="w")
+            font=ctk.CTkFont(size=12, weight="bold")
+        ).grid(row=0, column=0, columnspan=2, padx=10, pady=(5, 3), sticky="w")
 
         # License Key
-        ctk.CTkLabel(activation_frame, text="License Key:").grid(
-            row=1, column=0, padx=10, pady=5, sticky="w"
+        ctk.CTkLabel(activation_frame, text="License Key:", font=ctk.CTkFont(size=10)).grid(
+            row=1, column=0, padx=10, pady=2, sticky="w"
         )
         self.license_key = ctk.CTkEntry(
             activation_frame,
-            placeholder_text="XXXX-XXXX-XXXX-XXXX-XXXX"
+            placeholder_text="XXXX-XXXX-XXXX-XXXX-XXXX",
+            height=28
         )
-        self.license_key.grid(row=1, column=1, padx=10, pady=5, sticky="ew")
+        self.license_key.grid(row=1, column=1, padx=10, pady=2, sticky="ew")
 
         # Licensed To
-        ctk.CTkLabel(activation_frame, text="Name:").grid(
-            row=2, column=0, padx=10, pady=5, sticky="w"
+        ctk.CTkLabel(activation_frame, text="Name:", font=ctk.CTkFont(size=10)).grid(
+            row=2, column=0, padx=10, pady=2, sticky="w"
         )
-        self.license_name = ctk.CTkEntry(activation_frame, placeholder_text="Your Name")
-        self.license_name.grid(row=2, column=1, padx=10, pady=5, sticky="ew")
+        self.license_name = ctk.CTkEntry(activation_frame, placeholder_text="Your Name", height=28)
+        self.license_name.grid(row=2, column=1, padx=10, pady=2, sticky="ew")
 
         # Organization
-        ctk.CTkLabel(activation_frame, text="Organization:").grid(
-            row=3, column=0, padx=10, pady=5, sticky="w"
+        ctk.CTkLabel(activation_frame, text="Organization:", font=ctk.CTkFont(size=10)).grid(
+            row=3, column=0, padx=10, pady=2, sticky="w"
         )
         self.license_org = ctk.CTkEntry(
             activation_frame,
-            placeholder_text="Company Name (optional)"
+            placeholder_text="Company Name (optional)",
+            height=28
         )
-        self.license_org.grid(row=3, column=1, padx=10, pady=5, sticky="ew")
+        self.license_org.grid(row=3, column=1, padx=10, pady=2, sticky="ew")
 
         # Email
-        ctk.CTkLabel(activation_frame, text="Email:").grid(
-            row=4, column=0, padx=10, pady=5, sticky="w"
+        ctk.CTkLabel(activation_frame, text="Email:", font=ctk.CTkFont(size=10)).grid(
+            row=4, column=0, padx=10, pady=2, sticky="w"
         )
         self.license_email = ctk.CTkEntry(
             activation_frame,
-            placeholder_text="email@example.com (optional)"
+            placeholder_text="email@example.com (optional)",
+            height=28
         )
-        self.license_email.grid(row=4, column=1, padx=10, pady=5, sticky="ew")
+        self.license_email.grid(row=4, column=1, padx=10, pady=2, sticky="ew")
 
         # Activate Button
         self.activate_btn = ctk.CTkButton(
@@ -756,20 +766,26 @@ class SettingsDialog(ctk.CTkToplevel):
             text="Activate License",
             command=self._activate_license,
             fg_color="green",
-            hover_color="darkgreen"
+            hover_color="darkgreen",
+            height=32
         )
-        self.activate_btn.grid(row=5, column=0, columnspan=2, padx=10, pady=(10, 5))
+        self.activate_btn.grid(row=5, column=0, columnspan=2, padx=10, pady=(5, 3))
+
+        # RIGHT COLUMN: Features & Hardware ID
+        right_column = ctk.CTkFrame(tab)
+        right_column.grid(row=1, column=1, padx=(10, 20), pady=5, sticky="nsew")
+        right_column.grid_columnconfigure(0, weight=1)
 
         # Features Frame
-        features_frame = ctk.CTkFrame(tab)
-        features_frame.grid(row=3, column=0, padx=20, pady=5, sticky="ew")
+        features_frame = ctk.CTkFrame(right_column)
+        features_frame.grid(row=0, column=0, padx=5, pady=5, sticky="ew")
         features_frame.grid_columnconfigure(0, weight=1)
 
         ctk.CTkLabel(
             features_frame,
             text="Available Features",
-            font=ctk.CTkFont(size=14, weight="bold")
-        ).grid(row=0, column=0, padx=10, pady=(10, 5), sticky="w")
+            font=ctk.CTkFont(size=12, weight="bold")
+        ).grid(row=0, column=0, padx=10, pady=(5, 3), sticky="w")
 
         # Feature list
         license = self.license_mgr.get_current_license()
@@ -795,34 +811,35 @@ Max Samples:          {'Unlimited' if tier.max_samples == -1 else tier.max_sampl
             features_frame,
             text=features_text,
             justify="left",
-            font=ctk.CTkFont(family="Consolas", size=11)
-        ).grid(row=1, column=0, padx=10, pady=5, sticky="w")
+            font=ctk.CTkFont(family="Consolas", size=10)
+        ).grid(row=1, column=0, padx=10, pady=3, sticky="w")
 
         # Hardware ID Display
-        hw_frame = ctk.CTkFrame(tab)
-        hw_frame.grid(row=4, column=0, padx=20, pady=5, sticky="ew")
+        hw_frame = ctk.CTkFrame(right_column)
+        hw_frame.grid(row=1, column=0, padx=5, pady=5, sticky="ew")
         hw_frame.grid_columnconfigure(1, weight=1)
 
         ctk.CTkLabel(
             hw_frame,
             text="Your Hardware ID:",
-            font=ctk.CTkFont(weight="bold")
-        ).grid(row=0, column=0, padx=10, pady=5, sticky="w")
+            font=ctk.CTkFont(size=11, weight="bold")
+        ).grid(row=0, column=0, padx=10, pady=3, sticky="w")
 
         hw_id = self.license_mgr.generate_hardware_id()
         self.hw_id_label = ctk.CTkLabel(
             hw_frame,
             text=hw_id,
-            font=ctk.CTkFont(family="Consolas")
+            font=ctk.CTkFont(family="Consolas", size=10)
         )
-        self.hw_id_label.grid(row=0, column=1, padx=10, pady=5, sticky="w")
+        self.hw_id_label.grid(row=0, column=1, padx=10, pady=3, sticky="w")
 
         ctk.CTkButton(
             hw_frame,
             text="Copy",
             command=lambda: self._copy_to_clipboard(hw_id),
-            width=80
-        ).grid(row=0, column=2, padx=10, pady=5)
+            width=70,
+            height=28
+        ).grid(row=0, column=2, padx=10, pady=3)
 
     def _activate_license(self):
         """Activate license with provided key."""

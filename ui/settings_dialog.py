@@ -29,12 +29,12 @@ class SettingsDialog(ctk.CTkToplevel):
 
         # Window setup
         self.title("⚙️ Settings - CiRA FutureEdge Studio")
-        self.geometry("900x700")
+        self.geometry("900x500")
 
         # Center window
         self.update_idletasks()
         x = (self.winfo_screenwidth() // 2) - (900 // 2)
-        y = (self.winfo_screenheight() // 2) - (700 // 2)
+        y = (self.winfo_screenheight() // 2) - (500 // 2)
         self.geometry(f"+{x}+{y}")
 
         # Make modal

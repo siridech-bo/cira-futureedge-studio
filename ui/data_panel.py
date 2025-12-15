@@ -78,10 +78,16 @@ class DataSourcesPanel(ctk.CTkFrame):
         """Setup data loading tab."""
         tab = self.tabview.tab("Load Data")
         tab.grid_columnconfigure(0, weight=1)
+        tab.grid_rowconfigure(0, weight=1)
+
+        # Create scrollable frame for all content
+        scrollable_frame = ctk.CTkScrollableFrame(tab, fg_color="transparent")
+        scrollable_frame.grid(row=0, column=0, sticky="nsew", padx=0, pady=0)
+        scrollable_frame.grid_columnconfigure(0, weight=1)
 
         # Task Mode selection (NEW - Classification vs Anomaly Detection)
-        task_mode_frame = ctk.CTkFrame(tab, fg_color=("gray90", "gray20"))
-        task_mode_frame.grid(row=0, column=0, sticky="ew", padx=10, pady=10)
+        task_mode_frame = ctk.CTkFrame(scrollable_frame, fg_color=("gray90", "gray20"))
+        task_mode_frame.grid(row=0, column=0, sticky="ew", padx=10, pady=5)
         task_mode_frame.grid_columnconfigure(1, weight=1)
 
         ctk.CTkLabel(
@@ -108,9 +114,47 @@ class DataSourcesPanel(ctk.CTkFrame):
         )
         self.task_mode_info.grid(row=1, column=0, columnspan=2, padx=10, pady=(0, 10), sticky="w")
 
+        # Pipeline Mode selection (ML vs DL) - Phase 3
+        pipeline_mode_frame = ctk.CTkFrame(scrollable_frame, fg_color=("gray90", "gray20"))
+        pipeline_mode_frame.grid(row=1, column=0, sticky="ew", padx=10, pady=5)
+        pipeline_mode_frame.grid_columnconfigure(1, weight=1)
+
+        ctk.CTkLabel(
+            pipeline_mode_frame,
+            text="🧮 Pipeline Mode:",
+            font=("Segoe UI", 14, "bold")
+        ).grid(row=0, column=0, padx=10, pady=10, sticky="w")
+
+        self.pipeline_mode_var = ctk.StringVar(value="ml")
+        pipeline_mode_selector = ctk.CTkSegmentedButton(
+            pipeline_mode_frame,
+            variable=self.pipeline_mode_var,
+            values=["Traditional ML", "Deep Learning"],
+            command=self._on_pipeline_mode_change
+        )
+        pipeline_mode_selector.grid(row=0, column=1, padx=10, pady=10, sticky="ew")
+
+        # Info label for pipeline mode
+        self.pipeline_mode_info = ctk.CTkLabel(
+            pipeline_mode_frame,
+            text="ℹ️ Feature extraction + sklearn/PyOD models",
+            font=("Segoe UI", 10),
+            text_color=("gray50", "gray60")
+        )
+        self.pipeline_mode_info.grid(row=1, column=0, columnspan=2, padx=10, pady=(0, 10), sticky="w")
+
+        # Warning label (shown when mode is locked)
+        self.pipeline_mode_warning = ctk.CTkLabel(
+            pipeline_mode_frame,
+            text="⚠️ Pipeline mode is locked after data processing starts",
+            font=("Segoe UI", 10, "bold"),
+            text_color="orange"
+        )
+        # Hidden by default, shown when locked
+
         # Data source type selection
-        source_frame = ctk.CTkFrame(tab)
-        source_frame.grid(row=2, column=0, sticky="ew", padx=10, pady=10)
+        source_frame = ctk.CTkFrame(scrollable_frame)
+        source_frame.grid(row=2, column=0, sticky="ew", padx=10, pady=5)
         source_frame.grid_columnconfigure(1, weight=1)
 
         ctk.CTkLabel(
@@ -129,7 +173,7 @@ class DataSourcesPanel(ctk.CTkFrame):
         source_menu.grid(row=0, column=1, padx=10, pady=10, sticky="ew")
 
         # CSV-specific options
-        self.csv_frame = ctk.CTkFrame(tab)
+        self.csv_frame = ctk.CTkFrame(scrollable_frame)
         self.csv_frame.grid(row=3, column=0, sticky="ew", padx=10, pady=10)
         self.csv_frame.grid_columnconfigure(1, weight=1)
 
@@ -185,8 +229,8 @@ class DataSourcesPanel(ctk.CTkFrame):
         encoding_menu.grid(row=2, column=1, padx=5, pady=5, sticky="w")
 
         # Edge Impulse-specific options
-        self.ei_frame = ctk.CTkFrame(tab)
-        self.ei_frame.grid(row=3, column=0, sticky="ew", padx=10, pady=10)
+        self.ei_frame = ctk.CTkFrame(scrollable_frame)
+        self.ei_frame.grid(row=3, column=0, sticky="ew", padx=10, pady=5)
         self.ei_frame.grid_columnconfigure(1, weight=1)
         self.ei_frame.grid_remove()  # Hidden by default
 
@@ -268,7 +312,7 @@ class DataSourcesPanel(ctk.CTkFrame):
         self.ei_info_label.grid(row=3, column=0, columnspan=3, padx=10, pady=5, sticky="w")
 
         # Database-specific options
-        self.db_frame = ctk.CTkFrame(tab)
+        self.db_frame = ctk.CTkFrame(scrollable_frame)
         self.db_frame.grid(row=3, column=0, sticky="ew", padx=10, pady=10)
         self.db_frame.grid_columnconfigure(1, weight=1)
         self.db_frame.grid_remove()  # Hidden by default
@@ -382,7 +426,7 @@ class DataSourcesPanel(ctk.CTkFrame):
         self.db_query_entry.grid(row=7, column=1, padx=5, pady=5, sticky="ew")
 
         # REST API-specific options
-        self.api_frame = ctk.CTkFrame(tab)
+        self.api_frame = ctk.CTkFrame(scrollable_frame)
         self.api_frame.grid(row=3, column=0, sticky="ew", padx=10, pady=10)
         self.api_frame.grid_columnconfigure(1, weight=1)
         self.api_frame.grid_remove()  # Hidden by default
@@ -495,7 +539,7 @@ class DataSourcesPanel(ctk.CTkFrame):
         self.api_json_path_entry.grid(row=4, column=1, padx=5, pady=5, sticky="ew")
 
         # Streaming-specific options
-        self.stream_frame = ctk.CTkFrame(tab)
+        self.stream_frame = ctk.CTkFrame(scrollable_frame)
         self.stream_frame.grid(row=3, column=0, sticky="ew", padx=10, pady=10)
         self.stream_frame.grid_columnconfigure(1, weight=1)
         self.stream_frame.grid_remove()  # Hidden by default
@@ -581,9 +625,9 @@ class DataSourcesPanel(ctk.CTkFrame):
         )
         self.stream_duration_entry.grid(row=2, column=1, padx=5, pady=5, sticky="w")
 
-        # Load button
-        load_frame = ctk.CTkFrame(tab, fg_color="transparent")
-        load_frame.grid(row=4, column=0, pady=20)
+        # Load button (in scrollable frame for visibility)
+        load_frame = ctk.CTkFrame(scrollable_frame, fg_color="transparent")
+        load_frame.grid(row=4, column=0, pady=10)
 
         self.load_btn = ctk.CTkButton(
             load_frame,
@@ -591,13 +635,15 @@ class DataSourcesPanel(ctk.CTkFrame):
             command=self._load_data,
             width=200,
             height=40,
-            font=("Segoe UI", 14)
+            font=("Segoe UI", 14),
+            fg_color="green",
+            hover_color="darkgreen"
         )
         self.load_btn.pack()
 
         # Status label
         self.load_status_label = ctk.CTkLabel(
-            tab,
+            scrollable_frame,
             text="",
             font=("Segoe UI", 11),
             text_color="gray"
@@ -862,6 +908,60 @@ class DataSourcesPanel(ctk.CTkFrame):
             self.task_mode_info.configure(
                 text="ℹ️ Detects unusual patterns in unlabeled data"
             )
+
+    def _on_pipeline_mode_change(self, choice: str) -> None:
+        """Handle pipeline mode change between ML and DL."""
+        # Check if mode is locked
+        if self.project_manager.current_project:
+            if self.project_manager.current_project.data.pipeline_mode_locked:
+                logger.warning("Pipeline mode is locked and cannot be changed")
+                messagebox.showwarning(
+                    "Mode Locked",
+                    "Pipeline mode cannot be changed after data processing has started.\n\n"
+                    "Create a new project to use a different pipeline mode."
+                )
+                # Revert to locked mode
+                locked_mode = self.project_manager.current_project.data.pipeline_mode
+                display_mode = "Traditional ML" if locked_mode == "ml" else "Deep Learning"
+                self.pipeline_mode_var.set(display_mode)
+                return
+
+        mode = "dl" if choice == "Deep Learning" else "ml"
+        logger.info(f"🔴 Pipeline mode changed to: {mode}")
+
+        # Update project pipeline mode
+        if self.project_manager.current_project:
+            self.project_manager.current_project.data.pipeline_mode = mode
+            self.project_manager.current_project.save()
+
+        # Update info text
+        if mode == "dl":
+            self.pipeline_mode_info.configure(
+                text="ℹ️ TimesNet deep learning on raw time series (GPU/CPU auto-detect)"
+            )
+        else:
+            self.pipeline_mode_info.configure(
+                text="ℹ️ Feature extraction + sklearn/PyOD models"
+            )
+
+        # 🔴 CRITICAL: Update navigation to show red backgrounds IMMEDIATELY
+        logger.info(f"🔴 Updating navigation for mode: {mode}")
+        # Try different ways to find the main window
+        main_win = None
+        if hasattr(self, 'winfo_toplevel'):
+            top_level = self.winfo_toplevel()
+            if hasattr(top_level, 'update_navigation_for_pipeline_mode'):
+                main_win = top_level
+
+        if not main_win and hasattr(self.master, 'master'):
+            if hasattr(self.master.master, 'update_navigation_for_pipeline_mode'):
+                main_win = self.master.master
+
+        if main_win:
+            logger.info(f"🔴 Found main window, calling update_navigation_for_pipeline_mode({mode})")
+            main_win.update_navigation_for_pipeline_mode(mode)
+        else:
+            logger.error("🔴 FAILED to find main window for navigation update!")
 
     def _on_source_type_change(self, choice: str) -> None:
         """Handle data source type change."""
@@ -1753,6 +1853,13 @@ Sensor columns: {len(sensor_columns)}
                 # Save windows to disk
                 project.save_windows(windows, sensor_columns, time_column)
 
+                # Lock pipeline mode after windowing is complete
+                project.data.pipeline_mode_locked = True
+                logger.info(f"Pipeline mode locked to: {project.data.pipeline_mode}")
+
+                # Show warning in UI
+                self.pipeline_mode_warning.grid(row=2, column=0, columnspan=2, padx=10, pady=(0, 10), sticky="w")
+
                 project.mark_stage_completed("data")
                 self.project_manager.save_project()
 
@@ -2040,6 +2147,30 @@ Sensor columns: {len(sensor_columns)}
             return
 
         project = self.project_manager.current_project
+
+        # Load pipeline mode
+        pipeline_mode = getattr(project.data, 'pipeline_mode', 'ml')
+        display_mode = "Traditional ML" if pipeline_mode == "ml" else "Deep Learning"
+        self.pipeline_mode_var.set(display_mode)
+
+        # Update pipeline mode info text
+        if pipeline_mode == "dl":
+            self.pipeline_mode_info.configure(
+                text="ℹ️ TimesNet deep learning on raw time series (GPU/CPU auto-detect)"
+            )
+        else:
+            self.pipeline_mode_info.configure(
+                text="ℹ️ Feature extraction + sklearn/PyOD models"
+            )
+
+        # Show warning if mode is locked
+        if getattr(project.data, 'pipeline_mode_locked', False):
+            self.pipeline_mode_warning.grid(row=2, column=0, columnspan=2, padx=10, pady=(0, 10), sticky="w")
+
+        # Load task mode
+        task_type = getattr(project.data, 'task_type', 'anomaly_detection')
+        display_task = "Classification" if task_type == "classification" else "Anomaly Detection"
+        self.task_mode_var.set(display_task)
 
         # Check if project has windows
         if project.data.num_windows > 0:

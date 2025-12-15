@@ -41,12 +41,31 @@ class NavigationButton(ctk.CTkButton):
 
     def set_active(self, active: bool) -> None:
         """Set button active state."""
+        # CRITICAL: Don't change appearance if button is grayed out
+        if hasattr(self, '_grayed_out') and self._grayed_out:
+            logger.warning(f"⛔ Blocked set_active on grayed button: {self.button_text}")
+            return
+
         self.is_active = active
         if active:
             # Light theme (first value) and dark theme (second value)
             self.configure(fg_color=("#2b76c2", "#1f538d"))
         else:
             self.configure(fg_color="transparent")
+
+    def configure(self, **kwargs):
+        """Override configure to protect grayed state."""
+        # If grayed out, don't allow fg_color changes (except from gray_out_stage)
+        if hasattr(self, '_grayed_out') and self._grayed_out:
+            # Only allow graying/ungraying from gray_out_stage
+            if 'fg_color' in kwargs:
+                # Check if this is coming from gray_out_stage (dim red colors)
+                fg = kwargs.get('fg_color', '')
+                if fg not in [("#8B4545", "#5C3030"), "transparent"]:
+                    logger.warning(f"⛔ BLOCKED fg_color change on grayed button: {self.button_text}, attempted color: {fg}")
+                    kwargs.pop('fg_color')  # Remove the color change
+
+        super().configure(**kwargs)
 
 
 class NavigationSidebar(ctk.CTkFrame):
@@ -59,7 +78,7 @@ class NavigationSidebar(ctk.CTkFrame):
         {"id": "filtering", "name": "Feature Filtering", "icon": "🔍"},
         {"id": "llm", "name": "LLM Selection", "icon": "🤖"},
         {"id": "model", "name": "Training", "icon": "🎯"},
-        {"id": "dsp", "name": "DSP Generation", "icon": "⚙️"},
+        {"id": "dsp", "name": "Embedded Code Generation", "icon": "⚙️"},
         {"id": "build", "name": "Build Firmware", "icon": "🚀"},
     ]
 
@@ -123,6 +142,7 @@ class NavigationSidebar(ctk.CTkFrame):
                 command=lambda s=stage["id"]: self._on_button_click(s)
             )
             btn.pack(pady=5, fill="x")
+            btn._grayed_out = False  # Initialize grayed state
             self.buttons[stage["id"]] = btn
 
         # Settings button at bottom
@@ -161,6 +181,12 @@ class NavigationSidebar(ctk.CTkFrame):
         Args:
             stage_id: Stage identifier
         """
+        # Don't activate grayed out stages
+        if stage_id in self.buttons:
+            if hasattr(self.buttons[stage_id], '_grayed_out') and self.buttons[stage_id]._grayed_out:
+                # Stage is grayed out, don't activate
+                return
+
         # Deactivate all buttons
         for btn in self.buttons.values():
             btn.set_active(False)
@@ -181,6 +207,69 @@ class NavigationSidebar(ctk.CTkFrame):
         if stage_id in self.buttons:
             state = "normal" if enabled else "disabled"
             self.buttons[stage_id].configure(state=state)
+
+    def gray_out_stage(self, stage_id: str, grayed: bool = True, reason: str = "") -> None:
+        """
+        Gray out a stage (for pipeline mode).
+
+        Args:
+            stage_id: Stage identifier
+            grayed: Whether to gray out
+            reason: Tooltip reason text
+        """
+        if stage_id in self.buttons:
+            if grayed:
+                # Force deactivate first (bypass the _grayed_out check)
+                self.buttons[stage_id].is_active = False
+                self.buttons[stage_id].configure(
+                    state="disabled",
+                    text_color=("gray90", "gray70"),
+                    fg_color=("#8B4545", "#5C3030"),  # Dim red background (light theme, dark theme)
+                    hover_color=("#8B4545", "#5C3030")  # Same color on hover (no change)
+                )
+                # Store grayed state
+                self.buttons[stage_id]._grayed_out = True
+            else:
+                self.buttons[stage_id].configure(
+                    state="normal",
+                    text_color=("gray10", "gray90"),
+                    fg_color="transparent",
+                    hover_color=("gray85", "gray30")
+                )
+                # Clear grayed state
+                self.buttons[stage_id]._grayed_out = False
+
+    def update_for_pipeline_mode(self, pipeline_mode: str) -> None:
+        """
+        Update navigation for pipeline mode (ML vs DL).
+
+        Args:
+            pipeline_mode: "ml" or "dl"
+        """
+        logger.info(f"🔴 NAVIGATION UPDATE CALLED: pipeline_mode='{pipeline_mode}'")
+        if pipeline_mode == "dl":
+            # Gray out feature-related stages for deep learning
+            logger.info("🔴 APPLYING RED BACKGROUNDS TO DISABLED TABS")
+            self.gray_out_stage("features", grayed=True, reason="Not needed for Deep Learning")
+            logger.info(f"🔴 features button fg_color: {self.buttons['features'].cget('fg_color')}")
+            self.gray_out_stage("filtering", grayed=True, reason="Not needed for Deep Learning")
+            logger.info(f"🔴 filtering button fg_color: {self.buttons['filtering'].cget('fg_color')}")
+            self.gray_out_stage("llm", grayed=True, reason="Not needed for Deep Learning")
+            logger.info(f"🔴 llm button fg_color: {self.buttons['llm'].cget('fg_color')}")
+            self.gray_out_stage("dsp", grayed=True, reason="Use ONNX export for Deep Learning models")
+            logger.info(f"🔴 dsp button fg_color: {self.buttons['dsp'].cget('fg_color')}")
+            self.gray_out_stage("build", grayed=True, reason="Build firmware requires DSP C++ code (MCU only)")
+            logger.info(f"🔴 build button fg_color: {self.buttons['build'].cget('fg_color')}")
+            logger.info("Navigation: Grayed out feature stages for Deep Learning mode with RED backgrounds")
+        else:
+            # Enable all stages for traditional ML
+            logger.info("🔴 REMOVING RED BACKGROUNDS")
+            self.gray_out_stage("features", grayed=False)
+            self.gray_out_stage("filtering", grayed=False)
+            self.gray_out_stage("llm", grayed=False)
+            self.gray_out_stage("dsp", grayed=False)
+            self.gray_out_stage("build", grayed=False)
+            logger.info("Navigation: Enabled all stages for Traditional ML mode")
 
     def mark_stage_completed(self, stage_id: str) -> None:
         """

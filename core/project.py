@@ -50,6 +50,10 @@ class ProjectData:
     train_folder_path: Optional[str] = None  # Original train folder selected by user
     test_folder_path: Optional[str] = None  # Original test folder selected by user
 
+    # Pipeline mode (ML vs DL) - Phase 1 Deep Learning Integration
+    pipeline_mode: str = "ml"  # "ml" (traditional ML) or "dl" (deep learning)
+    pipeline_mode_locked: bool = False  # Lock mode after data processing starts
+
 
 @dataclass
 class ProjectFeatures:
@@ -124,6 +128,13 @@ class ProjectModel:
     confusion_matrix: Optional[List[List[int]]] = None  # Confusion matrix
     per_class_metrics: Dict[str, Dict[str, float]] = field(default_factory=dict)
     # e.g., {"idle": {"precision": 0.95, "recall": 0.92, "f1": 0.93}}
+
+    # Deep Learning fields (TimesNet) - Phase 1 DL Integration
+    is_deep_learning: bool = False  # Whether this is a DL model (vs sklearn/PyOD)
+    dl_architecture: str = "timesnet"  # "timesnet" or future models
+    dl_device_used: str = "cpu"  # Device used during training (for reference)
+    onnx_model_path: Optional[str] = None  # Path to exported ONNX model
+    dl_config: Dict[str, Any] = field(default_factory=dict)  # DL-specific config
 
 
 @dataclass

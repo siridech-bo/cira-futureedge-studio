@@ -16,6 +16,7 @@ import numpy as np
 from core.project import ProjectManager
 from core.model_trainer import ModelTrainer, TrainingConfig, ALGORITHMS
 from core.classification_trainer import ClassificationTrainer, ClassificationConfig, CLASSIFIERS
+from core.timeseries_trainer import TimeSeriesTrainer, TimeSeriesConfig
 from ui.widgets import ConfusionMatrixWidget, FeatureImportanceChart
 from loguru import logger
 
@@ -29,9 +30,12 @@ class ModelPanel(ctk.CTkFrame):
         self.project_manager = project_manager
         self.anomaly_trainer = ModelTrainer()
         self.classification_trainer = ClassificationTrainer()
+        self.timeseries_trainer = TimeSeriesTrainer()  # Deep learning trainer
         self.training_results = None
         self.features_df = None
         self.selected_features = []
+        self.windows = None  # For DL mode
+        self.window_labels = None  # For DL mode
 
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(0, weight=1)
@@ -53,6 +57,12 @@ class ModelPanel(ctk.CTkFrame):
         self._create_explorer_tab()
         self._create_export_tab()
 
+        # Update controls based on pipeline mode
+        self._update_training_controls_for_pipeline_mode()
+
+        # Load data (features or windows) based on pipeline mode
+        self._load_data_for_training()
+
     def _create_algorithm_tab(self):
         """Create algorithm selection tab."""
         tab = self.notebook.tab("Algorithm")
@@ -60,11 +70,21 @@ class ModelPanel(ctk.CTkFrame):
         tab.grid_columnconfigure(1, weight=1)
         tab.grid_rowconfigure(1, weight=1)
 
-        # Get task mode from project
+        # Get pipeline mode and task mode from project
+        pipeline_mode = "ml"
         task_mode = "anomaly_detection"
         if self.project_manager.current_project:
+            pipeline_mode = getattr(self.project_manager.current_project.data, 'pipeline_mode', 'ml')
             task_mode = self.project_manager.current_project.data.task_type
 
+        # Branch based on pipeline mode
+        if pipeline_mode == "dl":
+            self._create_dl_algorithm_ui(tab)
+        else:
+            self._create_ml_algorithm_ui(tab, task_mode)
+
+    def _create_ml_algorithm_ui(self, tab, task_mode):
+        """Create ML algorithm selection UI."""
         # Title (dynamic based on task mode) - spans both columns
         title_text = "Select Classification Algorithm" if task_mode == "classification" else "Select Anomaly Detection Algorithm"
         self.title_label = ctk.CTkLabel(
@@ -174,6 +194,124 @@ class ModelPanel(ctk.CTkFrame):
 
         self._on_algorithm_change()
 
+    def _create_dl_algorithm_ui(self, tab):
+        """Create DL algorithm configuration UI."""
+        # Title
+        title_label = ctk.CTkLabel(
+            tab,
+            text="🧠 Deep Learning Model - TimesNet",
+            font=ctk.CTkFont(size=16, weight="bold")
+        )
+        title_label.grid(row=0, column=0, columnspan=2, padx=20, pady=(20, 10), sticky="w")
+
+        # LEFT COLUMN: Data info
+        left_column = ctk.CTkFrame(tab)
+        left_column.grid(row=1, column=0, padx=(20, 5), pady=10, sticky="nsew")
+        left_column.grid_columnconfigure(0, weight=1)
+
+        # Data info frame
+        info_frame = ctk.CTkFrame(left_column)
+        info_frame.grid(row=0, column=0, padx=10, pady=10, sticky="ew")
+        info_frame.grid_columnconfigure(1, weight=1)
+
+        ctk.CTkLabel(info_frame, text="Windows:").grid(
+            row=0, column=0, padx=10, pady=5, sticky="w"
+        )
+        self.windows_info_label = ctk.CTkLabel(
+            info_frame, text="Loading...", text_color="gray"
+        )
+        self.windows_info_label.grid(row=0, column=1, padx=10, pady=5, sticky="w")
+
+        ctk.CTkLabel(info_frame, text="Window Size:").grid(
+            row=1, column=0, padx=10, pady=5, sticky="w"
+        )
+        self.window_size_label = ctk.CTkLabel(
+            info_frame, text="Loading...", text_color="gray"
+        )
+        self.window_size_label.grid(row=1, column=1, padx=10, pady=5, sticky="w")
+
+        ctk.CTkLabel(info_frame, text="Sensors:").grid(
+            row=2, column=0, padx=10, pady=5, sticky="w"
+        )
+        self.sensors_info_label = ctk.CTkLabel(
+            info_frame, text="Loading...", text_color="gray"
+        )
+        self.sensors_info_label.grid(row=2, column=1, padx=10, pady=5, sticky="w")
+
+        # Model complexity
+        complexity_frame = ctk.CTkFrame(left_column)
+        complexity_frame.grid(row=1, column=0, padx=10, pady=10, sticky="ew")
+        complexity_frame.grid_columnconfigure(0, weight=1)
+
+        ctk.CTkLabel(
+            complexity_frame,
+            text="Model Complexity:",
+            font=ctk.CTkFont(size=14, weight="bold")
+        ).grid(row=0, column=0, padx=10, pady=10, sticky="w")
+
+        self.complexity_var = ctk.StringVar(value="efficient")
+        complexity_selector = ctk.CTkSegmentedButton(
+            complexity_frame,
+            variable=self.complexity_var,
+            values=["Minimal", "Efficient", "Comprehensive"]
+        )
+        complexity_selector.grid(row=1, column=0, padx=10, pady=(0, 10), sticky="ew")
+
+        # Complexity descriptions
+        complexity_info = ctk.CTkTextbox(complexity_frame, height=120)
+        complexity_info.grid(row=2, column=0, padx=10, pady=(0, 10), sticky="ew")
+        complexity_info.insert("1.0",
+            "• Minimal: Fast training, good for CPU\n"
+            "  - d_model=16, 1 layer, 2 kernels\n"
+            "  - ~50K parameters\n\n"
+            "• Efficient: Balanced (recommended)\n"
+            "  - d_model=32, 2 layers, 4 kernels\n"
+            "  - ~200K parameters\n\n"
+            "• Comprehensive: Maximum accuracy\n"
+            "  - d_model=64, 3 layers, 6 kernels\n"
+            "  - ~800K parameters"
+        )
+        complexity_info.configure(state="disabled")
+
+        # RIGHT COLUMN: Info
+        right_column = ctk.CTkFrame(tab)
+        right_column.grid(row=1, column=1, padx=(5, 20), pady=10, sticky="nsew")
+        right_column.grid_columnconfigure(0, weight=1)
+        right_column.grid_rowconfigure(1, weight=1)
+
+        ctk.CTkLabel(
+            right_column,
+            text="About TimesNet:",
+            font=ctk.CTkFont(size=14, weight="bold")
+        ).grid(row=0, column=0, padx=10, pady=10, sticky="w")
+
+        info_text = ctk.CTkTextbox(right_column)
+        info_text.grid(row=1, column=0, padx=10, pady=(0, 10), sticky="nsew")
+        info_text.insert("1.0",
+            "TimesNet is a state-of-the-art deep learning model for time series analysis.\n\n"
+            "KEY FEATURES:\n"
+            "• FFT-based period detection\n"
+            "• Multi-scale temporal feature extraction\n"
+            "• Handles complex temporal patterns\n"
+            "• GPU/CPU auto-detection\n"
+            "• ONNX export for Jetson deployment\n\n"
+            "ADVANTAGES:\n"
+            "• No manual feature engineering needed\n"
+            "• Learns features automatically from raw data\n"
+            "• Excellent for periodic sensor data\n"
+            "• Captures long-range dependencies\n\n"
+            "DEPLOYMENT:\n"
+            "• Trains on PC (GPU or CPU)\n"
+            "• Exports to ONNX format\n"
+            "• Converts to TensorRT on Jetson\n"
+            "• Optimized inference on edge devices\n\n"
+            "Use this for complex temporal patterns in your sensor data."
+        )
+        info_text.configure(state="disabled")
+
+        # Store algorithm var for compatibility
+        self.algorithm_var = ctk.StringVar(value="timesnet")
+
     def _create_training_tab(self):
         """Create training configuration tab."""
         tab = self.notebook.tab("Training")
@@ -200,7 +338,7 @@ class ModelPanel(ctk.CTkFrame):
             font=ctk.CTkFont(size=14, weight="bold")
         ).grid(row=0, column=0, columnspan=2, padx=10, pady=10, sticky="w")
 
-        # Test size
+        # Test size (common for both ML and DL)
         ctk.CTkLabel(config_frame, text="Test Size:").grid(
             row=1, column=0, padx=10, pady=5, sticky="w"
         )
@@ -211,30 +349,63 @@ class ModelPanel(ctk.CTkFrame):
             row=2, column=0, columnspan=2, padx=10, pady=(0, 5), sticky="w"
         )
 
-        # Contamination
-        ctk.CTkLabel(config_frame, text="Contamination:").grid(
-            row=3, column=0, padx=10, pady=5, sticky="w"
-        )
+        # ML-only: Contamination
+        self.contam_label1 = ctk.CTkLabel(config_frame, text="Contamination:")
+        self.contam_label1.grid(row=3, column=0, padx=10, pady=5, sticky="w")
+
         self.contamination_var = ctk.StringVar(value="0.1")
-        contam_entry = ctk.CTkEntry(config_frame, textvariable=self.contamination_var, width=100)
-        contam_entry.grid(row=3, column=1, padx=10, pady=5, sticky="w")
-        ctk.CTkLabel(
+        self.contam_entry = ctk.CTkEntry(config_frame, textvariable=self.contamination_var, width=100)
+        self.contam_entry.grid(row=3, column=1, padx=10, pady=5, sticky="w")
+
+        self.contam_label2 = ctk.CTkLabel(
             config_frame,
             text="Expected anomaly rate (0.01-0.5)",
             text_color="gray",
             font=ctk.CTkFont(size=10)
-        ).grid(row=4, column=0, columnspan=2, padx=10, pady=(0, 5), sticky="w")
+        )
+        self.contam_label2.grid(row=4, column=0, columnspan=2, padx=10, pady=(0, 5), sticky="w")
 
-        # Normalize
+        # DL-only: Epochs
+        self.epochs_label = ctk.CTkLabel(config_frame, text="Epochs:")
+        self.epochs_var = ctk.StringVar(value="50")
+        self.epochs_entry = ctk.CTkEntry(config_frame, textvariable=self.epochs_var, width=100)
+        self.epochs_help = ctk.CTkLabel(
+            config_frame,
+            text="Training iterations (10-200)",
+            text_color="gray",
+            font=ctk.CTkFont(size=10)
+        )
+
+        # DL-only: Batch size
+        self.batch_label = ctk.CTkLabel(config_frame, text="Batch Size:")
+        self.batch_var = ctk.StringVar(value="32")
+        self.batch_menu = ctk.CTkOptionMenu(
+            config_frame,
+            variable=self.batch_var,
+            values=["8", "16", "32", "64"]
+        )
+
+        # DL-only: Learning rate
+        self.lr_label = ctk.CTkLabel(config_frame, text="Learning Rate:")
+        self.lr_var = ctk.StringVar(value="0.001")
+        self.lr_entry = ctk.CTkEntry(config_frame, textvariable=self.lr_var, width=100)
+        self.lr_help = ctk.CTkLabel(
+            config_frame,
+            text="(0.0001-0.01)",
+            text_color="gray",
+            font=ctk.CTkFont(size=10)
+        )
+
+        # Normalize (common, but label different)
         self.normalize_var = ctk.BooleanVar(value=True)
-        normalize_check = ctk.CTkCheckBox(
+        self.normalize_check = ctk.CTkCheckBox(
             config_frame,
             text="Normalize features (recommended)",
             variable=self.normalize_var
         )
-        normalize_check.grid(row=5, column=0, columnspan=2, padx=10, pady=10, sticky="w")
+        self.normalize_check.grid(row=5, column=0, columnspan=2, padx=10, pady=10, sticky="w")
 
-        # Random state
+        # Random state (common)
         ctk.CTkLabel(config_frame, text="Random Seed:").grid(
             row=6, column=0, padx=10, pady=5, sticky="w"
         )
@@ -513,12 +684,379 @@ class ModelPanel(ctk.CTkFrame):
         self.algo_details_text.delete("1.0", "end")
         self.algo_details_text.insert("1.0", details)
 
+    def _update_training_controls_for_pipeline_mode(self):
+        """Show/hide training controls based on pipeline mode."""
+        project = self.project_manager.current_project
+        if not project:
+            return
+
+        pipeline_mode = getattr(project.data, 'pipeline_mode', 'ml')
+
+        if pipeline_mode == "dl":
+            # Hide ML-only controls
+            self.contam_label1.grid_remove()
+            self.contam_entry.grid_remove()
+            self.contam_label2.grid_remove()
+
+            # Show DL controls in their positions
+            self.epochs_label.grid(row=3, column=0, padx=10, pady=5, sticky="w")
+            self.epochs_entry.grid(row=3, column=1, padx=10, pady=5, sticky="w")
+            self.epochs_help.grid(row=4, column=0, columnspan=2, padx=10, pady=(0, 5), sticky="w")
+
+            self.batch_label.grid(row=5, column=0, padx=10, pady=5, sticky="w")
+            self.batch_menu.grid(row=5, column=1, padx=10, pady=5, sticky="w")
+
+            self.lr_label.grid(row=6, column=0, padx=10, pady=5, sticky="w")
+            self.lr_entry.grid(row=6, column=1, padx=10, pady=5, sticky="w")
+            self.lr_help.grid(row=7, column=0, columnspan=2, padx=10, pady=(0, 10), sticky="w")
+
+            # Update normalize label
+            self.normalize_check.configure(text="Normalize data (recommended)")
+
+        else:
+            # Show ML controls
+            self.contam_label1.grid(row=3, column=0, padx=10, pady=5, sticky="w")
+            self.contam_entry.grid(row=3, column=1, padx=10, pady=5, sticky="w")
+            self.contam_label2.grid(row=4, column=0, columnspan=2, padx=10, pady=(0, 5), sticky="w")
+
+            # Hide DL controls
+            self.epochs_label.grid_remove()
+            self.epochs_entry.grid_remove()
+            self.epochs_help.grid_remove()
+            self.batch_label.grid_remove()
+            self.batch_menu.grid_remove()
+            self.lr_label.grid_remove()
+            self.lr_entry.grid_remove()
+            self.lr_help.grid_remove()
+
+            # Restore normalize label
+            self.normalize_check.configure(text="Normalize features (recommended)")
+
+    def _start_dl_training(self):
+        """Start deep learning training with TimesNet."""
+        project = self.project_manager.current_project
+
+        # Validate data
+        if not hasattr(self, 'windows') or self.windows is None:
+            messagebox.showerror("Error", "No window data loaded. Please ensure data and windows are created.")
+            return
+
+        if not hasattr(self, 'window_labels') or self.window_labels is None:
+            messagebox.showerror("Error", "No window labels found. Ensure data has class labels.")
+            return
+
+        # Validate inputs
+        try:
+            test_size = float(self.test_size_var.get())
+            if not 0.1 <= test_size <= 0.5:
+                raise ValueError("Test size must be between 0.1 and 0.5")
+
+            epochs = int(self.epochs_var.get())
+            if not 10 <= epochs <= 200:
+                raise ValueError("Epochs must be between 10 and 200")
+
+            batch_size = int(self.batch_var.get())
+            lr = float(self.lr_var.get())
+            if not 0.0001 <= lr <= 0.01:
+                raise ValueError("Learning rate must be between 0.0001 and 0.01")
+
+            random_state = int(self.random_state_var.get())
+        except ValueError as e:
+            messagebox.showerror("Invalid Input", str(e))
+            return
+
+        # Get complexity
+        complexity_map = {"Minimal": "minimal", "Efficient": "efficient", "Comprehensive": "comprehensive"}
+        complexity = complexity_map.get(self.complexity_var.get(), "efficient")
+
+        # Create config
+        config = TimeSeriesConfig(
+            algorithm='timesnet',
+            test_size=test_size,
+            random_state=random_state,
+            device='auto',  # Auto-detect GPU/CPU
+            complexity=complexity,
+            batch_size=batch_size,
+            epochs=epochs,
+            learning_rate=lr,
+            params={}
+        )
+
+        # Disable controls
+        self.train_btn.configure(state="disabled")
+        self.progress_label.configure(text="Training in progress...")
+        self.training_log.delete("1.0", "end")
+
+        # Get output directory
+        model_dir = project.get_project_dir() / "models"
+        model_dir.mkdir(parents=True, exist_ok=True)
+
+        # Run in thread
+        def training_thread():
+            try:
+                self._log_training("=" * 50)
+                self._log_training("DEEP LEARNING TRAINING - TimesNet")
+                self._log_training("=" * 50)
+                self._log_training(f"Windows: {len(self.windows)}")
+                self._log_training(f"Window size: {self.windows.shape[1]}")
+                self._log_training(f"Sensors: {self.windows.shape[2]}")
+                self._log_training(f"Classes: {len(set(self.window_labels))}")
+                self._log_training(f"Complexity: {complexity}")
+                self._log_training(f"Epochs: {epochs}, Batch: {batch_size}, LR: {lr}")
+                self._log_training("")
+                self._log_training("🖥️  Detecting GPU/CPU...")
+                self._log_training("")
+
+                # Define progress callback
+                def on_epoch_end(progress):
+                    epoch = progress['epoch']
+                    total = progress['total_epochs']
+                    train_loss = progress['train_loss']
+                    train_acc = progress['train_acc']
+                    val_loss = progress['val_loss']
+                    val_acc = progress['val_acc']
+
+                    msg = (f"Epoch {epoch}/{total} - "
+                           f"Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.2%} | "
+                           f"Val Loss: {val_loss:.4f}, Val Acc: {val_acc:.2%}")
+                    self._log_training(msg)
+
+                    # Update progress label
+                    def update_label():
+                        progress_pct = (epoch / total) * 100
+                        self.progress_label.configure(
+                            text=f"Training: Epoch {epoch}/{total} ({progress_pct:.0f}%) - Acc: {val_acc:.1%}",
+                            text_color="orange"
+                        )
+                    self.after(0, update_label)
+
+                results = self.timeseries_trainer.train(
+                    windows=self.windows,
+                    labels=self.window_labels,
+                    config=config,
+                    output_dir=model_dir,
+                    progress_callback=on_epoch_end
+                )
+
+                self._log_training("")
+                self._log_training("=" * 50)
+                self._log_training("TRAINING COMPLETE!")
+                self._log_training("=" * 50)
+                self._log_training(f"✓ Device used: {results.device_used}")
+                self._log_training(f"✓ Model parameters: {results.total_parameters:,}")
+                self._log_training(f"✓ Accuracy: {results.accuracy:.3f}")
+                self._log_training(f"✓ Precision: {results.precision_macro:.3f}")
+                self._log_training(f"✓ Recall: {results.recall_macro:.3f}")
+                self._log_training(f"✓ F1 Score: {results.f1_macro:.3f}")
+                self._log_training("")
+                self._log_training("Per-class F1 scores:")
+                for class_name, f1 in results.per_class_f1.items():
+                    self._log_training(f"  {class_name}: {f1:.3f}")
+                self._log_training("")
+                self._log_training(f"✓ Model saved: {results.model_path}")
+                if results.onnx_model_path:
+                    self._log_training(f"✓ ONNX exported: {results.onnx_model_path}")
+                    self._log_training("  Ready for TensorRT conversion on Jetson!")
+
+                # Update project
+                project.model.trained = True
+                project.model.is_deep_learning = True
+                project.model.dl_architecture = 'timesnet'
+                project.model.dl_device_used = results.device_used
+                project.model.model_path = results.model_path
+                project.model.onnx_model_path = results.onnx_model_path
+                project.model.label_encoder_path = results.label_encoder_path
+                project.model.model_type = "classifier"
+                project.model.num_classes = results.n_classes
+                project.model.class_names = results.class_names
+                project.model.metrics = {
+                    'accuracy': results.accuracy,
+                    'precision_macro': results.precision_macro,
+                    'recall_macro': results.recall_macro,
+                    'f1_macro': results.f1_macro
+                }
+                project.model.confusion_matrix = results.confusion_matrix
+                project.model.per_class_metrics = {
+                    'precision': results.per_class_precision,
+                    'recall': results.per_class_recall,
+                    'f1': results.per_class_f1
+                }
+                project.model.dl_config = {
+                    'complexity': complexity,
+                    'epochs': epochs,
+                    'batch_size': batch_size,
+                    'learning_rate': lr,
+                    'model_info': results.model_params
+                }
+
+                project.mark_stage_completed("model")
+                project.save()
+
+                self.training_results = results
+
+                # Re-enable controls
+                self.train_btn.configure(state="normal")
+                self.progress_label.configure(text="Training complete!", text_color="green")
+
+                # Update evaluation tab
+                self.after(100, self._update_evaluation_display)
+
+                # Update export tab
+                self.export_status_label.configure(
+                    text=f"✓ {results.algorithm} model trained successfully",
+                    text_color="green"
+                )
+                self.model_path_label.configure(text=results.model_path)
+                self.open_dir_btn.configure(state="normal")
+                self.complete_btn.configure(state="normal")
+
+                messagebox.showinfo(
+                    "Training Complete",
+                    f"TimesNet training successful!\n\n"
+                    f"Device: {results.device_used}\n"
+                    f"Accuracy: {results.accuracy:.1%}\n"
+                    f"Model saved to: models/"
+                )
+
+            except Exception as e:
+                self._log_training(f"\n❌ ERROR: {str(e)}")
+                logger.error(f"DL training failed: {e}", exc_info=True)
+
+                self.train_btn.configure(state="normal")
+                self.progress_label.configure(text="Training failed!", text_color="red")
+
+                messagebox.showerror(
+                    "Training Error",
+                    f"Deep learning training failed:\n\n{str(e)}\n\nCheck logs for details."
+                )
+
+        thread = threading.Thread(target=training_thread, daemon=True)
+        thread.start()
+
+    def _load_data_for_training(self):
+        """Load features (ML) or windows (DL) based on pipeline mode."""
+        project = self.project_manager.current_project
+        if not project:
+            return
+
+        pipeline_mode = getattr(project.data, 'pipeline_mode', 'ml')
+
+        if pipeline_mode == "dl":
+            # Load windows for deep learning
+            try:
+                import pickle
+
+                if project.data.train_test_split_type == "manual":
+                    # Load train/test windows separately
+                    with open(project.data.train_windows_file, 'rb') as f:
+                        train_windows = pickle.load(f)
+
+                    # Convert to numpy arrays
+                    # Force conversion to float32 and filter out non-numeric columns
+                    windows_list = []
+                    for w in train_windows:
+                        if isinstance(w.data, pd.DataFrame):
+                            # Extract only numeric sensor columns (exclude time, _source_file, etc.)
+                            numeric_cols = w.data.select_dtypes(include=[np.number]).columns.tolist()
+                            # Further filter to exclude 'time' if present
+                            sensor_cols = [col for col in numeric_cols if col.lower() not in ['time', 'timestamp']]
+                            window_array = w.data[sensor_cols].values.astype(np.float32)
+                        else:
+                            # Already numpy array
+                            window_array = np.array(w.data, dtype=np.float32)
+                        windows_list.append(window_array)
+
+                    self.windows = np.array(windows_list, dtype=np.float32)
+                    self.window_labels = np.array([w.class_label for w in train_windows])
+
+                    # Update UI labels
+                    if hasattr(self, 'windows_info_label'):
+                        self.windows_info_label.configure(
+                            text=f"{len(self.windows)} windows",
+                            text_color="green"
+                        )
+                        self.window_size_label.configure(
+                            text=f"{self.windows.shape[1]} samples",
+                            text_color="green"
+                        )
+                        self.sensors_info_label.configure(
+                            text=f"{self.windows.shape[2]} sensors",
+                            text_color="green"
+                        )
+
+                    logger.info(f"Loaded {len(self.windows)} windows for DL training")
+
+                else:
+                    # Load single windows file
+                    if project.data.windows_file:
+                        with open(project.data.windows_file, 'rb') as f:
+                            windows = pickle.load(f)
+
+                        # Convert to numpy array (n_windows, seq_len, n_sensors)
+                        # Force conversion to float32 and filter out non-numeric columns
+                        windows_list = []
+                        for w in windows:
+                            if isinstance(w.data, pd.DataFrame):
+                                # Extract only numeric sensor columns (exclude time, _source_file, etc.)
+                                numeric_cols = w.data.select_dtypes(include=[np.number]).columns.tolist()
+                                # Further filter to exclude 'time' if present
+                                sensor_cols = [col for col in numeric_cols if col.lower() not in ['time', 'timestamp']]
+                                window_array = w.data[sensor_cols].values.astype(np.float32)
+                            else:
+                                # Already numpy array
+                                window_array = np.array(w.data, dtype=np.float32)
+                            windows_list.append(window_array)
+
+                        self.windows = np.array(windows_list, dtype=np.float32)
+                        self.window_labels = np.array([w.class_label if hasattr(w, 'class_label') else str(w.label) for w in windows])
+
+                        # Update UI labels
+                        if hasattr(self, 'windows_info_label'):
+                            self.windows_info_label.configure(
+                                text=f"{len(self.windows)} windows",
+                                text_color="green"
+                            )
+                            self.window_size_label.configure(
+                                text=f"{self.windows.shape[1]} samples",
+                                text_color="green"
+                            )
+                            self.sensors_info_label.configure(
+                                text=f"{self.windows.shape[2]} sensors",
+                                text_color="green"
+                            )
+
+                        logger.info(f"Loaded {len(self.windows)} windows for DL training")
+
+            except Exception as e:
+                logger.error(f"Failed to load windows for DL: {e}")
+                if hasattr(self, 'windows_info_label'):
+                    self.windows_info_label.configure(
+                        text="Error loading windows",
+                        text_color="red"
+                    )
+        else:
+            # Load features for ML (existing code path)
+            # This is handled by _load_features_thread() which is called elsewhere
+            pass
+
     def _start_training(self):
         """Start model training in background thread."""
         project = self.project_manager.current_project
         if not project:
             messagebox.showerror("Error", "No project loaded")
             return
+
+        # Branch based on pipeline mode
+        pipeline_mode = getattr(project.data, 'pipeline_mode', 'ml')
+
+        if pipeline_mode == "dl":
+            self._start_dl_training()
+        else:
+            self._start_ml_training()
+
+    def _start_ml_training(self):
+        """Start traditional ML training (existing implementation)."""
+        project = self.project_manager.current_project
 
         # Validate inputs
         try:
@@ -799,6 +1337,16 @@ class ModelPanel(ctk.CTkFrame):
 
         messagebox.showerror("Training Failed", f"Training failed:\n{error}")
 
+    def _update_evaluation_display(self):
+        """Update evaluation display after DL training completes."""
+        if hasattr(self, 'training_results') and self.training_results:
+            # Display the results in the Evaluation tab
+            self._display_results(self.training_results, task_mode="classification")
+            # Switch to Evaluation tab to show results
+            self.notebook.set("Evaluation")
+        else:
+            logger.warning("No training results available to display")
+
     def _display_results(self, results, task_mode="anomaly_detection"):
         """Display evaluation results."""
         # Clear previous results (this also removes no_results_label)
@@ -834,13 +1382,24 @@ class ModelPanel(ctk.CTkFrame):
                     else:
                         test_folder_info = f" (from: {test_folder})"
 
+            # Build labels based on result type (ML vs DL)
             labels = [
                 ("Algorithm:", results.algorithm),
                 ("Training Samples:", str(results.train_samples)),
                 ("Test Samples:", str(results.test_samples) + test_folder_info),
-                ("Features:", str(results.n_features)),
-                ("Classes:", str(results.n_classes)),
             ]
+
+            # Add features/sensors info based on result type
+            if hasattr(results, 'n_features'):
+                # ML results
+                labels.append(("Features:", str(results.n_features)))
+            elif hasattr(results, 'n_sensors'):
+                # DL results
+                labels.append(("Window Size:", str(results.window_size)))
+                labels.append(("Sensors:", str(results.n_sensors)))
+                labels.append(("Model Parameters:", f"{results.total_parameters:,}"))
+
+            labels.append(("Classes:", str(results.n_classes)))
 
             for i, (label, value) in enumerate(labels, start=1):
                 ctk.CTkLabel(info_frame, text=label).grid(
@@ -879,6 +1438,26 @@ class ModelPanel(ctk.CTkFrame):
                     row=i, column=1, padx=10, pady=5, sticky="w"
                 )
 
+            # Device info for DL results
+            if hasattr(results, 'device_used'):
+                device_frame = ctk.CTkFrame(self.results_container)
+                device_frame.grid(row=row, column=0, padx=10, pady=10, sticky="ew")
+                device_frame.grid_columnconfigure(1, weight=1)
+                row += 1
+
+                ctk.CTkLabel(
+                    device_frame,
+                    text="Training Information",
+                    font=ctk.CTkFont(size=14, weight="bold")
+                ).grid(row=0, column=0, columnspan=2, padx=10, pady=10, sticky="w")
+
+                ctk.CTkLabel(device_frame, text="Device:").grid(
+                    row=1, column=0, padx=10, pady=5, sticky="w"
+                )
+                ctk.CTkLabel(device_frame, text=results.device_used, text_color="blue").grid(
+                    row=1, column=1, padx=10, pady=5, sticky="w"
+                )
+
             # Confusion Matrix
             if results.confusion_matrix:
                 cm_frame = ctk.CTkFrame(self.results_container)
@@ -900,8 +1479,8 @@ class ModelPanel(ctk.CTkFrame):
                     class_names=results.class_names
                 )
 
-            # Feature Importance
-            if results.feature_importances:
+            # Feature Importance (only for ML results)
+            if hasattr(results, 'feature_importances') and results.feature_importances:
                 fi_frame = ctk.CTkFrame(self.results_container)
                 fi_frame.grid(row=row, column=0, padx=10, pady=10, sticky="ew")
                 fi_frame.grid_columnconfigure(0, weight=1)

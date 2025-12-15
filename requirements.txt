@@ -34,6 +34,13 @@ pyod==1.1.2
 imbalanced-learn==0.11.0
 
 # ============================================
+# Deep Learning
+# ============================================
+torch>=2.0.0  # PyTorch for TimesNet (CPU/CUDA auto-detect)
+einops>=0.7.0  # Tensor operations for TimesNet
+onnx>=1.14.0  # Model export for TensorRT deployment
+
+# ============================================
 # Local LLM
 # ============================================
 llama-cpp-python==0.2.56

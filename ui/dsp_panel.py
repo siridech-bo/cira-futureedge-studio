@@ -1,6 +1,6 @@
 """
-CiRA FutureEdge Studio - DSP Code Generation Panel
-UI for configuring and generating embedded C++ code
+CiRA FutureEdge Studio - Embedded Code Generation Panel
+UI for configuring and generating embedded C++ code for edge deployment
 """
 
 import customtkinter as ctk
@@ -16,7 +16,7 @@ from loguru import logger
 
 
 class DSPPanel(ctk.CTkFrame):
-    """Panel for DSP code generation and configuration."""
+    """Panel for embedded code generation and configuration."""
 
     def __init__(self, parent, project_manager: ProjectManager):
         """Initialize the DSP panel."""

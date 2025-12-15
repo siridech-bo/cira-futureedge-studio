@@ -287,6 +287,18 @@ class CiRAStudioApp:
             )
             return
 
+        # Check if trying to access grayed-out stage in DL mode
+        project = self.project_manager.current_project
+        pipeline_mode = getattr(project.data, 'pipeline_mode', 'ml')
+        if pipeline_mode == "dl" and stage_id in ["features", "filtering", "llm"]:
+            messagebox.showinfo(
+                "Deep Learning Mode",
+                f"{self.sidebar.get_stage_name(stage_id)} is not needed for Deep Learning.\n\n"
+                "TimesNet learns features automatically from raw time series data.\n\n"
+                "Switch to Traditional ML mode to use feature extraction."
+            )
+            return
+
         logger.info(f"Switching to stage: {stage_id}")
         self.set_status(f"Loading {self.sidebar.get_stage_name(stage_id)}...")
 
@@ -416,6 +428,10 @@ class CiRAStudioApp:
                 self.set_status(f"Created project: {name}")
                 logger.info(f"New project created: {name}")
 
+                # Update navigation for default pipeline mode (ml)
+                pipeline_mode = getattr(project.data, 'pipeline_mode', 'ml')
+                self.update_navigation_for_pipeline_mode(pipeline_mode)
+
                 # Switch to data stage
                 self.sidebar.set_active_stage("data")
                 self._on_stage_change("data")
@@ -437,6 +453,10 @@ class CiRAStudioApp:
                 self._update_project_ui()
                 self.set_status(f"Opened project: {project.name}")
                 logger.info(f"Project opened: {filename}")
+
+                # Update navigation for project's pipeline mode
+                pipeline_mode = getattr(project.data, 'pipeline_mode', 'ml')
+                self.update_navigation_for_pipeline_mode(pipeline_mode)
 
                 # Switch to current stage
                 self.sidebar.set_active_stage(project.current_stage)
@@ -553,6 +573,16 @@ class CiRAStudioApp:
         """
         self.status_label.configure(text=message)
         self.root.update_idletasks()
+
+    def update_navigation_for_pipeline_mode(self, pipeline_mode: str) -> None:
+        """
+        Update navigation sidebar based on pipeline mode.
+
+        Args:
+            pipeline_mode: "ml" or "dl"
+        """
+        self.sidebar.update_for_pipeline_mode(pipeline_mode)
+        logger.info(f"Navigation updated for pipeline mode: {pipeline_mode}")
 
     def run(self) -> None:
         """Start application main loop."""

@@ -700,15 +700,16 @@ class SettingsDialog(ctk.CTkToplevel):
                 )
                 row += 1
 
-            # Hardware ID
-            ctk.CTkLabel(status_frame, text="Hardware ID:", font=ctk.CTkFont(size=10)).grid(
-                row=row, column=0, padx=10, pady=2, sticky="w"
-            )
-            hw_id = current_license.hardware_id[:19] if current_license.hardware_id else "N/A"
-            ctk.CTkLabel(status_frame, text=hw_id, font=ctk.CTkFont(size=10)).grid(
-                row=row, column=1, padx=10, pady=2, sticky="w"
-            )
-            row += 1
+            # Hardware ID (only show if license is activated and bound)
+            if current_license.hardware_id:
+                ctk.CTkLabel(status_frame, text="Hardware ID:", font=ctk.CTkFont(size=10)).grid(
+                    row=row, column=0, padx=10, pady=2, sticky="w"
+                )
+                hw_id = current_license.hardware_id[:19]
+                ctk.CTkLabel(status_frame, text=hw_id, font=ctk.CTkFont(size=10)).grid(
+                    row=row, column=1, padx=10, pady=2, sticky="w"
+                )
+                row += 1
 
         # Usage Tracking (FREE tier only)
         if current_license and current_license.tier.name == "FREE":

@@ -13,7 +13,7 @@ Key features:
 import torch
 import torch.nn as nn
 from dataclasses import dataclass
-from typing import Optional, Literal
+from typing import Optional, Literal, List
 from loguru import logger
 
 from .layers import DataEmbedding, TimesBlock
@@ -41,6 +41,9 @@ class TimesNetConfig:
 
     # Task type
     task: Literal['classification', 'anomaly_detection'] = 'classification'
+
+    # Period configuration (for ONNX compatibility)
+    fixed_periods: Optional[List[int]] = None
 
 
 class TimesNet(nn.Module):
@@ -77,7 +80,8 @@ class TimesNet(nn.Module):
                 config.d_model,
                 config.d_ff,
                 config.num_kernels,
-                config.top_k
+                config.top_k,
+                fixed_periods=config.fixed_periods
             )
             for _ in range(config.e_layers)
         ])
@@ -200,7 +204,8 @@ def create_timesnet_for_classification(
     n_sensors: int,
     n_classes: int,
     device: str = 'auto',
-    complexity: str = 'efficient'
+    complexity: str = 'efficient',
+    fixed_periods: Optional[List[int]] = None
 ) -> tuple[TimesNet, torch.device, str]:
     """
     Factory function to create TimesNet for classification.
@@ -211,6 +216,7 @@ def create_timesnet_for_classification(
         n_classes: Number of classes
         device: 'auto', 'cpu', or 'cuda'
         complexity: 'minimal', 'efficient', or 'comprehensive'
+        fixed_periods: Optional list of fixed periods for ONNX compatibility
 
     Returns:
         Tuple of (model, device, device_description)
@@ -248,6 +254,7 @@ def create_timesnet_for_classification(
         num_classes=n_classes,
         task='classification',
         device=device,
+        fixed_periods=fixed_periods,
         **params
     )
 

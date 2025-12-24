@@ -136,6 +136,16 @@ class ProjectModel:
     onnx_model_path: Optional[str] = None  # Path to exported ONNX model
     dl_config: Dict[str, Any] = field(default_factory=dict)  # DL-specific config
 
+    # TimesNet Period Configuration (for ONNX compatibility)
+    timesnet_period_config: Optional[Dict[str, Any]] = None
+    # Structure: {
+    #     'config_id': 'B',
+    #     'config_name': 'Balanced',
+    #     'periods': [100, 50, 25, 20, 16],
+    #     'auto_selected': True,
+    #     'confidence': 0.85
+    # }
+
 
 @dataclass
 class ProjectBuild:

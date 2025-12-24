@@ -8,7 +8,7 @@ https://github.com/thuml/Time-Series-Library/blob/main/models/TimesNet.py
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import Optional
+from typing import Optional, List
 
 
 class DataEmbedding(nn.Module):
@@ -114,7 +114,8 @@ class TimesBlock(nn.Module):
         d_model: int,
         d_ff: int,
         num_kernels: int = 6,
-        top_k: int = 5
+        top_k: int = 5,
+        fixed_periods: Optional[List[int]] = None
     ):
         """
         Args:
@@ -123,6 +124,8 @@ class TimesBlock(nn.Module):
             d_ff: Feedforward dimension
             num_kernels: Number of Inception kernel sizes
             top_k: Number of top frequencies to keep
+            fixed_periods: Optional list of fixed periods for ONNX compatibility.
+                         If None, uses default [seq_len, seq_len//2, seq_len//4, seq_len//8, seq_len//16]
         """
         super(TimesBlock, self).__init__()
 
@@ -130,6 +133,14 @@ class TimesBlock(nn.Module):
         self.d_model = d_model
         self.d_ff = d_ff
         self.top_k = top_k
+
+        # Store fixed periods for ONNX-compatible deployment
+        if fixed_periods is not None:
+            self.fixed_periods = fixed_periods
+        else:
+            # Default periods (balanced config)
+            self.fixed_periods = [seq_len, seq_len // 2, seq_len // 4,
+                                 seq_len // 8, seq_len // 16]
 
         # Parameter for learning period weights
         self.conv = nn.Sequential(
@@ -158,46 +169,53 @@ class TimesBlock(nn.Module):
 
         # Select top-k frequencies
         _, top_indices = torch.topk(freq_amp, self.top_k, dim=1)
-        top_indices = top_indices.detach().cpu().numpy()
 
         # Initialize output
         res = torch.zeros_like(x)
 
         # Process each period component
-        for i in range(B):
-            for j in range(self.top_k):
-                # Get period length
-                freq_idx = top_indices[i, j]
-                if freq_idx == 0:
-                    period = self.seq_len
-                else:
-                    period = self.seq_len // freq_idx
+        # Use fixed periods for ONNX compatibility instead of data-dependent periods
+        # This simplifies the model but makes it ONNX-exportable
+        # We use a set of predefined periods that cover common patterns
+        fixed_periods = [self.seq_len, self.seq_len // 2, self.seq_len // 4,
+                        self.seq_len // 8, self.seq_len // 16]
 
-                # Ensure valid period
-                period = max(period, 2)
+        for k in range(min(self.top_k, len(fixed_periods))):
+            period = max(fixed_periods[k], 2)  # Ensure minimum period of 2
 
-                # Reshape to 2D based on period
-                length = (T // period) * period
-                if length > 0:
-                    padding = T - length
+            # Calculate how many complete periods fit
+            num_periods = T // period
+            length = num_periods * period
 
-                    # Extract periodic component
-                    x_period = x[i:i+1, :length, :]
-                    x_period = x_period.reshape(1, T // period, period, N)
-                    x_period = x_period.permute(0, 3, 1, 2).contiguous()
+            # Extract the part that fits complete periods
+            # Use slicing which is ONNX-safe even if length=0
+            x_period = x[:, :length, :]  # (B, length, N)
 
-                    # Apply Inception block
-                    x_period = self.conv(x_period)
+            # Only process if we have complete periods (length > 0)
+            # Reshape to 2D: (B, num_periods, period, N)
+            if length > 0:
+                x_period = x_period.reshape(B, num_periods, period, N)
+            else:
+                # If no complete periods, create zero tensor
+                x_period = torch.zeros(B, 1, period, N, device=x.device, dtype=x.dtype)
 
-                    # Reshape back
-                    x_period = x_period.permute(0, 2, 3, 1).contiguous()
-                    x_period = x_period.reshape(1, length, N)
+            # Permute to (B, N, num_periods, period) for conv
+            x_period = x_period.permute(0, 3, 1, 2).contiguous()
 
-                    # Pad if necessary
-                    if padding > 0:
-                        x_period = F.pad(x_period, (0, 0, 0, padding))
+            # Apply Inception block
+            x_period = self.conv(x_period)  # (B, N, num_periods, period)
 
-                    res[i:i+1] += x_period
+            # Reshape back
+            x_period = x_period.permute(0, 2, 3, 1).contiguous()
+            if length > 0:
+                x_period = x_period.reshape(B, length, N)
+
+                # Pad to original length if needed
+                padding = T - length
+                if padding > 0:
+                    x_period = F.pad(x_period, (0, 0, 0, padding))
+
+                res += x_period
 
         # Average across top-k periods
         res = res / self.top_k

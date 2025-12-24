@@ -19,6 +19,7 @@ from core.classification_trainer import ClassificationTrainer, ClassificationCon
 from core.timeseries_trainer import TimeSeriesTrainer, TimeSeriesConfig
 from core.license_manager import get_license_manager
 from ui.widgets import ConfusionMatrixWidget, FeatureImportanceChart
+from ui.period_config_panel import PeriodConfigPanel
 from loguru import logger
 
 
@@ -45,14 +46,29 @@ class ModelPanel(ctk.CTkFrame):
         self.notebook = ctk.CTkTabview(self)
         self.notebook.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
 
+        # Check if we're in DL mode
+        pipeline_mode = "ml"
+        if self.project_manager.current_project:
+            pipeline_mode = getattr(self.project_manager.current_project.data, 'pipeline_mode', 'ml')
+
         # Add tabs
         self.notebook.add("Algorithm")
+
+        # Add Period Config tab only for Deep Learning mode (TimesNet)
+        if pipeline_mode == "dl":
+            self.notebook.add("Period Config")
+
         self.notebook.add("Training")
         self.notebook.add("Evaluation")
         self.notebook.add("Explorer")
         self.notebook.add("Export")
 
         self._create_algorithm_tab()
+
+        # Create Period Config tab only for Deep Learning mode
+        if pipeline_mode == "dl":
+            self._create_period_config_tab()
+
         self._create_training_tab()
         self._create_evaluation_tab()
         self._create_explorer_tab()
@@ -83,6 +99,16 @@ class ModelPanel(ctk.CTkFrame):
             self._create_dl_algorithm_ui(tab)
         else:
             self._create_ml_algorithm_ui(tab, task_mode)
+
+    def _create_period_config_tab(self):
+        """Create period configuration tab for TimesNet."""
+        tab = self.notebook.tab("Period Config")
+        tab.grid_columnconfigure(0, weight=1)
+        tab.grid_rowconfigure(0, weight=1)
+
+        # Create period config panel
+        self.period_config_panel = PeriodConfigPanel(tab, self.project_manager.current_project)
+        self.period_config_panel.grid(row=0, column=0, sticky="nsew")
 
     def _create_ml_algorithm_ui(self, tab, task_mode):
         """Create ML algorithm selection UI."""
@@ -783,14 +809,23 @@ class ModelPanel(ctk.CTkFrame):
 
         project = self.project_manager.current_project
 
-        # Validate data
-        if not hasattr(self, 'windows') or self.windows is None:
+        # Validate data - check for manual split or auto split
+        has_manual_split = hasattr(self, 'train_windows') and self.train_windows is not None
+        has_auto_split = hasattr(self, 'windows') and self.windows is not None
+
+        if not has_manual_split and not has_auto_split:
             messagebox.showerror("Error", "No window data loaded. Please ensure data and windows are created.")
             return
 
-        if not hasattr(self, 'window_labels') or self.window_labels is None:
-            messagebox.showerror("Error", "No window labels found. Ensure data has class labels.")
-            return
+        # Validate labels
+        if has_manual_split:
+            if not hasattr(self, 'train_labels') or self.train_labels is None:
+                messagebox.showerror("Error", "No training labels found. Ensure data has class labels.")
+                return
+        else:
+            if not hasattr(self, 'window_labels') or self.window_labels is None:
+                messagebox.showerror("Error", "No window labels found. Ensure data has class labels.")
+                return
 
         # Validate inputs
         try:
@@ -816,18 +851,42 @@ class ModelPanel(ctk.CTkFrame):
         complexity_map = {"Minimal": "minimal", "Efficient": "efficient", "Comprehensive": "comprehensive"}
         complexity = complexity_map.get(self.complexity_var.get(), "efficient")
 
-        # Create config
-        config = TimeSeriesConfig(
-            algorithm='timesnet',
-            test_size=test_size,
-            random_state=random_state,
-            device='auto',  # Auto-detect GPU/CPU
-            complexity=complexity,
-            batch_size=batch_size,
-            epochs=epochs,
-            learning_rate=lr,
-            params={}
-        )
+        # Get selected period configuration if Period Config tab exists
+        fixed_periods = None
+        if hasattr(self, 'period_config_panel'):
+            selected_config = self.period_config_panel.get_selected_config()
+            fixed_periods = selected_config.periods
+            logger.info(f"Using period configuration: {selected_config.name} {fixed_periods}")
+
+        # Create config - include train/test split if manual split is used
+        if has_manual_split:
+            config = TimeSeriesConfig(
+                algorithm='timesnet',
+                test_size=test_size,
+                random_state=random_state,
+                device='auto',  # Auto-detect GPU/CPU
+                complexity=complexity,
+                batch_size=batch_size,
+                epochs=epochs,
+                learning_rate=lr,
+                params={'fixed_periods': fixed_periods} if fixed_periods else {},
+                train_windows=self.train_windows,
+                train_labels=self.train_labels.tolist(),
+                test_windows=self.test_windows if self.test_windows is not None else None,
+                test_labels=self.test_labels.tolist() if self.test_labels is not None else None
+            )
+        else:
+            config = TimeSeriesConfig(
+                algorithm='timesnet',
+                test_size=test_size,
+                random_state=random_state,
+                device='auto',  # Auto-detect GPU/CPU
+                complexity=complexity,
+                batch_size=batch_size,
+                epochs=epochs,
+                learning_rate=lr,
+                params={'fixed_periods': fixed_periods} if fixed_periods else {}
+            )
 
         # Disable controls
         self.train_btn.configure(state="disabled")
@@ -844,10 +903,22 @@ class ModelPanel(ctk.CTkFrame):
                 self._log_training("=" * 50)
                 self._log_training("DEEP LEARNING TRAINING - TimesNet")
                 self._log_training("=" * 50)
-                self._log_training(f"Windows: {len(self.windows)}")
-                self._log_training(f"Window size: {self.windows.shape[1]}")
-                self._log_training(f"Sensors: {self.windows.shape[2]}")
-                self._log_training(f"Classes: {len(set(self.window_labels))}")
+
+                if has_manual_split:
+                    self._log_training(f"Train windows: {len(self.train_windows)}")
+                    if self.test_windows is not None:
+                        self._log_training(f"Test windows: {len(self.test_windows)}")
+                    self._log_training(f"Window size: {self.train_windows.shape[1]}")
+                    self._log_training(f"Sensors: {self.train_windows.shape[2]}")
+                    self._log_training(f"Classes: {len(set(self.train_labels))}")
+                    self._log_training("Split mode: Manual (separate train/test folders)")
+                else:
+                    self._log_training(f"Windows: {len(self.windows)}")
+                    self._log_training(f"Window size: {self.windows.shape[1]}")
+                    self._log_training(f"Sensors: {self.windows.shape[2]}")
+                    self._log_training(f"Classes: {len(set(self.window_labels))}")
+                    self._log_training(f"Split mode: Automatic ({test_size*100:.0f}% test)")
+
                 self._log_training(f"Complexity: {complexity}")
                 self._log_training(f"Epochs: {epochs}, Batch: {batch_size}, LR: {lr}")
                 self._log_training("")
@@ -877,13 +948,24 @@ class ModelPanel(ctk.CTkFrame):
                         )
                     self.after(0, update_label)
 
-                results = self.timeseries_trainer.train(
-                    windows=self.windows,
-                    labels=self.window_labels,
-                    config=config,
-                    output_dir=model_dir,
-                    progress_callback=on_epoch_end
-                )
+                # For manual split, pass None for windows/labels since they're in config
+                # For auto split, pass windows/labels as before
+                if has_manual_split:
+                    results = self.timeseries_trainer.train(
+                        windows=None,
+                        labels=None,
+                        config=config,
+                        output_dir=model_dir,
+                        progress_callback=on_epoch_end
+                    )
+                else:
+                    results = self.timeseries_trainer.train(
+                        windows=self.windows,
+                        labels=self.window_labels,
+                        config=config,
+                        output_dir=model_dir,
+                        progress_callback=on_epoch_end
+                    )
 
                 self._log_training("")
                 self._log_training("=" * 50)
@@ -1010,9 +1092,9 @@ class ModelPanel(ctk.CTkFrame):
                     with open(project.data.train_windows_file, 'rb') as f:
                         train_windows = pickle.load(f)
 
-                    # Convert to numpy arrays
+                    # Convert train windows to numpy arrays
                     # Force conversion to float32 and filter out non-numeric columns
-                    windows_list = []
+                    train_windows_list = []
                     for w in train_windows:
                         if isinstance(w.data, pd.DataFrame):
                             # Extract only numeric sensor columns (exclude time, _source_file, etc.)
@@ -1023,27 +1105,56 @@ class ModelPanel(ctk.CTkFrame):
                         else:
                             # Already numpy array
                             window_array = np.array(w.data, dtype=np.float32)
-                        windows_list.append(window_array)
+                        train_windows_list.append(window_array)
 
-                    self.windows = np.array(windows_list, dtype=np.float32)
-                    self.window_labels = np.array([w.class_label for w in train_windows])
+                    self.train_windows = np.array(train_windows_list, dtype=np.float32)
+                    self.train_labels = np.array([w.class_label for w in train_windows])
+
+                    # Load test windows if available
+                    self.test_windows = None
+                    self.test_labels = None
+                    if project.data.test_windows_file:
+                        with open(project.data.test_windows_file, 'rb') as f:
+                            test_windows = pickle.load(f)
+
+                        # Convert test windows to numpy arrays
+                        test_windows_list = []
+                        for w in test_windows:
+                            if isinstance(w.data, pd.DataFrame):
+                                # Extract only numeric sensor columns (exclude time, _source_file, etc.)
+                                numeric_cols = w.data.select_dtypes(include=[np.number]).columns.tolist()
+                                # Further filter to exclude 'time' if present
+                                sensor_cols = [col for col in numeric_cols if col.lower() not in ['time', 'timestamp']]
+                                window_array = w.data[sensor_cols].values.astype(np.float32)
+                            else:
+                                # Already numpy array
+                                window_array = np.array(w.data, dtype=np.float32)
+                            test_windows_list.append(window_array)
+
+                        self.test_windows = np.array(test_windows_list, dtype=np.float32)
+                        self.test_labels = np.array([w.class_label for w in test_windows])
+
+                        logger.info(f"Loaded train: {len(self.train_windows)} windows, test: {len(self.test_windows)} windows")
+                    else:
+                        logger.info(f"Loaded train: {len(self.train_windows)} windows (no test data)")
+
+                    # For UI display, use combined count
+                    total_windows = len(self.train_windows) + (len(self.test_windows) if self.test_windows is not None else 0)
 
                     # Update UI labels
                     if hasattr(self, 'windows_info_label'):
                         self.windows_info_label.configure(
-                            text=f"{len(self.windows)} windows",
+                            text=f"{total_windows} windows (train+test)",
                             text_color="green"
                         )
                         self.window_size_label.configure(
-                            text=f"{self.windows.shape[1]} samples",
+                            text=f"{self.train_windows.shape[1]} samples",
                             text_color="green"
                         )
                         self.sensors_info_label.configure(
-                            text=f"{self.windows.shape[2]} sensors",
+                            text=f"{self.train_windows.shape[2]} sensors",
                             text_color="green"
                         )
-
-                    logger.info(f"Loaded {len(self.windows)} windows for DL training")
 
                 else:
                     # Load single windows file

@@ -156,22 +156,19 @@ class TimeSeriesTrainer:
             TimeSeriesResults with metrics and paths
         """
         logger.info(f"Training {config.algorithm} deep learning model")
-        logger.info(f"Windows shape: {windows.shape}")
-
-        # Get dimensions
-        n_windows, window_size, n_sensors = windows.shape
-
-        # Encode labels
-        self.label_encoder = LabelEncoder()
-        y = self.label_encoder.fit_transform(labels)
-        self.class_names = self.label_encoder.classes_.tolist()
-        n_classes = len(self.class_names)
-
-        logger.info(f"Detected {n_classes} classes: {self.class_names}")
 
         # Check if we have pre-split train/test data
         if hasattr(config, 'train_windows') and config.train_windows is not None:
             logger.info("Using manual train/test split from separate datasets")
+
+            # Encode labels from manual split
+            self.label_encoder = LabelEncoder()
+            all_labels = list(config.train_labels)
+            if config.test_labels is not None:
+                all_labels.extend(config.test_labels)
+            self.label_encoder.fit(all_labels)
+            self.class_names = self.label_encoder.classes_.tolist()
+            n_classes = len(self.class_names)
 
             X_train = config.train_windows
             y_train = self.label_encoder.transform(config.train_labels)
@@ -184,21 +181,44 @@ class TimeSeriesTrainer:
                 X_test = X_train
                 y_test = y_train
                 logger.warning("No test data provided, using training data for evaluation")
+
+            # Get dimensions from train data
+            n_windows, window_size, n_sensors = X_train.shape
+            logger.info(f"Train windows shape: {X_train.shape}")
         else:
             # Split data automatically (stratified)
             logger.info(f"Using automatic train/test split ({config.test_size*100:.0f}% test)")
+            logger.info(f"Windows shape: {windows.shape}")
+
+            # Get dimensions
+            n_windows, window_size, n_sensors = windows.shape
+
+            # Encode labels
+            self.label_encoder = LabelEncoder()
+            y = self.label_encoder.fit_transform(labels)
+            self.class_names = self.label_encoder.classes_.tolist()
+            n_classes = len(self.class_names)
+
             X_train, X_test, y_train, y_test = train_test_split(
                 windows, y, test_size=config.test_size,
                 random_state=config.random_state, stratify=y
             )
 
+        logger.info(f"Detected {n_classes} classes: {self.class_names}")
+
         # Create model
+        # Extract period configuration if provided
+        fixed_periods = config.params.get('fixed_periods', None)
+        if fixed_periods:
+            logger.info(f"Using custom period configuration: {fixed_periods}")
+
         self.model, self.device, self.device_desc = create_timesnet_for_classification(
             seq_len=window_size,
             n_sensors=n_sensors,
             n_classes=n_classes,
             device=config.device,
-            complexity=config.complexity
+            complexity=config.complexity,
+            fixed_periods=fixed_periods
         )
 
         # Report to user

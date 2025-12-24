@@ -52,20 +52,33 @@ option(BUILD_BLOCKS "Build example blocks" ON)
 if(BUILD_BLOCKS)
     # Sensors
     add_subdirectory(blocks/sensors/adxl345)
-    # TODO: add_subdirectory(blocks/sensors/bme280)
+    add_subdirectory(blocks/sensors/bme280)
+    add_subdirectory(blocks/sensors/analog_input)
+    add_subdirectory(blocks/sensors/gpio_input)
 
     # Processing
     add_subdirectory(blocks/processing/sliding_window)
     add_subdirectory(blocks/processing/channel_merge)
-    # TODO: add_subdirectory(blocks/processing/low_pass_filter)
+    add_subdirectory(blocks/processing/low_pass_filter)
+    add_subdirectory(blocks/processing/normalize)
 
-    # Models
-    # TODO: add_subdirectory(blocks/models/timesnet)
+    # AI Models
+    add_subdirectory(blocks/ai/timesnet_onnx)
+    add_subdirectory(blocks/ai/decision_tree)
 
     # Outputs
     add_subdirectory(blocks/outputs/gpio_output)
-    # TODO: add_subdirectory(blocks/outputs/oled_display)
-    # TODO: add_subdirectory(blocks/outputs/mqtt_publisher)
+    add_subdirectory(blocks/outputs/oled_display)
+    add_subdirectory(blocks/outputs/pwm_output)
+    add_subdirectory(blocks/outputs/mqtt_publisher)
+    add_subdirectory(blocks/outputs/http_post)
+    add_subdirectory(blocks/outputs/websocket)
+endif()
+
+# Optional: Build tests
+option(BUILD_TESTS "Build test programs" ON)
+if(BUILD_TESTS)
+    add_subdirectory(tests)
 endif()
 
 # Print build info

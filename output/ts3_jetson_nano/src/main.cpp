@@ -45,10 +45,12 @@ bool window_ready_4 = false;
 // OLED Display Node 9
 // GPIO Output Node 10
 // OLED Display Node 11
+// GPIO Output Node 12
+// OLED Display Node 13
 
 int main() {
     std::cout << "CiRA Pipeline Initialized" << std::endl;
-    std::cout << "Nodes: 11" << std::endl;
+    std::cout << "Nodes: 13" << std::endl;
 
     // ==================== Node Initialization ====================
     // Initialize TimesNet Model Node 1
@@ -80,8 +82,10 @@ int main() {
     // Initialize OLED Display Node 9
     // Initialize GPIO Output Node 10
     // Initialize OLED Display Node 11
+    // Initialize GPIO Output Node 12
+    // Initialize OLED Display Node 13
 
-    // Pipeline connections: 9 link(s)
+    // Pipeline connections: 10 link(s)
     // Node 2 (accel_x) -> Node 3 (channel_0)
     // Node 2 (accel_y) -> Node 3 (channel_1)
     // Node 2 (accel_z) -> Node 3 (channel_2)
@@ -91,6 +95,7 @@ int main() {
     // Node 1 (confidence_out) -> Node 7 (value)
     // Node 1 (confidence_out) -> Node 9 (value)
     // Node 1 (confidence_out) -> Node 11 (value)
+    // Node 1 (confidence_out) -> Node 13 (value)
 
     // ==================== Main Execution Loop ====================
     bool running = true;
@@ -142,6 +147,10 @@ int main() {
         // GPIO Output Node 10
         // TODO: Write to GPIO
         // OLED Display Node 11
+        // TODO: Update display
+        // GPIO Output Node 12
+        // TODO: Write to GPIO
+        // OLED Display Node 13
         // TODO: Update display
         
         // For demonstration, run once

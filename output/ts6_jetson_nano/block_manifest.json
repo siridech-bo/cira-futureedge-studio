@@ -1,0 +1,960 @@
+{
+  "blocks": [
+    {
+      "dependencies": [
+        "i2c-tools"
+      ],
+      "id": "adxl345-sensor",
+      "type": "i2c-device",
+      "version": "1.0.0"
+    },
+    {
+      "dependencies": [
+        "i2c-tools"
+      ],
+      "id": "bme280-sensor",
+      "type": "i2c-device",
+      "version": "1.0.0"
+    },
+    {
+      "dependencies": [],
+      "id": "channel-merge",
+      "type": "native",
+      "version": "1.0.0"
+    },
+    {
+      "dependencies": [],
+      "id": "gpio-output",
+      "type": "native",
+      "version": "1.0.0"
+    },
+    {
+      "dependencies": [],
+      "id": "low-pass-filter",
+      "type": "native",
+      "version": "1.0.0"
+    },
+    {
+      "dependencies": [
+        "i2c-tools"
+      ],
+      "id": "oled-display",
+      "type": "i2c-device",
+      "version": "1.1.0"
+    },
+    {
+      "dependencies": [],
+      "id": "sliding-window",
+      "type": "native",
+      "version": "1.0.0"
+    },
+    {
+      "dependencies": [
+        "onnx-runtime-1.16.0"
+      ],
+      "id": "timesnet",
+      "type": "onnx-runtime",
+      "version": "1.2.0"
+    }
+  ],
+  "format_version": "1.0",
+  "pipeline": {
+    "connections": [
+      {
+        "from_node_id": 1,
+        "from_pin": "temperature",
+        "to_node_id": 2,
+        "to_pin": "input"
+      },
+      {
+        "from_node_id": 3,
+        "from_pin": "window_out",
+        "to_node_id": 5,
+        "to_pin": "features_in"
+      },
+      {
+        "from_node_id": 2,
+        "from_pin": "output",
+        "to_node_id": 3,
+        "to_pin": "input"
+      },
+      {
+        "from_node_id": 7,
+        "from_pin": "accel_x",
+        "to_node_id": 8,
+        "to_pin": "channel_0"
+      },
+      {
+        "from_node_id": 7,
+        "from_pin": "accel_y",
+        "to_node_id": 8,
+        "to_pin": "channel_1"
+      },
+      {
+        "from_node_id": 7,
+        "from_pin": "accel_z",
+        "to_node_id": 8,
+        "to_pin": "channel_2"
+      },
+      {
+        "from_node_id": 8,
+        "from_pin": "merged_out",
+        "to_node_id": 9,
+        "to_pin": "input"
+      },
+      {
+        "from_node_id": 9,
+        "from_pin": "window_out",
+        "to_node_id": 5,
+        "to_pin": "features_in"
+      },
+      {
+        "from_node_id": 5,
+        "from_pin": "confidence_out",
+        "to_node_id": 10,
+        "to_pin": "value"
+      },
+      {
+        "from_node_id": 5,
+        "from_pin": "confidence_out",
+        "to_node_id": 12,
+        "to_pin": "value"
+      },
+      {
+        "from_node_id": 5,
+        "from_pin": "confidence_out",
+        "to_node_id": 14,
+        "to_pin": "value"
+      },
+      {
+        "from_node_id": 5,
+        "from_pin": "confidence_out",
+        "to_node_id": 16,
+        "to_pin": "value"
+      },
+      {
+        "from_node_id": 5,
+        "from_pin": "confidence_out",
+        "to_node_id": 18,
+        "to_pin": "value"
+      },
+      {
+        "from_node_id": 19,
+        "from_pin": "accel_x",
+        "to_node_id": 20,
+        "to_pin": "channel_0"
+      },
+      {
+        "from_node_id": 19,
+        "from_pin": "accel_y",
+        "to_node_id": 20,
+        "to_pin": "channel_1"
+      },
+      {
+        "from_node_id": 19,
+        "from_pin": "accel_z",
+        "to_node_id": 20,
+        "to_pin": "channel_2"
+      },
+      {
+        "from_node_id": 20,
+        "from_pin": "merged_out",
+        "to_node_id": 21,
+        "to_pin": "input"
+      },
+      {
+        "from_node_id": 21,
+        "from_pin": "window_out",
+        "to_node_id": 5,
+        "to_pin": "features_in"
+      },
+      {
+        "from_node_id": 5,
+        "from_pin": "confidence_out",
+        "to_node_id": 22,
+        "to_pin": "value"
+      },
+      {
+        "from_node_id": 5,
+        "from_pin": "confidence_out",
+        "to_node_id": 24,
+        "to_pin": "value"
+      },
+      {
+        "from_node_id": 5,
+        "from_pin": "confidence_out",
+        "to_node_id": 26,
+        "to_pin": "value"
+      },
+      {
+        "from_node_id": 5,
+        "from_pin": "confidence_out",
+        "to_node_id": 28,
+        "to_pin": "value"
+      },
+      {
+        "from_node_id": 5,
+        "from_pin": "confidence_out",
+        "to_node_id": 30,
+        "to_pin": "value"
+      }
+    ],
+    "nodes": [
+      {
+        "config": {
+          "i2c_address": "0x76"
+        },
+        "id": 1,
+        "pins": [
+          {
+            "is_input": false,
+            "name": "temperature",
+            "type": "float"
+          },
+          {
+            "is_input": false,
+            "name": "humidity",
+            "type": "float"
+          },
+          {
+            "is_input": false,
+            "name": "pressure",
+            "type": "float"
+          }
+        ],
+        "position": {
+          "x": 76.70988464355469,
+          "y": 715.7576904296875
+        },
+        "type": "input.environmental.bme280"
+      },
+      {
+        "config": {
+          "alpha": "0.1"
+        },
+        "id": 2,
+        "pins": [
+          {
+            "is_input": true,
+            "name": "input",
+            "type": "float"
+          },
+          {
+            "is_input": false,
+            "name": "output",
+            "type": "float"
+          }
+        ],
+        "position": {
+          "x": 320.5596618652344,
+          "y": 757.8463745117188
+        },
+        "type": "processing.filter.lowpass"
+      },
+      {
+        "config": {
+          "step_size": "64",
+          "window_size": "128"
+        },
+        "id": 3,
+        "pins": [
+          {
+            "is_input": true,
+            "name": "input",
+            "type": "any"
+          },
+          {
+            "is_input": false,
+            "name": "window_out",
+            "type": "array"
+          },
+          {
+            "is_input": false,
+            "name": "ready",
+            "type": "bool"
+          }
+        ],
+        "position": {
+          "x": 198.98468017578125,
+          "y": 875.3795776367188
+        },
+        "type": "processing.dsp.sliding_window"
+      },
+      {
+        "config": {
+          "batch_size": "1",
+          "model_path": "model.onnx",
+          "use_tensorrt": "false"
+        },
+        "id": 5,
+        "pins": [
+          {
+            "is_input": true,
+            "name": "features_in",
+            "type": "array"
+          },
+          {
+            "is_input": false,
+            "name": "prediction_out",
+            "type": "int"
+          },
+          {
+            "is_input": false,
+            "name": "confidence_out",
+            "type": "float"
+          }
+        ],
+        "position": {
+          "x": 559.4346923828125,
+          "y": 903.5791015625
+        },
+        "type": "processing.model.timesnet"
+      },
+      {
+        "config": {
+          "batch_size": "1",
+          "class_names": "idle,shake,snake,updown,wave",
+          "input_channels": "3",
+          "model_path": "D:\\CiRA FES\\output\\ts6\\models\\timesnet_model.onnx",
+          "num_classes": "5",
+          "sensor_columns": "accX,accY,accZ",
+          "seq_len": "100",
+          "use_tensorrt": "false"
+        },
+        "id": 6,
+        "pins": [
+          {
+            "is_input": true,
+            "name": "features_in",
+            "type": "array"
+          },
+          {
+            "is_input": false,
+            "name": "prediction_out",
+            "type": "int"
+          },
+          {
+            "is_input": false,
+            "name": "confidence_out",
+            "type": "float"
+          }
+        ],
+        "position": {
+          "x": 400.0,
+          "y": 300.0
+        },
+        "type": "processing.model.timesnet"
+      },
+      {
+        "config": {
+          "i2c_address": "0x53",
+          "range": "2",
+          "sampling_rate": "62.500000",
+          "scl_pin": "5",
+          "sda_pin": "3"
+        },
+        "id": 7,
+        "pins": [
+          {
+            "is_input": false,
+            "name": "accel_x",
+            "type": "float"
+          },
+          {
+            "is_input": false,
+            "name": "accel_y",
+            "type": "float"
+          },
+          {
+            "is_input": false,
+            "name": "accel_z",
+            "type": "float"
+          }
+        ],
+        "position": {
+          "x": 200.0,
+          "y": 200.0
+        },
+        "type": "input.accelerometer.adxl345"
+      },
+      {
+        "config": {
+          "num_channels": "3"
+        },
+        "id": 8,
+        "pins": [
+          {
+            "is_input": true,
+            "name": "channel_0",
+            "type": "float"
+          },
+          {
+            "is_input": true,
+            "name": "channel_1",
+            "type": "float"
+          },
+          {
+            "is_input": true,
+            "name": "channel_2",
+            "type": "float"
+          },
+          {
+            "is_input": false,
+            "name": "merged_out",
+            "type": "vector3"
+          }
+        ],
+        "position": {
+          "x": 350.0,
+          "y": 200.0
+        },
+        "type": "processing.dsp.channel_merge"
+      },
+      {
+        "config": {
+          "step_size": "50",
+          "window_size": "100"
+        },
+        "id": 9,
+        "pins": [
+          {
+            "is_input": true,
+            "name": "input",
+            "type": "any"
+          },
+          {
+            "is_input": false,
+            "name": "window_out",
+            "type": "array"
+          },
+          {
+            "is_input": false,
+            "name": "ready",
+            "type": "bool"
+          }
+        ],
+        "position": {
+          "x": 500.0,
+          "y": 200.0
+        },
+        "type": "processing.dsp.sliding_window"
+      },
+      {
+        "config": {
+          "class_filter": "idle",
+          "height": "64",
+          "i2c_address": "0x3C",
+          "width": "128"
+        },
+        "id": 10,
+        "pins": [
+          {
+            "is_input": true,
+            "name": "text",
+            "type": "string"
+          },
+          {
+            "is_input": true,
+            "name": "value",
+            "type": "float"
+          }
+        ],
+        "position": {
+          "x": 800.0,
+          "y": 150.0
+        },
+        "type": "output.display.oled"
+      },
+      {
+        "config": {
+          "class_filter": "shake",
+          "duration_ms": "2000",
+          "pin": "2"
+        },
+        "id": 11,
+        "pins": [
+          {
+            "is_input": true,
+            "name": "state",
+            "type": "bool"
+          }
+        ],
+        "position": {
+          "x": 800.0,
+          "y": 270.0
+        },
+        "type": "output.gpio.digital"
+      },
+      {
+        "config": {
+          "class_filter": "shake",
+          "height": "64",
+          "i2c_address": "0x3C",
+          "width": "128"
+        },
+        "id": 12,
+        "pins": [
+          {
+            "is_input": true,
+            "name": "text",
+            "type": "string"
+          },
+          {
+            "is_input": true,
+            "name": "value",
+            "type": "float"
+          }
+        ],
+        "position": {
+          "x": 800.0,
+          "y": 390.0
+        },
+        "type": "output.display.oled"
+      },
+      {
+        "config": {
+          "class_filter": "snake",
+          "duration_ms": "2000",
+          "pin": "4"
+        },
+        "id": 13,
+        "pins": [
+          {
+            "is_input": true,
+            "name": "state",
+            "type": "bool"
+          }
+        ],
+        "position": {
+          "x": 800.0,
+          "y": 510.0
+        },
+        "type": "output.gpio.digital"
+      },
+      {
+        "config": {
+          "class_filter": "snake",
+          "height": "64",
+          "i2c_address": "0x3C",
+          "width": "128"
+        },
+        "id": 14,
+        "pins": [
+          {
+            "is_input": true,
+            "name": "text",
+            "type": "string"
+          },
+          {
+            "is_input": true,
+            "name": "value",
+            "type": "float"
+          }
+        ],
+        "position": {
+          "x": 800.0,
+          "y": 630.0
+        },
+        "type": "output.display.oled"
+      },
+      {
+        "config": {
+          "class_filter": "updown",
+          "duration_ms": "2000",
+          "pin": "5"
+        },
+        "id": 15,
+        "pins": [
+          {
+            "is_input": true,
+            "name": "state",
+            "type": "bool"
+          }
+        ],
+        "position": {
+          "x": 800.0,
+          "y": 750.0
+        },
+        "type": "output.gpio.digital"
+      },
+      {
+        "config": {
+          "class_filter": "updown",
+          "height": "64",
+          "i2c_address": "0x3C",
+          "width": "128"
+        },
+        "id": 16,
+        "pins": [
+          {
+            "is_input": true,
+            "name": "text",
+            "type": "string"
+          },
+          {
+            "is_input": true,
+            "name": "value",
+            "type": "float"
+          }
+        ],
+        "position": {
+          "x": 800.0,
+          "y": 870.0
+        },
+        "type": "output.display.oled"
+      },
+      {
+        "config": {
+          "class_filter": "wave",
+          "duration_ms": "2000",
+          "pin": "18"
+        },
+        "id": 17,
+        "pins": [
+          {
+            "is_input": true,
+            "name": "state",
+            "type": "bool"
+          }
+        ],
+        "position": {
+          "x": 800.0,
+          "y": 990.0
+        },
+        "type": "output.gpio.digital"
+      },
+      {
+        "config": {
+          "class_filter": "wave",
+          "height": "64",
+          "i2c_address": "0x3C",
+          "width": "128"
+        },
+        "id": 18,
+        "pins": [
+          {
+            "is_input": true,
+            "name": "text",
+            "type": "string"
+          },
+          {
+            "is_input": true,
+            "name": "value",
+            "type": "float"
+          }
+        ],
+        "position": {
+          "x": 800.0,
+          "y": 1110.0
+        },
+        "type": "output.display.oled"
+      },
+      {
+        "config": {
+          "i2c_address": "0x53",
+          "range": "2",
+          "sampling_rate": "62.500000",
+          "scl_pin": "5",
+          "sda_pin": "3"
+        },
+        "id": 19,
+        "pins": [
+          {
+            "is_input": false,
+            "name": "accel_x",
+            "type": "float"
+          },
+          {
+            "is_input": false,
+            "name": "accel_y",
+            "type": "float"
+          },
+          {
+            "is_input": false,
+            "name": "accel_z",
+            "type": "float"
+          }
+        ],
+        "position": {
+          "x": 200.0,
+          "y": 200.0
+        },
+        "type": "input.accelerometer.adxl345"
+      },
+      {
+        "config": {
+          "num_channels": "3"
+        },
+        "id": 20,
+        "pins": [
+          {
+            "is_input": true,
+            "name": "channel_0",
+            "type": "float"
+          },
+          {
+            "is_input": true,
+            "name": "channel_1",
+            "type": "float"
+          },
+          {
+            "is_input": true,
+            "name": "channel_2",
+            "type": "float"
+          },
+          {
+            "is_input": false,
+            "name": "merged_out",
+            "type": "vector3"
+          }
+        ],
+        "position": {
+          "x": 350.0,
+          "y": 200.0
+        },
+        "type": "processing.dsp.channel_merge"
+      },
+      {
+        "config": {
+          "step_size": "50",
+          "window_size": "100"
+        },
+        "id": 21,
+        "pins": [
+          {
+            "is_input": true,
+            "name": "input",
+            "type": "any"
+          },
+          {
+            "is_input": false,
+            "name": "window_out",
+            "type": "array"
+          },
+          {
+            "is_input": false,
+            "name": "ready",
+            "type": "bool"
+          }
+        ],
+        "position": {
+          "x": 500.0,
+          "y": 200.0
+        },
+        "type": "processing.dsp.sliding_window"
+      },
+      {
+        "config": {
+          "class_filter": "idle",
+          "height": "64",
+          "i2c_address": "0x3C",
+          "width": "128"
+        },
+        "id": 22,
+        "pins": [
+          {
+            "is_input": true,
+            "name": "text",
+            "type": "string"
+          },
+          {
+            "is_input": true,
+            "name": "value",
+            "type": "float"
+          }
+        ],
+        "position": {
+          "x": 800.0,
+          "y": 150.0
+        },
+        "type": "output.display.oled"
+      },
+      {
+        "config": {
+          "class_filter": "shake",
+          "duration_ms": "2000",
+          "pin": "2"
+        },
+        "id": 23,
+        "pins": [
+          {
+            "is_input": true,
+            "name": "state",
+            "type": "bool"
+          }
+        ],
+        "position": {
+          "x": 800.0,
+          "y": 270.0
+        },
+        "type": "output.gpio.digital"
+      },
+      {
+        "config": {
+          "class_filter": "shake",
+          "height": "64",
+          "i2c_address": "0x3C",
+          "width": "128"
+        },
+        "id": 24,
+        "pins": [
+          {
+            "is_input": true,
+            "name": "text",
+            "type": "string"
+          },
+          {
+            "is_input": true,
+            "name": "value",
+            "type": "float"
+          }
+        ],
+        "position": {
+          "x": 800.0,
+          "y": 390.0
+        },
+        "type": "output.display.oled"
+      },
+      {
+        "config": {
+          "class_filter": "snake",
+          "duration_ms": "2000",
+          "pin": "4"
+        },
+        "id": 25,
+        "pins": [
+          {
+            "is_input": true,
+            "name": "state",
+            "type": "bool"
+          }
+        ],
+        "position": {
+          "x": 800.0,
+          "y": 510.0
+        },
+        "type": "output.gpio.digital"
+      },
+      {
+        "config": {
+          "class_filter": "snake",
+          "height": "64",
+          "i2c_address": "0x3C",
+          "width": "128"
+        },
+        "id": 26,
+        "pins": [
+          {
+            "is_input": true,
+            "name": "text",
+            "type": "string"
+          },
+          {
+            "is_input": true,
+            "name": "value",
+            "type": "float"
+          }
+        ],
+        "position": {
+          "x": 800.0,
+          "y": 630.0
+        },
+        "type": "output.display.oled"
+      },
+      {
+        "config": {
+          "class_filter": "updown",
+          "duration_ms": "2000",
+          "pin": "5"
+        },
+        "id": 27,
+        "pins": [
+          {
+            "is_input": true,
+            "name": "state",
+            "type": "bool"
+          }
+        ],
+        "position": {
+          "x": 800.0,
+          "y": 750.0
+        },
+        "type": "output.gpio.digital"
+      },
+      {
+        "config": {
+          "class_filter": "updown",
+          "height": "64",
+          "i2c_address": "0x3C",
+          "width": "128"
+        },
+        "id": 28,
+        "pins": [
+          {
+            "is_input": true,
+            "name": "text",
+            "type": "string"
+          },
+          {
+            "is_input": true,
+            "name": "value",
+            "type": "float"
+          }
+        ],
+        "position": {
+          "x": 800.0,
+          "y": 870.0
+        },
+        "type": "output.display.oled"
+      },
+      {
+        "config": {
+          "class_filter": "wave",
+          "duration_ms": "2000",
+          "pin": "18"
+        },
+        "id": 29,
+        "pins": [
+          {
+            "is_input": true,
+            "name": "state",
+            "type": "bool"
+          }
+        ],
+        "position": {
+          "x": 800.0,
+          "y": 990.0
+        },
+        "type": "output.gpio.digital"
+      },
+      {
+        "config": {
+          "class_filter": "wave",
+          "height": "64",
+          "i2c_address": "0x3C",
+          "width": "128"
+        },
+        "id": 30,
+        "pins": [
+          {
+            "is_input": true,
+            "name": "text",
+            "type": "string"
+          },
+          {
+            "is_input": true,
+            "name": "value",
+            "type": "float"
+          }
+        ],
+        "position": {
+          "x": 800.0,
+          "y": 1110.0
+        },
+        "type": "output.display.oled"
+      }
+    ]
+  },
+  "pipeline_name": "pipeline",
+  "target_platform": "jetson_nano"
+}

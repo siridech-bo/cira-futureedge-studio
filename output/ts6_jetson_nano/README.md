@@ -1,4 +1,4 @@
-# ts3 - jetson_nano Deployment
+# ts6 - jetson_nano Deployment
 
 ## Project Information
 - **Model**: timesnet

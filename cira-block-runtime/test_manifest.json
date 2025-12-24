@@ -1,0 +1,101 @@
+{
+  "format_version": "1.0",
+  "pipeline_name": "simple_sensor_test",
+  "target_platform": "jetson_nano",
+  "blocks": [
+    {
+      "id": "adxl345-sensor",
+      "version": "1.0.0",
+      "type": "i2c-device",
+      "dependencies": ["i2c-tools"]
+    },
+    {
+      "id": "channel-merge",
+      "version": "1.0.0",
+      "type": "native",
+      "dependencies": []
+    },
+    {
+      "id": "sliding-window",
+      "version": "1.0.0",
+      "type": "native",
+      "dependencies": []
+    },
+    {
+      "id": "gpio-output",
+      "version": "1.0.0",
+      "type": "native",
+      "dependencies": []
+    }
+  ],
+  "pipeline": {
+    "nodes": [
+      {
+        "id": 1,
+        "type": "input.accelerometer.adxl345",
+        "config": {
+          "i2c_address": "0x53",
+          "range": "2"
+        },
+        "position": {"x": 100, "y": 100}
+      },
+      {
+        "id": 2,
+        "type": "processing.dsp.channel_merge",
+        "config": {
+          "num_channels": "3"
+        },
+        "position": {"x": 300, "y": 100}
+      },
+      {
+        "id": 3,
+        "type": "processing.dsp.sliding_window",
+        "config": {
+          "window_size": "10",
+          "step_size": "5"
+        },
+        "position": {"x": 500, "y": 100}
+      },
+      {
+        "id": 4,
+        "type": "output.gpio.digital",
+        "config": {
+          "pin": "18"
+        },
+        "position": {"x": 700, "y": 100}
+      }
+    ],
+    "connections": [
+      {
+        "from_node_id": 1,
+        "from_pin": "accel_x",
+        "to_node_id": 2,
+        "to_pin": "channel_0"
+      },
+      {
+        "from_node_id": 1,
+        "from_pin": "accel_y",
+        "to_node_id": 2,
+        "to_pin": "channel_1"
+      },
+      {
+        "from_node_id": 1,
+        "from_pin": "accel_z",
+        "to_node_id": 2,
+        "to_pin": "channel_2"
+      },
+      {
+        "from_node_id": 2,
+        "from_pin": "merged_out",
+        "to_node_id": 3,
+        "to_pin": "input"
+      },
+      {
+        "from_node_id": 3,
+        "from_pin": "ready",
+        "to_node_id": 4,
+        "to_pin": "state"
+      }
+    ]
+  }
+}

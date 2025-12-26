@@ -410,6 +410,180 @@ class LogsWidget extends Widget {
     }
 }
 
+// Button Widget (Virtual GPIO Input)
+class ButtonWidget extends Widget {
+    constructor(id, type, config) {
+        super(id, type, config);
+        this.state = false;
+    }
+
+    getDefaultConfig() {
+        return {
+            title: 'Button',
+            buttonId: 'button_1',
+            label: 'Press Me',
+            momentary: true  // true = momentary, false = toggle
+        };
+    }
+
+    renderBody() {
+        return `
+            <div class="button-widget">
+                <button class="widget-button" id="widget-button-${this.id}">
+                    ${this.config.label}
+                </button>
+                <div class="button-state" id="button-state-${this.id}">Released</div>
+            </div>
+        `;
+    }
+
+    afterRender() {
+        const button = document.getElementById(`widget-button-${this.id}`);
+        if (!button) return;
+
+        if (this.config.momentary) {
+            // Momentary mode - press and release
+            button.addEventListener('mousedown', () => this.setButtonState(true));
+            button.addEventListener('mouseup', () => this.setButtonState(false));
+            button.addEventListener('mouseleave', () => this.setButtonState(false));
+            button.addEventListener('touchstart', (e) => { e.preventDefault(); this.setButtonState(true); });
+            button.addEventListener('touchend', (e) => { e.preventDefault(); this.setButtonState(false); });
+        } else {
+            // Toggle mode - click to toggle
+            button.addEventListener('click', () => this.setButtonState(!this.state));
+        }
+    }
+
+    async setButtonState(pressed) {
+        this.state = pressed;
+
+        // Update UI
+        const button = document.getElementById(`widget-button-${this.id}`);
+        const stateText = document.getElementById(`button-state-${this.id}`);
+
+        if (button) {
+            if (pressed) {
+                button.classList.add('pressed');
+            } else {
+                button.classList.remove('pressed');
+            }
+        }
+
+        if (stateText) {
+            stateText.textContent = pressed ? 'Pressed' : 'Released';
+        }
+
+        // Send to backend
+        try {
+            const response = await fetch('/api/widget/button', {
+                method: 'POST',
+                headers: {
+                    ...authManager.getHeaders(),
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    button_id: this.config.buttonId,
+                    state: pressed
+                })
+            });
+
+            if (!response.ok) {
+                console.error('Failed to update button state:', await response.text());
+            }
+        } catch (error) {
+            console.error('Error updating button:', error);
+        }
+    }
+
+    update(data) {
+        // Button state is controlled by user, not by data updates
+    }
+}
+
+// LED Widget (Virtual GPIO Output)
+class LEDWidget extends Widget {
+    constructor(id, type, config) {
+        super(id, type, config);
+        this.state = false;
+    }
+
+    getDefaultConfig() {
+        return {
+            title: 'LED',
+            ledId: 'led_1',
+            label: 'Status',
+            color: 'green'  // red, green, blue, yellow, white
+        };
+    }
+
+    renderBody() {
+        return `
+            <div class="led-widget">
+                <div class="led-indicator ${this.config.color}" id="led-indicator-${this.id}">
+                </div>
+                <div class="led-label">${this.config.label}</div>
+                <div class="led-state" id="led-state-${this.id}">OFF</div>
+            </div>
+        `;
+    }
+
+    afterRender() {
+        // Poll for LED state updates
+        this.pollInterval = setInterval(() => this.fetchLEDState(), 500);  // 500ms polling
+    }
+
+    async fetchLEDState() {
+        try {
+            const response = await fetch('/api/widget/led', {
+                headers: authManager.getHeaders()
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+
+                // Find our LED in the response
+                const ledData = data.leds.find(led => led.led_id === this.config.ledId);
+                if (ledData) {
+                    this.updateLEDState(ledData.state);
+                }
+            }
+        } catch (error) {
+            console.error('Error fetching LED state:', error);
+        }
+    }
+
+    updateLEDState(state) {
+        if (this.state === state) return;  // No change
+
+        this.state = state;
+
+        const indicator = document.getElementById(`led-indicator-${this.id}`);
+        const stateText = document.getElementById(`led-state-${this.id}`);
+
+        if (indicator) {
+            if (state) {
+                indicator.classList.add('on');
+            } else {
+                indicator.classList.remove('on');
+            }
+        }
+
+        if (stateText) {
+            stateText.textContent = state ? 'ON' : 'OFF';
+        }
+    }
+
+    update(data) {
+        // LED state is fetched separately via polling
+    }
+
+    destroy() {
+        if (this.pollInterval) {
+            clearInterval(this.pollInterval);
+        }
+    }
+}
+
 // Widget Factory
 class WidgetFactory {
     static create(type, id, config) {
@@ -424,6 +598,10 @@ class WidgetFactory {
                 return new TextWidget(id, type, config);
             case 'logs':
                 return new LogsWidget(id, type, config);
+            case 'button':
+                return new ButtonWidget(id, type, config);
+            case 'led':
+                return new LEDWidget(id, type, config);
             default:
                 return new Widget(id, type, config);
         }

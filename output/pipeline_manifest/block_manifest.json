@@ -1,0 +1,76 @@
+{
+  "blocks": [
+    {
+      "dependencies": [],
+      "id": "web-button",
+      "type": "web-input",
+      "version": "1.0.0"
+    },
+    {
+      "dependencies": [],
+      "id": "web-led",
+      "type": "web-output",
+      "version": "1.0.0"
+    }
+  ],
+  "format_version": "1.0",
+  "pipeline": {
+    "connections": [
+      {
+        "from_node_id": 1,
+        "from_pin": "state",
+        "to_node_id": 2,
+        "to_pin": "state"
+      }
+    ],
+    "nodes": [
+      {
+        "config": {
+          "button_id": "button_1",
+          "initial_state": "false",
+          "label": "Button"
+        },
+        "id": 1,
+        "pins": [
+          {
+            "is_input": false,
+            "name": "state",
+            "type": "bool"
+          }
+        ],
+        "position": {
+          "x": -1168.2801513671875,
+          "y": -308.6086730957031
+        },
+        "type": "input.web.button"
+      },
+      {
+        "config": {
+          "color": "green",
+          "label": "LED",
+          "led_id": "led_1"
+        },
+        "id": 2,
+        "pins": [
+          {
+            "is_input": true,
+            "name": "state",
+            "type": "bool"
+          },
+          {
+            "is_input": false,
+            "name": "state",
+            "type": "bool"
+          }
+        ],
+        "position": {
+          "x": -915.28955078125,
+          "y": -292.66632080078125
+        },
+        "type": "output.web.led"
+      }
+    ]
+  },
+  "pipeline_name": "pipeline",
+  "target_platform": "jetson_nano"
+}

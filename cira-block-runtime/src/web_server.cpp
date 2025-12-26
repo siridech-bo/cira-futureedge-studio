@@ -198,6 +198,25 @@ void WebServer::SetupRoutes() {
         }
         HandleRuntimeControl(req, res);
     });
+
+    // Widget endpoints
+    server_->Post("/api/widget/button", [this](const httplib::Request& req, httplib::Response& res) {
+        if (!ValidateAuth(req)) {
+            res.status = 401;
+            res.set_content("{\"error\":\"Unauthorized\"}", "application/json");
+            return;
+        }
+        HandleWidgetButton(req, res);
+    });
+
+    server_->Get("/api/widget/led", [this](const httplib::Request& req, httplib::Response& res) {
+        if (!ValidateAuth(req)) {
+            res.status = 401;
+            res.set_content("{\"error\":\"Unauthorized\"}", "application/json");
+            return;
+        }
+        HandleWidgetLED(req, res);
+    });
 }
 
 void WebServer::HandleRoot(const httplib::Request& req, httplib::Response& res) {
@@ -470,6 +489,133 @@ std::vector<LogMessage> WebServer::GetRecentLogs(size_t limit) {
     }
 
     return result;
+}
+
+void WebServer::HandleWidgetButton(const httplib::Request& req, httplib::Response& res) {
+    try {
+        nlohmann::json request_body = nlohmann::json::parse(req.body);
+
+        if (!request_body.contains("button_id") || !request_body.contains("state")) {
+            res.status = 400;
+            res.set_content("{\"error\":\"Missing button_id or state\"}", "application/json");
+            return;
+        }
+
+        std::string button_id = request_body["button_id"];
+        bool state = request_body["state"];
+
+        if (!executor_) {
+            res.status = 500;
+            res.set_content("{\"error\":\"Block executor not available\"}", "application/json");
+            return;
+        }
+
+        // Find the WebButtonBlock by matching button_id in node config
+        const auto& nodes = executor_->GetNodes();
+        bool button_found = false;
+
+        for (const auto& [node_id, node] : nodes) {
+            // Check if this is a web-button node
+            if (node.node_type.find("web") != std::string::npos &&
+                node.node_type.find("button") != std::string::npos) {
+
+                // Check if button_id matches
+                auto it = node.config.find("button_id");
+                if (it != node.config.end() && it->second == button_id) {
+                    // Found the button! Update its state via the block's SetButtonState method
+                    // Note: We need to access the actual block instance through the executor
+                    auto block = executor_->GetBlock(node_id);
+                    if (block) {
+                        // Call SetInput to update button state
+                        block->SetInput("state", state);
+                        button_found = true;
+
+                        AddLog("INFO", "Web button '" + button_id + "' state changed to " +
+                               (state ? "pressed" : "released"));
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (button_found) {
+            nlohmann::json response;
+            response["success"] = true;
+            response["button_id"] = button_id;
+            response["state"] = state;
+            res.set_content(response.dump(), "application/json");
+        } else {
+            res.status = 404;
+            res.set_content("{\"error\":\"Button not found\"}", "application/json");
+        }
+
+    } catch (const std::exception& e) {
+        res.status = 400;
+        res.set_content("{\"error\":\"Invalid request\"}", "application/json");
+        AddLog("ERROR", "Widget button request failed: " + std::string(e.what()));
+    }
+}
+
+void WebServer::HandleWidgetLED(const httplib::Request& req, httplib::Response& res) {
+    nlohmann::json response;
+    response["leds"] = nlohmann::json::array();
+
+    if (!executor_) {
+        res.status = 500;
+        res.set_content("{\"error\":\"Block executor not available\"}", "application/json");
+        return;
+    }
+
+    // Find all WebLEDBlocks and get their states
+    const auto& nodes = executor_->GetNodes();
+
+    for (const auto& [node_id, node] : nodes) {
+        // Check if this is a web-led node
+        if (node.node_type.find("web") != std::string::npos &&
+            node.node_type.find("led") != std::string::npos) {
+
+            // Get LED configuration
+            std::string led_id = "led_" + std::to_string(node_id);
+            std::string label = "LED";
+            std::string color = "green";
+
+            auto it_id = node.config.find("led_id");
+            if (it_id != node.config.end()) {
+                led_id = it_id->second;
+            }
+
+            auto it_label = node.config.find("label");
+            if (it_label != node.config.end()) {
+                label = it_label->second;
+            }
+
+            auto it_color = node.config.find("color");
+            if (it_color != node.config.end()) {
+                color = it_color->second;
+            }
+
+            // Get LED state from output values
+            bool state = false;
+            auto output_it = node.output_values.find("state");
+            if (output_it != node.output_values.end()) {
+                // Extract bool from BlockValue (std::variant)
+                if (std::holds_alternative<bool>(output_it->second)) {
+                    state = std::get<bool>(output_it->second);
+                }
+            }
+
+            // Add LED info to response
+            nlohmann::json led_info;
+            led_info["led_id"] = led_id;
+            led_info["label"] = label;
+            led_info["state"] = state;
+            led_info["color"] = color;
+
+            response["leds"].push_back(led_info);
+        }
+    }
+
+    res.set_content(response.dump(), "application/json");
 }
 
 } // namespace CiraBlockRuntime

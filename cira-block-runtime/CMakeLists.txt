@@ -102,6 +102,7 @@ if(BUILD_BLOCKS)
     add_subdirectory(blocks/sensors/bme280)
     add_subdirectory(blocks/sensors/analog_input)
     add_subdirectory(blocks/sensors/gpio_input)
+    add_subdirectory(blocks/sensors/synthetic_signal)
 
     # Processing
     add_subdirectory(blocks/processing/sliding_window)
@@ -120,6 +121,10 @@ if(BUILD_BLOCKS)
     add_subdirectory(blocks/outputs/mqtt_publisher)
     add_subdirectory(blocks/outputs/http_post)
     add_subdirectory(blocks/outputs/websocket)
+
+    # Network/Web widgets
+    add_subdirectory(blocks/network/web_button)
+    add_subdirectory(blocks/network/web_led)
 endif()
 
 # Optional: Build tests

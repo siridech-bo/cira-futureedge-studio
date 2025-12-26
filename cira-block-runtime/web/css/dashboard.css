@@ -462,6 +462,14 @@ body {
     font-size: 14px;
 }
 
+.config-form small {
+    display: block;
+    margin-top: 4px;
+    color: #666;
+    font-size: 12px;
+    font-style: italic;
+}
+
 .config-form input[type="text"],
 .config-form input[type="number"],
 .config-form select {
@@ -540,6 +548,158 @@ body {
     gap: 10px;
 }
 
+/* Widget: Button (Virtual GPIO Input) */
+.button-widget {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    gap: 15px;
+}
+
+.widget-button {
+    padding: 20px 40px;
+    font-size: 18px;
+    font-weight: 600;
+    border: none;
+    border-radius: 10px;
+    background: linear-gradient(145deg, #1e3a8a, #1e40af);
+    color: white;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    box-shadow: 0 4px 15px rgba(30, 58, 138, 0.4);
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.widget-button:hover {
+    background: linear-gradient(145deg, #1e40af, #2563eb);
+    box-shadow: 0 6px 20px rgba(30, 58, 138, 0.6);
+    transform: translateY(-2px);
+}
+
+.widget-button:active,
+.widget-button.pressed {
+    background: linear-gradient(145deg, #2563eb, #3b82f6);
+    box-shadow: 0 2px 10px rgba(30, 58, 138, 0.4);
+    transform: translateY(2px) scale(0.98);
+}
+
+.button-state {
+    font-size: 14px;
+    color: #aaa;
+    font-weight: 500;
+}
+
+/* Widget: LED (Virtual GPIO Output) */
+.led-widget {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    gap: 12px;
+}
+
+.led-indicator {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    transition: all 0.3s ease;
+    box-shadow:
+        inset 0 -2px 8px rgba(0, 0, 0, 0.3),
+        0 0 10px rgba(0, 0, 0, 0.2);
+    position: relative;
+    border: 3px solid rgba(255, 255, 255, 0.1);
+}
+
+.led-indicator::after {
+    content: '';
+    position: absolute;
+    top: 15%;
+    left: 20%;
+    width: 30%;
+    height: 30%;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    filter: blur(5px);
+}
+
+/* LED OFF states */
+.led-indicator.red {
+    background: radial-gradient(circle at 30% 30%, #8B0000, #440000);
+}
+
+.led-indicator.green {
+    background: radial-gradient(circle at 30% 30%, #006400, #003200);
+}
+
+.led-indicator.blue {
+    background: radial-gradient(circle at 30% 30%, #00008B, #000044);
+}
+
+.led-indicator.yellow {
+    background: radial-gradient(circle at 30% 30%, #8B8B00, #444400);
+}
+
+.led-indicator.white {
+    background: radial-gradient(circle at 30% 30%, #808080, #404040);
+}
+
+/* LED ON states */
+.led-indicator.red.on {
+    background: radial-gradient(circle at 30% 30%, #FF4444, #CC0000);
+    box-shadow:
+        inset 0 -2px 8px rgba(0, 0, 0, 0.2),
+        0 0 20px rgba(255, 68, 68, 0.6),
+        0 0 40px rgba(255, 0, 0, 0.4);
+}
+
+.led-indicator.green.on {
+    background: radial-gradient(circle at 30% 30%, #44FF44, #00CC00);
+    box-shadow:
+        inset 0 -2px 8px rgba(0, 0, 0, 0.2),
+        0 0 20px rgba(68, 255, 68, 0.6),
+        0 0 40px rgba(0, 255, 0, 0.4);
+}
+
+.led-indicator.blue.on {
+    background: radial-gradient(circle at 30% 30%, #4444FF, #0000CC);
+    box-shadow:
+        inset 0 -2px 8px rgba(0, 0, 0, 0.2),
+        0 0 20px rgba(68, 68, 255, 0.6),
+        0 0 40px rgba(0, 0, 255, 0.4);
+}
+
+.led-indicator.yellow.on {
+    background: radial-gradient(circle at 30% 30%, #FFFF44, #CCCC00);
+    box-shadow:
+        inset 0 -2px 8px rgba(0, 0, 0, 0.2),
+        0 0 20px rgba(255, 255, 68, 0.6),
+        0 0 40px rgba(255, 255, 0, 0.4);
+}
+
+.led-indicator.white.on {
+    background: radial-gradient(circle at 30% 30%, #FFFFFF, #CCCCCC);
+    box-shadow:
+        inset 0 -2px 8px rgba(0, 0, 0, 0.2),
+        0 0 20px rgba(255, 255, 255, 0.6),
+        0 0 40px rgba(255, 255, 255, 0.4);
+}
+
+.led-label {
+    font-size: 16px;
+    font-weight: 500;
+    color: #fff;
+}
+
+.led-state {
+    font-size: 14px;
+    color: #aaa;
+    font-weight: 500;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
     .dashboard-header {
@@ -561,5 +721,15 @@ body {
     .modal-content {
         width: 95%;
         max-height: 90vh;
+    }
+
+    .led-indicator {
+        width: 60px;
+        height: 60px;
+    }
+
+    .widget-button {
+        padding: 15px 30px;
+        font-size: 16px;
     }
 }

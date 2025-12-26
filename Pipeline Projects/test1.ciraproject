@@ -1,0 +1,44 @@
+{
+  "connections": [
+    {
+      "from_node_id": 1,
+      "from_pin": "channel_0",
+      "to_node_id": 2,
+      "to_pin": "value"
+    }
+  ],
+  "nodes": [
+    {
+      "config": {
+        "amplitude": "1.0",
+        "dataset_inline": "",
+        "dataset_path": "",
+        "frequency": "1.0",
+        "loop_mode": "true",
+        "num_channels": "3",
+        "offset": "0.0",
+        "phase": "0.0",
+        "sample_rate": "100",
+        "selected_classes": "",
+        "sequential_mode": "true",
+        "signal_type": "dataset"
+      },
+      "id": 1,
+      "position_x": -932.7769775390625,
+      "position_y": -179.19024658203125,
+      "type_id": "input.synthetic.signal_generator"
+    },
+    {
+      "config": {
+        "height": "64",
+        "i2c_address": "0x3C",
+        "width": "128"
+      },
+      "id": 2,
+      "position_x": -596.1944580078125,
+      "position_y": -188.53976440429688,
+      "type_id": "output.display.oled"
+    }
+  ],
+  "version": 1
+}

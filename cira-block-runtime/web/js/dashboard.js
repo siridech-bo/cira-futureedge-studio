@@ -386,7 +386,48 @@ async function configureWidget(widgetId) {
     `;
 
     // Add type-specific configuration
-    if (widget.type === 'gauge' || widget.type === 'text' || widget.type === 'chart') {
+    if (widget.type === 'button') {
+        html += `
+            <div class="form-group">
+                <label>Button ID</label>
+                <input type="text" id="config-button-id" value="${widget.config.buttonId || 'button_1'}" placeholder="button_1" />
+                <small>Must match the button_id in your pipeline node configuration</small>
+            </div>
+            <div class="form-group">
+                <label>Button Label</label>
+                <input type="text" id="config-button-label" value="${widget.config.label || 'Press Me'}" />
+            </div>
+            <div class="form-group">
+                <label>Mode</label>
+                <select id="config-button-mode">
+                    <option value="true" ${widget.config.momentary !== false ? 'selected' : ''}>Momentary (Press & Release)</option>
+                    <option value="false" ${widget.config.momentary === false ? 'selected' : ''}>Toggle (Click to toggle)</option>
+                </select>
+            </div>
+        `;
+    } else if (widget.type === 'led') {
+        html += `
+            <div class="form-group">
+                <label>LED ID</label>
+                <input type="text" id="config-led-id" value="${widget.config.ledId || 'led_1'}" placeholder="led_1" />
+                <small>Must match the led_id in your pipeline node configuration</small>
+            </div>
+            <div class="form-group">
+                <label>LED Label</label>
+                <input type="text" id="config-led-label" value="${widget.config.label || 'Status'}" />
+            </div>
+            <div class="form-group">
+                <label>LED Color</label>
+                <select id="config-led-color">
+                    <option value="red" ${widget.config.color === 'red' ? 'selected' : ''}>Red</option>
+                    <option value="green" ${widget.config.color === 'green' || !widget.config.color ? 'selected' : ''}>Green</option>
+                    <option value="blue" ${widget.config.color === 'blue' ? 'selected' : ''}>Blue</option>
+                    <option value="yellow" ${widget.config.color === 'yellow' ? 'selected' : ''}>Yellow</option>
+                    <option value="white" ${widget.config.color === 'white' ? 'selected' : ''}>White</option>
+                </select>
+            </div>
+        `;
+    } else if (widget.type === 'gauge' || widget.type === 'text' || widget.type === 'chart') {
         html += `
             <div class="form-group">
                 <label>Data Source</label>
@@ -486,14 +527,24 @@ function saveWidgetConfig() {
     }
 
     // Update type-specific config
-    if (widget.type === 'gauge') {
+    if (widget.type === 'button') {
+        widget.config.buttonId = document.getElementById('config-button-id').value;
+        widget.config.label = document.getElementById('config-button-label').value;
+        widget.config.momentary = document.getElementById('config-button-mode').value === 'true';
+    } else if (widget.type === 'led') {
+        widget.config.ledId = document.getElementById('config-led-id').value;
+        widget.config.label = document.getElementById('config-led-label').value;
+        widget.config.color = document.getElementById('config-led-color').value;
+    } else if (widget.type === 'gauge') {
         widget.config.min = parseFloat(document.getElementById('config-min').value) || 0;
         widget.config.max = parseFloat(document.getElementById('config-max').value) || 100;
         widget.config.unit = document.getElementById('config-unit').value || '';
     }
 
     // Re-render widget with new config
-    widget.render();
+    if (widget.element) {
+        widget.render(widget.element);
+    }
 
     closeConfigModal();
 }

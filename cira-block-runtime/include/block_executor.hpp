@@ -59,6 +59,9 @@ public:
     // Get all output values for a node
     std::map<std::string, BlockValue> GetNodeOutputValues(int node_id) const;
 
+    // Get block instance for a node (for widget interaction)
+    IBlock* GetBlock(int node_id);
+
 private:
     std::map<int, ExecutionNode> nodes_;
     std::vector<Connection> connections_;

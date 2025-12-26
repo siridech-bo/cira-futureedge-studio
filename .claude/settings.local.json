@@ -3,7 +3,8 @@
     "allow": [
       "Bash(python:*)",
       "Bash(xargs sed:*)",
-      "Bash(ssh:*)"
+      "Bash(ssh:*)",
+      "Bash(mkdir:*)"
     ],
     "deny": [],
     "ask": []

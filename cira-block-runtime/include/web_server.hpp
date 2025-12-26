@@ -80,6 +80,8 @@ private:
     void HandleMetrics(const httplib::Request& req, httplib::Response& res);
     void HandleLogs(const httplib::Request& req, httplib::Response& res);
     void HandleRuntimeControl(const httplib::Request& req, httplib::Response& res);
+    void HandleWidgetButton(const httplib::Request& req, httplib::Response& res);
+    void HandleWidgetLED(const httplib::Request& req, httplib::Response& res);
 
     // Utility
     bool ValidateAuth(const httplib::Request& req);

@@ -1,0 +1,22 @@
+{
+    "accuracy": 0.0,
+    "class_names": [
+        "Class0",
+        "Class1"
+    ],
+    "input_channels": 3,
+    "model_architecture": "Custom",
+    "model_type": "classifier",
+    "num_classes": 2,
+    "onnx_model_path": "",
+    "project_name": "test",
+    "sampling_rate": 100.0,
+    "sensor_columns": [
+        "x",
+        "y",
+        "z"
+    ],
+    "seq_len": 100,
+    "test_dataset_path": "",
+    "window_size": 100
+}

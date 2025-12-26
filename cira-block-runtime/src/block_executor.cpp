@@ -49,6 +49,12 @@ bool BlockExecutor::BuildFromManifest(const BlockManifest& manifest, BlockLoader
             node_type.find("output") != std::string::npos) return "gpio-output";
         if (node_type.find("oled") != std::string::npos) return "oled-display";
         if (node_type.find("mqtt") != std::string::npos) return "mqtt-publisher";
+        if (node_type.find("synthetic") != std::string::npos &&
+            node_type.find("signal") != std::string::npos) return "synthetic-signal-generator";
+        if (node_type.find("web") != std::string::npos &&
+            node_type.find("button") != std::string::npos) return "web-button";
+        if (node_type.find("web") != std::string::npos &&
+            node_type.find("led") != std::string::npos) return "web-led";
 
         return "";
     };
@@ -313,6 +319,15 @@ std::map<std::string, BlockValue> BlockExecutor::GetNodeOutputValues(int node_id
     }
 
     return it->second.output_values;
+}
+
+IBlock* BlockExecutor::GetBlock(int node_id) {
+    auto it = nodes_.find(node_id);
+    if (it == nodes_.end()) {
+        return nullptr;
+    }
+
+    return it->second.block;
 }
 
 } // namespace CiraBlockRuntime

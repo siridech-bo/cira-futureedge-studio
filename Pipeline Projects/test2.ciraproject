@@ -1,0 +1,35 @@
+{
+  "connections": [
+    {
+      "from_node_id": 1,
+      "from_pin": "state",
+      "to_node_id": 2,
+      "to_pin": "state"
+    }
+  ],
+  "nodes": [
+    {
+      "config": {
+        "button_id": "button_1",
+        "initial_state": "false",
+        "label": "Button"
+      },
+      "id": 1,
+      "position_x": -1168.2801513671875,
+      "position_y": -308.6086730957031,
+      "type_id": "input.web.button"
+    },
+    {
+      "config": {
+        "color": "green",
+        "label": "LED",
+        "led_id": "led_1"
+      },
+      "id": 2,
+      "position_x": -915.28955078125,
+      "position_y": -292.66632080078125,
+      "type_id": "output.web.led"
+    }
+  ],
+  "version": 1
+}

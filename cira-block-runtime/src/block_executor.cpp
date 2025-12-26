@@ -114,19 +114,35 @@ bool BlockExecutor::BuildFromManifest(const BlockManifest& manifest, BlockLoader
 bool BlockExecutor::Initialize() {
     std::cout << "\n=== Initializing Blocks ===" << std::endl;
 
+    bool all_success = true;
+    std::vector<int> failed_nodes;
+
     for (auto& [node_id, node] : nodes_) {
         if (!node.block) continue;
 
         std::cout << "  Initializing node " << node_id << "..." << std::endl;
         if (!node.block->Initialize(node.config)) {
-            error_ = "Failed to initialize node " + std::to_string(node_id);
-            std::cerr << error_ << std::endl;
-            return false;
+            std::cerr << "  WARNING: Failed to initialize node " << node_id << std::endl;
+            failed_nodes.push_back(node_id);
+            all_success = false;
+            // Continue initializing other blocks
         }
     }
 
-    std::cout << "✓ All blocks initialized" << std::endl;
-    return true;
+    if (all_success) {
+        std::cout << "✓ All blocks initialized successfully" << std::endl;
+    } else {
+        std::cout << "⚠ Blocks initialized with " << failed_nodes.size() << " failure(s)" << std::endl;
+        std::cout << "  Failed nodes: ";
+        for (size_t i = 0; i < failed_nodes.size(); i++) {
+            std::cout << failed_nodes[i];
+            if (i < failed_nodes.size() - 1) std::cout << ", ";
+        }
+        std::cout << std::endl;
+        error_ = "Some blocks failed to initialize (hardware may not be connected)";
+    }
+
+    return all_success;
 }
 
 bool BlockExecutor::Execute() {
@@ -144,11 +160,13 @@ bool BlockExecutor::Execute() {
         // Transfer input data from connected upstream nodes
         TransferData();
 
-        // Execute block
+        // Execute block (continue even if it fails)
         if (!node.block->Execute()) {
+            std::cerr << "  WARNING: Block execution failed for node " << node_id << std::endl;
             error_ = "Block execution failed for node " + std::to_string(node_id);
             stats_.total_errors++;
-            return false;
+            // Don't return false - continue with other blocks
+            continue;
         }
 
         // Read output values from block
@@ -270,6 +288,31 @@ bool BlockExecutor::BuildExecutionOrder() {
 bool BlockExecutor::HasCycle() const {
     // Check if execution order contains all nodes
     return execution_order_.size() != nodes_.size();
+}
+
+bool BlockExecutor::GetNodeOutputValue(int node_id, const std::string& pin_name, BlockValue& value) const {
+    auto it = nodes_.find(node_id);
+    if (it == nodes_.end()) {
+        return false;
+    }
+
+    const auto& outputs = it->second.output_values;
+    auto pin_it = outputs.find(pin_name);
+    if (pin_it == outputs.end()) {
+        return false;
+    }
+
+    value = pin_it->second;
+    return true;
+}
+
+std::map<std::string, BlockValue> BlockExecutor::GetNodeOutputValues(int node_id) const {
+    auto it = nodes_.find(node_id);
+    if (it == nodes_.end()) {
+        return {};
+    }
+
+    return it->second.output_values;
 }
 
 } // namespace CiraBlockRuntime

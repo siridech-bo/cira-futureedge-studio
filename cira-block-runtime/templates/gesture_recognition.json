@@ -1,0 +1,94 @@
+{
+  "version": 1,
+  "name": "Gesture Recognition",
+  "description": "Default dashboard for TimesNet gesture recognition deployment",
+  "widgets": [
+    {
+      "type": "status",
+      "config": {
+        "title": "Runtime Status",
+        "showUptime": true
+      },
+      "gridOptions": {
+        "x": 0,
+        "y": 0,
+        "w": 4,
+        "h": 3
+      }
+    },
+    {
+      "type": "gauge",
+      "config": {
+        "title": "CPU Usage",
+        "dataSource": "system.cpu_usage",
+        "min": 0,
+        "max": 100,
+        "unit": "%"
+      },
+      "gridOptions": {
+        "x": 4,
+        "y": 0,
+        "w": 4,
+        "h": 3
+      }
+    },
+    {
+      "type": "text",
+      "config": {
+        "title": "Memory Usage",
+        "dataSource": "system.memory_used_mb",
+        "format": "{value} MB",
+        "fontSize": 32
+      },
+      "gridOptions": {
+        "x": 8,
+        "y": 0,
+        "w": 4,
+        "h": 3
+      }
+    },
+    {
+      "type": "chart",
+      "config": {
+        "title": "CPU History",
+        "dataSource": "system.cpu_usage",
+        "maxPoints": 50
+      },
+      "gridOptions": {
+        "x": 0,
+        "y": 3,
+        "w": 6,
+        "h": 4
+      }
+    },
+    {
+      "type": "chart",
+      "config": {
+        "title": "Memory History",
+        "dataSource": "system.memory_used_mb",
+        "maxPoints": 50
+      },
+      "gridOptions": {
+        "x": 6,
+        "y": 3,
+        "w": 6,
+        "h": 4
+      }
+    },
+    {
+      "type": "logs",
+      "config": {
+        "title": "Runtime Logs",
+        "filterLevel": "ALL",
+        "maxLines": 100,
+        "autoScroll": true
+      },
+      "gridOptions": {
+        "x": 0,
+        "y": 7,
+        "w": 12,
+        "h": 5
+      }
+    }
+  ]
+}

@@ -50,6 +50,15 @@ public:
     // Get error message
     const std::string& GetError() const { return error_; }
 
+    // Get all nodes (for dashboard display)
+    const std::map<int, ExecutionNode>& GetNodes() const { return nodes_; }
+
+    // Get specific node output value
+    bool GetNodeOutputValue(int node_id, const std::string& pin_name, BlockValue& value) const;
+
+    // Get all output values for a node
+    std::map<std::string, BlockValue> GetNodeOutputValues(int node_id) const;
+
 private:
     std::map<int, ExecutionNode> nodes_;
     std::vector<Connection> connections_;

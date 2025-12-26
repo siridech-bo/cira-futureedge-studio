@@ -3,8 +3,11 @@
 
 #ifdef _WIN32
 #include <windows.h>
+#include <io.h>
+#define access _access
 #else
 #include <dlfcn.h>
+#include <unistd.h>
 #endif
 
 namespace CiraBlockRuntime {

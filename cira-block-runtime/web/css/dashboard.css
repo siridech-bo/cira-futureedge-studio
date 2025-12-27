@@ -341,7 +341,7 @@ body {
 
 .text-widget-label {
     font-size: 16px;
-    color: #aaa;
+    color: #00d4ff;
 }
 
 /* Widget: Log Viewer */
@@ -732,4 +732,62 @@ body {
         padding: 15px 30px;
         font-size: 16px;
     }
+}
+
+/* Signal Plot Widget Styles */
+.signal-plot-body {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 10px;
+    overflow: hidden !important;
+    box-sizing: border-box;
+}
+
+.signal-plot-container {
+    flex: 1;
+    min-height: 0;
+    min-width: 0;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Ensure uPlot canvas fills the container */
+.signal-plot-container canvas {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+/* uPlot canvas styling */
+.signal-plot-container .u-over,
+.signal-plot-container .u-under {
+    overflow: hidden !important;
+}
+
+/* Ensure no scrollbars on signal plot container */
+.grid-stack-item:has(.signal-plot-body) .grid-stack-item-content {
+    overflow: hidden !important;
+}
+
+.signal-plot-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+    padding: 6px 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+    font-size: 12px;
+}
+
+.status-indicator {
+    font-size: 10px;
+}
+
+.widget-subtitle {
+    font-size: 11px;
+    color: #00d4ff;
+    margin-left: 8px;
+    font-weight: normal;
 }

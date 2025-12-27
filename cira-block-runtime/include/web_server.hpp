@@ -11,6 +11,7 @@
 #include "nlohmann/json.hpp"
 #include "metrics_collector.hpp"
 #include "auth_manager.hpp"
+#include "block_interface.hpp"
 
 namespace CiraBlockRuntime {
 
@@ -51,6 +52,11 @@ public:
     // Broadcast metrics to all connected WebSocket clients
     void BroadcastMetrics(const nlohmann::json& metrics);
 
+    // Broadcast signal data to WebSocket subscribers
+    void BroadcastSignalData(const std::string& node_id,
+                            const std::string& pin_name,
+                            const BlockValue& value);
+
 private:
     int port_;
     BlockRuntime* runtime_;
@@ -66,6 +72,25 @@ private:
     std::queue<LogMessage> log_buffer_;
     std::mutex log_mutex_;
     static constexpr size_t MAX_LOG_BUFFER_SIZE = 1000;
+
+    // WebSocket signal subscriptions
+    struct Subscription {
+        std::string node_id;
+        std::string pin_name;
+        int sample_rate;  // 0 = no downsampling, N = send every Nth sample
+    };
+
+    struct SignalDataPoint {
+        std::string node_id;
+        std::string pin_name;
+        BlockValue value;
+        uint64_t timestamp;
+    };
+
+    std::map<uint64_t, std::vector<Subscription>> ws_subscriptions_;  // connection_id -> subscriptions
+    std::map<uint64_t, std::queue<SignalDataPoint>> signal_queues_;  // connection_id -> data queue
+    std::map<uint64_t, std::map<std::string, int>> sample_counters_;  // connection_id -> (node_id:pin_name -> counter)
+    std::mutex ws_mutex_;
 
     // Setup routes
     void SetupRoutes();

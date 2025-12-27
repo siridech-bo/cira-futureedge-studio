@@ -2,6 +2,26 @@
   "blocks": [
     {
       "dependencies": [],
+      "id": "channel-merge",
+      "type": "native",
+      "version": "1.0.0"
+    },
+    {
+      "dependencies": [],
+      "id": "gpio-output",
+      "type": "native",
+      "version": "1.0.0"
+    },
+    {
+      "dependencies": [
+        "nlohmann-json"
+      ],
+      "id": "synthetic-signal-generator",
+      "type": "dataset-replay",
+      "version": "1.0.0"
+    },
+    {
+      "dependencies": [],
       "id": "web-button",
       "type": "web-input",
       "version": "1.0.0"
@@ -17,20 +37,109 @@
   "pipeline": {
     "connections": [
       {
-        "from_node_id": 1,
+        "from_node_id": 2,
         "from_pin": "state",
-        "to_node_id": 2,
+        "to_node_id": 1,
+        "to_pin": "play"
+      },
+      {
+        "from_node_id": 2,
+        "from_pin": "state",
+        "to_node_id": 3,
         "to_pin": "state"
+      },
+      {
+        "from_node_id": 2,
+        "from_pin": "state",
+        "to_node_id": 5,
+        "to_pin": "state"
+      },
+      {
+        "from_node_id": 1,
+        "from_pin": "channel_0",
+        "to_node_id": 8,
+        "to_pin": "channel_0"
+      },
+      {
+        "from_node_id": 1,
+        "from_pin": "channel_1",
+        "to_node_id": 8,
+        "to_pin": "channel_1"
+      },
+      {
+        "from_node_id": 1,
+        "from_pin": "channel_2",
+        "to_node_id": 8,
+        "to_pin": "channel_2"
       }
     ],
     "nodes": [
+      {
+        "config": {
+          "amplitude": "1.0",
+          "dataset_inline": "",
+          "dataset_path": "",
+          "frequency": "1.0",
+          "loop_mode": "true",
+          "num_channels": "3",
+          "offset": "0.0",
+          "phase": "0.0",
+          "sample_rate": "100",
+          "selected_classes": "",
+          "sequential_mode": "true",
+          "signal_type": "sine"
+        },
+        "id": 1,
+        "pins": [
+          {
+            "is_input": false,
+            "name": "channel_0",
+            "type": "float"
+          },
+          {
+            "is_input": false,
+            "name": "channel_1",
+            "type": "float"
+          },
+          {
+            "is_input": false,
+            "name": "channel_2",
+            "type": "float"
+          },
+          {
+            "is_input": false,
+            "name": "class_name",
+            "type": "string"
+          },
+          {
+            "is_input": true,
+            "name": "play",
+            "type": "bool"
+          },
+          {
+            "is_input": true,
+            "name": "reset",
+            "type": "bool"
+          },
+          {
+            "is_input": true,
+            "name": "next_class",
+            "type": "bool"
+          }
+        ],
+        "position": {
+          "x": -1007.6524047851563,
+          "y": -246.07350158691406
+        },
+        "type": "input.synthetic.signal_generator"
+      },
       {
         "config": {
           "button_id": "button_1",
           "initial_state": "false",
           "label": "Button"
         },
-        "id": 1,
+        "id": 2,
         "pins": [
           {
             "is_input": false,
@@ -39,10 +148,28 @@
           }
         ],
         "position": {
-          "x": -1168.2801513671875,
-          "y": -308.6086730957031
+          "x": -1225.25244140625,
+          "y": -227.6735076904297
         },
         "type": "input.web.button"
+      },
+      {
+        "config": {
+          "pin": "13"
+        },
+        "id": 3,
+        "pins": [
+          {
+            "is_input": true,
+            "name": "state",
+            "type": "bool"
+          }
+        ],
+        "position": {
+          "x": -717.2523803710938,
+          "y": -258.0735168457031
+        },
+        "type": "output.gpio.digital"
       },
       {
         "config": {
@@ -50,7 +177,7 @@
           "label": "LED",
           "led_id": "led_1"
         },
-        "id": 2,
+        "id": 5,
         "pins": [
           {
             "is_input": true,
@@ -64,10 +191,43 @@
           }
         ],
         "position": {
-          "x": -915.28955078125,
-          "y": -292.66632080078125
+          "x": -964.4524536132813,
+          "y": 23.52651596069336
         },
         "type": "output.web.led"
+      },
+      {
+        "config": {
+          "num_channels": "3"
+        },
+        "id": 8,
+        "pins": [
+          {
+            "is_input": true,
+            "name": "channel_0",
+            "type": "float"
+          },
+          {
+            "is_input": true,
+            "name": "channel_1",
+            "type": "float"
+          },
+          {
+            "is_input": true,
+            "name": "channel_2",
+            "type": "float"
+          },
+          {
+            "is_input": false,
+            "name": "merged_out",
+            "type": "vector3"
+          }
+        ],
+        "position": {
+          "x": -605.65625,
+          "y": -177.72171020507813
+        },
+        "type": "processing.dsp.channel_merge"
       }
     ]
   },

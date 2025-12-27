@@ -8,10 +8,12 @@
     <!-- External Libraries -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gridstack@10.1.0/dist/gridstack.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gridstack@10.1.0/dist/gridstack-extra.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/uplot@1.6.24/dist/uPlot.min.css">
     <link rel="stylesheet" href="css/dashboard.css">
 
     <script src="https://cdn.jsdelivr.net/npm/gridstack@10.1.0/dist/gridstack-all.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/uplot@1.6.24/dist/uPlot.iife.min.js"></script>
 </head>
 <body>
     <!-- Login Screen -->
@@ -81,6 +83,10 @@
                     <span class="widget-icon">💡</span>
                     <span>LED</span>
                 </div>
+                <div class="palette-item" data-widget="signalplot" draggable="true">
+                    <span class="widget-icon">📊</span>
+                    <span>Signal Plot</span>
+                </div>
                 <div class="palette-item" data-widget="logs" draggable="true">
                     <span class="widget-icon">📋</span>
                     <span>Log Viewer</span>
@@ -124,6 +130,7 @@
     <!-- Scripts -->
     <script src="js/auth.js"></script>
     <script src="js/widgets.js"></script>
+    <script src="js/signalplot.js"></script>
     <script src="js/dashboard.js"></script>
 </body>
 </html>

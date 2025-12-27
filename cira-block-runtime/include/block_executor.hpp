@@ -10,6 +10,9 @@
 
 namespace CiraBlockRuntime {
 
+// Forward declaration
+class WebServer;
+
 // Node instance in execution graph
 struct ExecutionNode {
     int node_id;
@@ -62,12 +65,16 @@ public:
     // Get block instance for a node (for widget interaction)
     IBlock* GetBlock(int node_id);
 
+    // Set web server for signal broadcasting (non-owning pointer)
+    void SetWebServer(WebServer* web_server) { web_server_ = web_server; }
+
 private:
     std::map<int, ExecutionNode> nodes_;
     std::vector<Connection> connections_;
     std::vector<int> execution_order_;  // Topologically sorted node IDs
     Stats stats_;
     std::string error_;
+    WebServer* web_server_;  // Non-owning pointer for signal broadcasting
 
     // Build topological sort for execution order
     bool BuildExecutionOrder();

@@ -528,8 +528,43 @@ class LEDWidget extends Widget {
     }
 
     afterRender() {
-        // Poll for LED state updates
-        this.pollInterval = setInterval(() => this.fetchLEDState(), 500);  // 500ms polling
+        // Use SSE for real-time LED state updates if node_id and pin_name are configured
+        if (this.config.node_id && this.config.pin_name) {
+            this.connectSSE();
+        } else {
+            // Fallback to polling if SSE not configured
+            this.pollInterval = setInterval(() => this.fetchLEDState(), 500);
+        }
+    }
+
+    connectSSE() {
+        const token = sessionStorage.getItem('auth_token') || '';
+        const nodeId = this.config.node_id;
+        const pinName = this.config.pin_name;
+
+        if (!nodeId || !pinName) return;
+
+        const url = `/api/signals/stream?token=${token}&node_id=${encodeURIComponent(nodeId)}&pin_name=${encodeURIComponent(pinName)}&sample_rate=0`;
+
+        console.log(`[LEDWidget] Connecting to SSE: ${url}`);
+        this.eventSource = new EventSource(url);
+
+        this.eventSource.onmessage = (event) => {
+            try {
+                const data = JSON.parse(event.data);
+                // LED state is a boolean value
+                const state = data.value === true || data.value === 1 || data.value === "true";
+                this.updateLEDState(state);
+            } catch (error) {
+                console.error('[LEDWidget] Failed to parse SSE data:', error);
+            }
+        };
+
+        this.eventSource.onerror = (error) => {
+            console.error('[LEDWidget] SSE error:', error);
+            // Attempt reconnect after 2 seconds
+            setTimeout(() => this.connectSSE(), 2000);
+        };
     }
 
     async fetchLEDState() {
@@ -574,12 +609,16 @@ class LEDWidget extends Widget {
     }
 
     update(data) {
-        // LED state is fetched separately via polling
+        // LED state is fetched separately via polling or SSE
     }
 
     destroy() {
         if (this.pollInterval) {
             clearInterval(this.pollInterval);
+        }
+        if (this.eventSource) {
+            this.eventSource.close();
+            this.eventSource = null;
         }
     }
 }
@@ -602,6 +641,8 @@ class WidgetFactory {
                 return new ButtonWidget(id, type, config);
             case 'led':
                 return new LEDWidget(id, type, config);
+            case 'signalplot':
+                return new SignalPlotWidget(id, type, config);
             default:
                 return new Widget(id, type, config);
         }

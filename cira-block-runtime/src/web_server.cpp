@@ -217,6 +217,95 @@ void WebServer::SetupRoutes() {
         }
         HandleWidgetLED(req, res);
     });
+
+    // WebSocket-like signal streaming using Server-Sent Events (SSE)
+    server_->Get("/api/signals/stream", [this](const httplib::Request& req, httplib::Response& res) {
+        if (!ValidateAuth(req)) {
+            res.status = 401;
+            return;
+        }
+
+        // Parse query parameters for subscriptions (node_id and pin_name)
+        std::vector<Subscription> subs;
+        auto node_id_param = req.get_param_value("node_id");
+        auto pin_name_param = req.get_param_value("pin_name");
+
+        if (!node_id_param.empty() && !pin_name_param.empty()) {
+            Subscription sub;
+            sub.node_id = node_id_param;
+            sub.pin_name = pin_name_param;
+            sub.sample_rate = req.has_param("sample_rate") ?
+                std::stoi(req.get_param_value("sample_rate")) : 0;
+            subs.push_back(sub);
+        }
+
+        // Generate unique connection ID
+        uint64_t conn_id = reinterpret_cast<uint64_t>(&res);
+
+        {
+            std::lock_guard<std::mutex> lock(ws_mutex_);
+            ws_subscriptions_[conn_id] = subs;
+            std::cout << "[WebServer] Signal stream connected: conn_id=" << conn_id
+                     << " node_id=" << node_id_param << " pin_name=" << pin_name_param << std::endl;
+        }
+
+        // Set SSE headers
+        res.set_header("Content-Type", "text/event-stream");
+        res.set_header("Cache-Control", "no-cache");
+        res.set_header("Connection", "keep-alive");
+
+        // Stream data using Server-Sent Events
+        res.set_content_provider(
+            "text/event-stream",
+            [this, conn_id](size_t offset, httplib::DataSink& sink) {
+                // Check for queued data
+                std::lock_guard<std::mutex> lock(ws_mutex_);
+
+                auto it = signal_queues_.find(conn_id);
+                if (it != signal_queues_.end() && !it->second.empty()) {
+                    // Send all queued data points
+                    while (!it->second.empty()) {
+                        SignalDataPoint dp = it->second.front();
+                        it->second.pop();
+
+                        // Build SSE message
+                        nlohmann::json msg;
+                        msg["node_id"] = dp.node_id;
+                        msg["pin_name"] = dp.pin_name;
+                        msg["timestamp"] = dp.timestamp;
+
+                        // Convert BlockValue to JSON
+                        if (std::holds_alternative<float>(dp.value)) {
+                            msg["value"] = std::get<float>(dp.value);
+                        } else if (std::holds_alternative<int>(dp.value)) {
+                            msg["value"] = std::get<int>(dp.value);
+                        } else if (std::holds_alternative<bool>(dp.value)) {
+                            msg["value"] = std::get<bool>(dp.value);
+                        } else if (std::holds_alternative<std::string>(dp.value)) {
+                            msg["value"] = std::get<std::string>(dp.value);
+                        } else if (std::holds_alternative<std::vector<float>>(dp.value)) {
+                            msg["value"] = std::get<std::vector<float>>(dp.value);
+                        }
+
+                        std::string data = "data: " + msg.dump() + "\n\n";
+                        sink.write(data.c_str(), data.size());
+                    }
+                }
+
+                // Keep connection alive
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                return true;
+            },
+            [this, conn_id](bool success) {
+                // Cleanup on disconnect
+                std::lock_guard<std::mutex> lock(ws_mutex_);
+                ws_subscriptions_.erase(conn_id);
+                signal_queues_.erase(conn_id);
+                sample_counters_.erase(conn_id);
+                std::cout << "[WebServer] Signal stream disconnected: " << conn_id << std::endl;
+            }
+        );
+    });
 }
 
 void WebServer::HandleRoot(const httplib::Request& req, httplib::Response& res) {
@@ -616,6 +705,57 @@ void WebServer::HandleWidgetLED(const httplib::Request& req, httplib::Response& 
     }
 
     res.set_content(response.dump(), "application/json");
+}
+
+void WebServer::BroadcastSignalData(const std::string& node_id,
+                                   const std::string& pin_name,
+                                   const BlockValue& value) {
+    std::lock_guard<std::mutex> lock(ws_mutex_);
+
+    // Debug: Log first broadcast
+    static bool first_broadcast = true;
+    if (first_broadcast && !ws_subscriptions_.empty()) {
+        std::cout << "[WebServer] First BroadcastSignalData: node_id=" << node_id
+                 << " pin_name=" << pin_name << " subscribers=" << ws_subscriptions_.size() << std::endl;
+        first_broadcast = false;
+    }
+
+    // Get current timestamp in milliseconds
+    auto now = std::chrono::system_clock::now();
+    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch());
+    uint64_t timestamp = ms.count();
+
+    // Check all active subscriptions
+    for (auto& [conn_id, subscriptions] : ws_subscriptions_) {
+        for (const auto& sub : subscriptions) {
+            // Check if this subscription matches
+            if (sub.node_id == node_id && sub.pin_name == pin_name) {
+                // Apply downsampling if configured
+                if (sub.sample_rate > 0) {
+                    std::string key = node_id + ":" + pin_name;
+                    int& counter = sample_counters_[conn_id][key];
+                    counter++;
+                    if (counter % sub.sample_rate != 0) {
+                        continue;  // Skip this sample
+                    }
+                }
+
+                // Queue data point for this connection
+                SignalDataPoint dp;
+                dp.node_id = node_id;
+                dp.pin_name = pin_name;
+                dp.value = value;
+                dp.timestamp = timestamp;
+
+                signal_queues_[conn_id].push(dp);
+
+                // Limit queue size to prevent memory overflow
+                if (signal_queues_[conn_id].size() > 1000) {
+                    signal_queues_[conn_id].pop();  // Remove oldest
+                }
+            }
+        }
+    }
 }
 
 } // namespace CiraBlockRuntime

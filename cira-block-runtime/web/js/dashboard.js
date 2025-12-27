@@ -426,6 +426,68 @@ async function configureWidget(widgetId) {
                     <option value="white" ${widget.config.color === 'white' ? 'selected' : ''}>White</option>
                 </select>
             </div>
+            <div class="form-group">
+                <label>Real-time Updates (SSE)</label>
+                <small>Configure data source for instant updates instead of 500ms polling</small>
+            </div>
+            <div class="form-group">
+                <label>Data Source Block</label>
+                <select id="config-led-node" onchange="updateLEDPinOptions()">
+                    <option value="">-- Polling Mode (500ms delay) --</option>
+                    ${blocks.map(b => `<option value="${b.node_id}" ${widget.config.node_id == b.node_id ? 'selected' : ''}>${b.type} (ID: ${b.node_id})</option>`).join('')}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Output Pin</label>
+                <select id="config-led-pin">
+                    <option value="">-- Select Pin --</option>
+                </select>
+                <small>Select the block output pin that controls this LED</small>
+            </div>
+        `;
+    } else if (widget.type === 'signalplot') {
+        html += `
+            <div class="form-group">
+                <label>Data Source</label>
+                <select id="config-signal-node" onchange="updateSignalPinOptions()">
+                    <option value="">-- Select Block --</option>
+                    ${blocks.map(b => `<option value="${b.node_id}" ${widget.config.node_id == b.node_id ? 'selected' : ''}>${b.type} (ID: ${b.node_id})</option>`).join('')}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Output Pin</label>
+                <select id="config-signal-pin">
+                    <option value="">-- Select Pin --</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Plot Label</label>
+                <input type="text" id="config-plot-label" value="${widget.config.label || 'Signal'}" />
+            </div>
+            <div class="form-group">
+                <label>Max Points</label>
+                <input type="number" id="config-max-points" value="${widget.config.maxPoints || 100}" min="10" max="1000" />
+                <small>Number of data points to display</small>
+            </div>
+            <div class="form-group">
+                <label>Sample Rate (Downsampling)</label>
+                <input type="number" id="config-sample-rate" value="${widget.config.sample_rate || 0}" min="0" />
+                <small>0 = no downsampling, N = show every Nth sample</small>
+            </div>
+            <div class="form-group">
+                <label>Line Color</label>
+                <input type="color" id="config-plot-color" value="${widget.config.color || '#4BC0C0'}" />
+            </div>
+            <div class="form-group">
+                <label>Y-Axis Min</label>
+                <input type="number" step="0.1" id="config-y-min" value="${widget.config.y_min !== undefined ? widget.config.y_min : -1.5}" />
+                <small>Minimum Y-axis value</small>
+            </div>
+            <div class="form-group">
+                <label>Y-Axis Max</label>
+                <input type="number" step="0.1" id="config-y-max" value="${widget.config.y_max !== undefined ? widget.config.y_max : 1.5}" />
+                <small>Maximum Y-axis value</small>
+            </div>
         `;
     } else if (widget.type === 'gauge' || widget.type === 'text' || widget.type === 'chart') {
         html += `
@@ -477,6 +539,14 @@ async function configureWidget(widgetId) {
         }
     }
 
+    // Update signal plot pin options if node already selected
+    if (widget.type === 'signalplot' && widget.config.node_id) {
+        updateSignalPinOptions();
+        if (widget.config.pin_name) {
+            document.getElementById('config-signal-pin').value = widget.config.pin_name;
+        }
+    }
+
     modal.style.display = 'flex';
 }
 
@@ -485,6 +555,42 @@ function updatePinOptions() {
     const blocks = JSON.parse(modal.dataset.blocks || '[]');
     const nodeId = parseInt(document.getElementById('config-node').value);
     const pinSelect = document.getElementById('config-pin');
+
+    pinSelect.innerHTML = '<option value="">-- Select Pin --</option>';
+
+    if (nodeId) {
+        const block = blocks.find(b => b.node_id === nodeId);
+        if (block && block.output_pins) {
+            block.output_pins.forEach(pin => {
+                pinSelect.innerHTML += `<option value="${pin}">${pin}</option>`;
+            });
+        }
+    }
+}
+
+function updateSignalPinOptions() {
+    const modal = document.getElementById('widget-config-modal');
+    const blocks = JSON.parse(modal.dataset.blocks || '[]');
+    const nodeId = parseInt(document.getElementById('config-signal-node').value);
+    const pinSelect = document.getElementById('config-signal-pin');
+
+    pinSelect.innerHTML = '<option value="">-- Select Pin --</option>';
+
+    if (nodeId) {
+        const block = blocks.find(b => b.node_id === nodeId);
+        if (block && block.output_pins) {
+            block.output_pins.forEach(pin => {
+                pinSelect.innerHTML += `<option value="${pin}">${pin}</option>`;
+            });
+        }
+    }
+}
+
+function updateLEDPinOptions() {
+    const modal = document.getElementById('widget-config-modal');
+    const blocks = JSON.parse(modal.dataset.blocks || '[]');
+    const nodeId = parseInt(document.getElementById('config-led-node').value);
+    const pinSelect = document.getElementById('config-led-pin');
 
     pinSelect.innerHTML = '<option value="">-- Select Pin --</option>';
 
@@ -535,6 +641,24 @@ function saveWidgetConfig() {
         widget.config.ledId = document.getElementById('config-led-id').value;
         widget.config.label = document.getElementById('config-led-label').value;
         widget.config.color = document.getElementById('config-led-color').value;
+
+        // SSE configuration for real-time updates
+        const ledNodeSelect = document.getElementById('config-led-node');
+        const ledPinSelect = document.getElementById('config-led-pin');
+        widget.config.node_id = ledNodeSelect.value || null;
+        widget.config.pin_name = ledPinSelect.value || null;
+    } else if (widget.type === 'signalplot') {
+        const signalNodeSelect = document.getElementById('config-signal-node');
+        const signalPinSelect = document.getElementById('config-signal-pin');
+
+        widget.config.node_id = signalNodeSelect.value || null;
+        widget.config.pin_name = signalPinSelect.value || null;
+        widget.config.label = document.getElementById('config-plot-label').value;
+        widget.config.maxPoints = parseInt(document.getElementById('config-max-points').value) || 100;
+        widget.config.sample_rate = parseInt(document.getElementById('config-sample-rate').value) || 0;
+        widget.config.color = document.getElementById('config-plot-color').value;
+        widget.config.y_min = parseFloat(document.getElementById('config-y-min').value);
+        widget.config.y_max = parseFloat(document.getElementById('config-y-max').value);
     } else if (widget.type === 'gauge') {
         widget.config.min = parseFloat(document.getElementById('config-min').value) || 0;
         widget.config.max = parseFloat(document.getElementById('config-max').value) || 100;
@@ -543,7 +667,17 @@ function saveWidgetConfig() {
 
     // Re-render widget with new config
     if (widget.element) {
+        // For widgets with SSE connections, destroy old connection before re-rendering
+        if ((widget.type === 'signalplot' || widget.type === 'led') && typeof widget.destroy === 'function') {
+            widget.destroy();
+        }
+
         widget.render(widget.element);
+
+        // Reinitialize after rendering
+        if ((widget.type === 'signalplot' || widget.type === 'led') && typeof widget.afterRender === 'function') {
+            widget.afterRender();
+        }
     }
 
     closeConfigModal();

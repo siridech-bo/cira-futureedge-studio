@@ -184,6 +184,9 @@ start_web_server:
         metrics_collector = std::make_unique<CiraBlockRuntime::MetricsCollector>();
         web_server = std::make_unique<CiraBlockRuntime::WebServer>(web_port, nullptr, &executor);
 
+        // Connect executor to web server for signal broadcasting
+        executor.SetWebServer(web_server.get());
+
         // Setup authentication
         if (!web_no_auth && !web_user.empty() && !web_pass.empty()) {
             web_server->SetAuth(web_user, web_pass);

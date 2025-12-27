@@ -1,4 +1,5 @@
 #include "block_executor.hpp"
+#include "web_server.hpp"
 #include <iostream>
 #include <algorithm>
 #include <set>
@@ -8,6 +9,7 @@ namespace CiraBlockRuntime {
 
 BlockExecutor::BlockExecutor()
     : stats_{0, 0, 0.0}
+    , web_server_(nullptr)
 {
 }
 
@@ -178,7 +180,17 @@ bool BlockExecutor::Execute() {
         // Read output values from block
         auto output_pins = node.block->GetOutputPins();
         for (const auto& pin : output_pins) {
-            node.output_values[pin.name] = node.block->GetOutput(pin.name);
+            BlockValue value = node.block->GetOutput(pin.name);
+            node.output_values[pin.name] = value;
+
+            // Broadcast signal data to web dashboard subscribers
+            if (web_server_) {
+                web_server_->BroadcastSignalData(
+                    std::to_string(node_id),
+                    pin.name,
+                    value
+                );
+            }
         }
     }
 

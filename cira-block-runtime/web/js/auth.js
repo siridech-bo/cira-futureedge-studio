@@ -76,11 +76,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Check if already authenticated
-    if (authManager.isAuthenticated()) {
-        showDashboard();
-    }
-
     // Logout button
     const logoutBtn = document.getElementById('btn-logout');
     if (logoutBtn) {

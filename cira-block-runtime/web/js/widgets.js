@@ -138,6 +138,40 @@ class GaugeWidget extends Widget {
                 }
             }
         });
+
+        // Subscribe to WebSocket for real-time updates
+        if (this.config.node_id && this.config.pin_name && typeof wsManager !== 'undefined') {
+            wsManager.subscribe(this.id, this.config.node_id, this.config.pin_name, (value, timestamp) => {
+                this.updateGauge(value);
+            });
+        }
+    }
+
+    updateGauge(value) {
+        if (!this.chart) return;
+
+        const percentage = ((value - this.config.min) / (this.config.max - this.config.min)) * 100;
+        this.chart.data.datasets[0].data = [percentage, 100 - percentage];
+
+        // Change color based on value
+        if (percentage > 80) {
+            this.chart.data.datasets[0].backgroundColor[0] = '#e74c3c';
+        } else if (percentage > 50) {
+            this.chart.data.datasets[0].backgroundColor[0] = '#f39c12';
+        } else {
+            this.chart.data.datasets[0].backgroundColor[0] = '#2ecc71';
+        }
+
+        this.chart.update('none');
+    }
+
+    destroy() {
+        if (typeof wsManager !== 'undefined') {
+            wsManager.unsubscribe(this.id);
+        }
+        if (this.chart) {
+            this.chart.destroy();
+        }
     }
 
     update(data) {
@@ -238,6 +272,39 @@ class ChartWidget extends Widget {
                 }
             }
         });
+
+        // Subscribe to WebSocket for real-time updates
+        if (this.config.node_id && this.config.pin_name && typeof wsManager !== 'undefined') {
+            wsManager.subscribe(this.id, this.config.node_id, this.config.pin_name, (value, timestamp) => {
+                this.addDataPoint(value);
+            });
+        }
+    }
+
+    addDataPoint(value) {
+        if (!this.chart) return;
+
+        const time = new Date().toLocaleTimeString();
+
+        this.chart.data.labels.push(time);
+        this.chart.data.datasets[0].data.push(value);
+
+        // Limit data points
+        if (this.chart.data.labels.length > (this.config.maxPoints || 50)) {
+            this.chart.data.labels.shift();
+            this.chart.data.datasets[0].data.shift();
+        }
+
+        this.chart.update('none');
+    }
+
+    destroy() {
+        if (typeof wsManager !== 'undefined') {
+            wsManager.unsubscribe(this.id);
+        }
+        if (this.chart) {
+            this.chart.destroy();
+        }
     }
 
     update(data) {
@@ -298,6 +365,38 @@ class TextWidget extends Widget {
                 <div class="text-widget-label">${this.config.title}</div>
             </div>
         `;
+    }
+
+    afterRender() {
+        // Subscribe to WebSocket for real-time updates
+        // Support both property name formats: nodeId/pin (from config dialog) and node_id/pin_name (legacy)
+        const nodeId = this.config.nodeId || this.config.node_id;
+        const pinName = this.config.pin || this.config.pin_name;
+
+        if (nodeId && pinName && typeof wsManager !== 'undefined') {
+            wsManager.subscribe(this.id, nodeId, pinName, (value, timestamp) => {
+                this.updateTextValue(value);
+            });
+        }
+    }
+
+    updateTextValue(value) {
+        const valueElement = document.getElementById(`text-value-${this.id}`);
+        if (!valueElement) return;
+
+        // Format numbers to 2 decimal places
+        let displayValue = value;
+        if (typeof value === 'number') {
+            displayValue = value.toFixed(2);
+        }
+
+        valueElement.textContent = displayValue;
+    }
+
+    destroy() {
+        if (typeof wsManager !== 'undefined') {
+            wsManager.unsubscribe(this.id);
+        }
     }
 
     update(data) {
@@ -415,6 +514,7 @@ class ButtonWidget extends Widget {
     constructor(id, type, config) {
         super(id, type, config);
         this.state = false;
+        this.eventHandlers = [];
     }
 
     getDefaultConfig() {
@@ -438,26 +538,46 @@ class ButtonWidget extends Widget {
     }
 
     afterRender() {
+        // Clean up old event listeners first
+        this.destroy();
+
         const button = document.getElementById(`widget-button-${this.id}`);
         if (!button) return;
 
         if (this.config.momentary) {
             // Momentary mode - press and release
-            button.addEventListener('mousedown', () => this.setButtonState(true));
-            button.addEventListener('mouseup', () => this.setButtonState(false));
-            button.addEventListener('mouseleave', () => this.setButtonState(false));
-            button.addEventListener('touchstart', (e) => { e.preventDefault(); this.setButtonState(true); });
-            button.addEventListener('touchend', (e) => { e.preventDefault(); this.setButtonState(false); });
+            const handlers = {
+                mousedown: () => this.setButtonState(true),
+                mouseup: () => this.setButtonState(false),
+                mouseleave: () => this.setButtonState(false),
+                touchstart: (e) => { e.preventDefault(); this.setButtonState(true); },
+                touchend: (e) => { e.preventDefault(); this.setButtonState(false); }
+            };
+
+            for (const [event, handler] of Object.entries(handlers)) {
+                button.addEventListener(event, handler);
+                this.eventHandlers.push({ element: button, event, handler });
+            }
         } else {
             // Toggle mode - click to toggle
-            button.addEventListener('click', () => this.setButtonState(!this.state));
+            const handler = () => this.setButtonState(!this.state);
+            button.addEventListener('click', handler);
+            this.eventHandlers.push({ element: button, event: 'click', handler });
         }
     }
 
-    async setButtonState(pressed) {
+    destroy() {
+        // Remove all event listeners
+        for (const { element, event, handler } of this.eventHandlers) {
+            element.removeEventListener(event, handler);
+        }
+        this.eventHandlers = [];
+    }
+
+    setButtonState(pressed) {
         this.state = pressed;
 
-        // Update UI
+        // Update UI immediately for fast response
         const button = document.getElementById(`widget-button-${this.id}`);
         const stateText = document.getElementById(`button-state-${this.id}`);
 
@@ -470,28 +590,30 @@ class ButtonWidget extends Widget {
         }
 
         if (stateText) {
-            stateText.textContent = pressed ? 'Pressed' : 'Released';
+            if (this.config.momentary) {
+                stateText.textContent = pressed ? 'Pressed' : 'Released';
+            } else {
+                stateText.textContent = pressed ? 'ON' : 'OFF';
+            }
         }
 
-        // Send to backend
-        try {
-            const response = await fetch('/api/widget/button', {
-                method: 'POST',
-                headers: {
-                    ...authManager.getHeaders(),
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    button_id: this.config.buttonId,
-                    state: pressed
-                })
-            });
+        // Send to backend via WebSocket (fast!)
+        if (this.config.buttonId && typeof wsManager !== 'undefined') {
+            // Send command via WebSocket using button_id
+            const command = {
+                command: 'button_press',
+                button_id: this.config.buttonId,
+                state: pressed ? 1 : 0
+            };
 
-            if (!response.ok) {
-                console.error('Failed to update button state:', await response.text());
+            if (wsManager.ws && wsManager.ws.readyState === WebSocket.OPEN) {
+                wsManager.ws.send(JSON.stringify(command));
+                console.log(`[ButtonWidget] Sent via WebSocket: button_id=${this.config.buttonId}, state=${pressed}`);
+            } else {
+                console.warn('[ButtonWidget] WebSocket not connected');
             }
-        } catch (error) {
-            console.error('Error updating button:', error);
+        } else {
+            console.warn('[ButtonWidget] Button not configured with button_id');
         }
     }
 
@@ -528,43 +650,35 @@ class LEDWidget extends Widget {
     }
 
     afterRender() {
-        // Use SSE for real-time LED state updates if node_id and pin_name are configured
+        // Use WebSocket for real-time LED state updates (Node-RED architecture)
         if (this.config.node_id && this.config.pin_name) {
-            this.connectSSE();
+            this.connectWebSocket();
         } else {
-            // Fallback to polling if SSE not configured
-            this.pollInterval = setInterval(() => this.fetchLEDState(), 500);
+            console.warn('[LEDWidget] LED widget not configured - please configure block and pin');
         }
     }
 
-    connectSSE() {
-        const token = sessionStorage.getItem('auth_token') || '';
+    connectWebSocket() {
         const nodeId = this.config.node_id;
         const pinName = this.config.pin_name;
 
         if (!nodeId || !pinName) return;
 
-        const url = `/api/signals/stream?token=${token}&node_id=${encodeURIComponent(nodeId)}&pin_name=${encodeURIComponent(pinName)}&sample_rate=0`;
+        console.log(`[LEDWidget] Subscribing to WebSocket: ${nodeId}:${pinName}`);
 
-        console.log(`[LEDWidget] Connecting to SSE: ${url}`);
-        this.eventSource = new EventSource(url);
+        // Subscribe via global WebSocket manager (replaces SSE entirely)
+        wsManager.subscribe(this.id, nodeId, pinName, (value, timestamp) => {
+            // LED state is a boolean value
+            const state = value === true || value === 1 || value === "true" || value === "1";
+            this.updateLEDState(state);
+        });
+    }
 
-        this.eventSource.onmessage = (event) => {
-            try {
-                const data = JSON.parse(event.data);
-                // LED state is a boolean value
-                const state = data.value === true || data.value === 1 || data.value === "true";
-                this.updateLEDState(state);
-            } catch (error) {
-                console.error('[LEDWidget] Failed to parse SSE data:', error);
-            }
-        };
-
-        this.eventSource.onerror = (error) => {
-            console.error('[LEDWidget] SSE error:', error);
-            // Attempt reconnect after 2 seconds
-            setTimeout(() => this.connectSSE(), 2000);
-        };
+    destroy() {
+        // Unsubscribe from WebSocket when widget is removed
+        if (typeof wsManager !== 'undefined') {
+            wsManager.unsubscribe(this.id);
+        }
     }
 
     async fetchLEDState() {
@@ -643,6 +757,8 @@ class WidgetFactory {
                 return new LEDWidget(id, type, config);
             case 'signalplot':
                 return new SignalPlotWidget(id, type, config);
+            case 'oscilloscope':
+                return new OscilloscopeWidget(id, type, config);
             default:
                 return new Widget(id, type, config);
         }

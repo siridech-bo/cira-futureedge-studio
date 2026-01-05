@@ -181,15 +181,27 @@ public:
         // Additional output: current class name
         pins.push_back(Pin("class_name", "string", false));
 
+        // Status outputs
+        pins.push_back(Pin("ready", "bool", false));
+        pins.push_back(Pin("running", "bool", false));
+
         return pins;
     }
 
     void SetInput(const std::string& pin_name, const BlockValue& value) override {
         if (pin_name == "play") {
             if (std::holds_alternative<bool>(value)) {
-                is_playing_ = std::get<bool>(value);
+                bool new_state = std::get<bool>(value);
+                if (new_state != is_playing_) {
+                    is_playing_ = new_state;
+                    std::cout << "[Signal Generator] Play state changed: " << (is_playing_ ? "PLAYING" : "STOPPED") << std::endl;
+                }
             } else if (std::holds_alternative<int>(value)) {
-                is_playing_ = (std::get<int>(value) != 0);
+                bool new_state = (std::get<int>(value) != 0);
+                if (new_state != is_playing_) {
+                    is_playing_ = new_state;
+                    std::cout << "[Signal Generator] Play state changed: " << (is_playing_ ? "PLAYING" : "STOPPED") << std::endl;
+                }
             }
         } else if (pin_name == "reset") {
             if (std::holds_alternative<bool>(value) && std::get<bool>(value)) {
@@ -208,6 +220,10 @@ public:
 
     bool Execute() override {
         if (!is_playing_) {
+            // Clear outputs when not playing
+            for (size_t i = 0; i < current_output_.size(); ++i) {
+                current_output_[i] = 0.0f;
+            }
             return true;  // Idle state
         }
 
@@ -219,6 +235,10 @@ public:
 
         // Dataset replay mode
         if (classes_.empty()) {
+            // Clear outputs when no dataset loaded
+            for (size_t i = 0; i < current_output_.size(); ++i) {
+                current_output_[i] = 0.0f;
+            }
             return true;  // No dataset loaded
         }
 
@@ -267,6 +287,17 @@ public:
     BlockValue GetOutput(const std::string& pin_name) const override {
         if (pin_name == "class_name") {
             return current_class_name_;
+        }
+
+        // Status outputs
+        if (pin_name == "ready") {
+            // Ready if dataset loaded or synthetic signal configured
+            bool is_ready = !classes_.empty() || signal_type_ != "dataset";
+            return is_ready;
+        }
+
+        if (pin_name == "running") {
+            return is_playing_;
         }
 
         // Check for channel outputs

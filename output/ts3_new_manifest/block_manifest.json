@@ -1,0 +1,471 @@
+{
+  "blocks": [
+    {
+      "dependencies": [],
+      "id": "channel-merge",
+      "type": "native",
+      "version": "1.0.0"
+    },
+    {
+      "dependencies": [],
+      "id": "sliding-window",
+      "type": "native",
+      "version": "1.0.0"
+    },
+    {
+      "dependencies": [
+        "nlohmann-json"
+      ],
+      "id": "synthetic-signal-generator",
+      "type": "dataset-replay",
+      "version": "1.0.0"
+    },
+    {
+      "dependencies": [
+        "onnx-runtime-1.16.0"
+      ],
+      "id": "timesnet",
+      "type": "onnx-runtime",
+      "version": "1.2.0"
+    },
+    {
+      "dependencies": [],
+      "id": "web-button",
+      "type": "web-input",
+      "version": "1.0.0"
+    },
+    {
+      "dependencies": [],
+      "id": "web-led",
+      "type": "web-output",
+      "version": "1.0.0"
+    }
+  ],
+  "format_version": "1.0",
+  "pipeline": {
+    "connections": [
+      {
+        "from_node_id": 2,
+        "from_pin": "window_out",
+        "to_node_id": 1,
+        "to_pin": "features_in"
+      },
+      {
+        "from_node_id": 3,
+        "from_pin": "merged_out",
+        "to_node_id": 2,
+        "to_pin": "input"
+      },
+      {
+        "from_node_id": 4,
+        "from_pin": "channel_0",
+        "to_node_id": 3,
+        "to_pin": "channel_0"
+      },
+      {
+        "from_node_id": 4,
+        "from_pin": "channel_1",
+        "to_node_id": 3,
+        "to_pin": "channel_1"
+      },
+      {
+        "from_node_id": 4,
+        "from_pin": "channel_2",
+        "to_node_id": 3,
+        "to_pin": "channel_2"
+      },
+      {
+        "from_node_id": 5,
+        "from_pin": "state",
+        "to_node_id": 4,
+        "to_pin": "play"
+      },
+      {
+        "from_node_id": 5,
+        "from_pin": "state",
+        "to_node_id": 6,
+        "to_pin": "state"
+      },
+      {
+        "from_node_id": 4,
+        "from_pin": "ready",
+        "to_node_id": 7,
+        "to_pin": "state"
+      },
+      {
+        "from_node_id": 4,
+        "from_pin": "running",
+        "to_node_id": 8,
+        "to_pin": "state"
+      },
+      {
+        "from_node_id": 2,
+        "from_pin": "ready",
+        "to_node_id": 9,
+        "to_pin": "state"
+      },
+      {
+        "from_node_id": 1,
+        "from_pin": "ready",
+        "to_node_id": 10,
+        "to_pin": "state"
+      },
+      {
+        "from_node_id": 1,
+        "from_pin": "running",
+        "to_node_id": 11,
+        "to_pin": "state"
+      }
+    ],
+    "nodes": [
+      {
+        "config": {
+          "batch_size": "1",
+          "class_names": "idle,shake,snake,updown,wave",
+          "input_channels": "3",
+          "model_path": "D:\\CiRA FES\\output\\ts3\\models\\timesnet_model.onnx",
+          "num_classes": "5",
+          "sensor_columns": "accX,accY,accZ",
+          "seq_len": "100",
+          "use_tensorrt": "false"
+        },
+        "id": 1,
+        "pins": [
+          {
+            "is_input": true,
+            "name": "features_in",
+            "type": "array"
+          },
+          {
+            "is_input": false,
+            "name": "prediction_out",
+            "type": "int"
+          },
+          {
+            "is_input": false,
+            "name": "confidence_out",
+            "type": "float"
+          },
+          {
+            "is_input": false,
+            "name": "ready",
+            "type": "bool"
+          },
+          {
+            "is_input": false,
+            "name": "running",
+            "type": "bool"
+          }
+        ],
+        "position": {
+          "x": 400.0,
+          "y": 300.0
+        },
+        "type": "processing.model.timesnet"
+      },
+      {
+        "config": {
+          "step_size": "64",
+          "window_size": "300"
+        },
+        "id": 2,
+        "pins": [
+          {
+            "is_input": true,
+            "name": "input",
+            "type": "any"
+          },
+          {
+            "is_input": false,
+            "name": "window_out",
+            "type": "array"
+          },
+          {
+            "is_input": false,
+            "name": "ready",
+            "type": "bool"
+          }
+        ],
+        "position": {
+          "x": -322.0657653808594,
+          "y": 58.372802734375
+        },
+        "type": "processing.dsp.sliding_window"
+      },
+      {
+        "config": {
+          "num_channels": "3"
+        },
+        "id": 3,
+        "pins": [
+          {
+            "is_input": true,
+            "name": "channel_0",
+            "type": "float"
+          },
+          {
+            "is_input": true,
+            "name": "channel_1",
+            "type": "float"
+          },
+          {
+            "is_input": true,
+            "name": "channel_2",
+            "type": "float"
+          },
+          {
+            "is_input": false,
+            "name": "merged_out",
+            "type": "vector3"
+          }
+        ],
+        "position": {
+          "x": -600.732421875,
+          "y": -9.627197265625
+        },
+        "type": "processing.dsp.channel_merge"
+      },
+      {
+        "config": {
+          "amplitude": "1.0",
+          "dataset_inline": "",
+          "dataset_path": "",
+          "frequency": "1.0",
+          "loop_mode": "true",
+          "num_channels": "3",
+          "offset": "0.0",
+          "phase": "0.0",
+          "sample_rate": "5.000000",
+          "selected_classes": "",
+          "sequential_mode": "true",
+          "signal_type": "square"
+        },
+        "id": 4,
+        "pins": [
+          {
+            "is_input": false,
+            "name": "channel_0",
+            "type": "float"
+          },
+          {
+            "is_input": false,
+            "name": "channel_1",
+            "type": "float"
+          },
+          {
+            "is_input": false,
+            "name": "channel_2",
+            "type": "float"
+          },
+          {
+            "is_input": false,
+            "name": "class_name",
+            "type": "string"
+          },
+          {
+            "is_input": false,
+            "name": "ready",
+            "type": "bool"
+          },
+          {
+            "is_input": false,
+            "name": "running",
+            "type": "bool"
+          },
+          {
+            "is_input": true,
+            "name": "play",
+            "type": "bool"
+          },
+          {
+            "is_input": true,
+            "name": "reset",
+            "type": "bool"
+          },
+          {
+            "is_input": true,
+            "name": "next_class",
+            "type": "bool"
+          }
+        ],
+        "position": {
+          "x": -694.0657958984375,
+          "y": 5.0394697189331055
+        },
+        "type": "input.synthetic.signal_generator"
+      },
+      {
+        "config": {
+          "button_id": "button_1",
+          "initial_state": "false",
+          "label": "Button"
+        },
+        "id": 5,
+        "pins": [
+          {
+            "is_input": false,
+            "name": "state",
+            "type": "bool"
+          }
+        ],
+        "position": {
+          "x": -1126.0657958984375,
+          "y": -5.627197265625
+        },
+        "type": "input.web.button"
+      },
+      {
+        "config": {
+          "color": "green",
+          "label": "LED",
+          "led_id": "led_1"
+        },
+        "id": 6,
+        "pins": [
+          {
+            "is_input": true,
+            "name": "state",
+            "type": "bool"
+          },
+          {
+            "is_input": false,
+            "name": "state",
+            "type": "bool"
+          }
+        ],
+        "position": {
+          "x": -856.732421875,
+          "y": 247.70614624023438
+        },
+        "type": "output.web.led"
+      },
+      {
+        "config": {
+          "color": "green",
+          "label": "LED",
+          "led_id": "led_2"
+        },
+        "id": 7,
+        "pins": [
+          {
+            "is_input": true,
+            "name": "state",
+            "type": "bool"
+          },
+          {
+            "is_input": false,
+            "name": "state",
+            "type": "bool"
+          }
+        ],
+        "position": {
+          "x": -448.3460998535156,
+          "y": 202.10292053222656
+        },
+        "type": "output.web.led"
+      },
+      {
+        "config": {
+          "color": "green",
+          "label": "LED",
+          "led_id": "led_3"
+        },
+        "id": 8,
+        "pins": [
+          {
+            "is_input": true,
+            "name": "state",
+            "type": "bool"
+          },
+          {
+            "is_input": false,
+            "name": "state",
+            "type": "bool"
+          }
+        ],
+        "position": {
+          "x": -437.94610595703125,
+          "y": 263.70294189453125
+        },
+        "type": "output.web.led"
+      },
+      {
+        "config": {
+          "color": "green",
+          "label": "LED",
+          "led_id": "led_4"
+        },
+        "id": 9,
+        "pins": [
+          {
+            "is_input": true,
+            "name": "state",
+            "type": "bool"
+          },
+          {
+            "is_input": false,
+            "name": "state",
+            "type": "bool"
+          }
+        ],
+        "position": {
+          "x": 182.05418395996094,
+          "y": 156.50289916992188
+        },
+        "type": "output.web.led"
+      },
+      {
+        "config": {
+          "color": "green",
+          "label": "LED",
+          "led_id": "led_5"
+        },
+        "id": 10,
+        "pins": [
+          {
+            "is_input": true,
+            "name": "state",
+            "type": "bool"
+          },
+          {
+            "is_input": false,
+            "name": "state",
+            "type": "bool"
+          }
+        ],
+        "position": {
+          "x": 492.4543151855469,
+          "y": -52.29719161987305
+        },
+        "type": "output.web.led"
+      },
+      {
+        "config": {
+          "color": "green",
+          "label": "LED",
+          "led_id": "led_6"
+        },
+        "id": 11,
+        "pins": [
+          {
+            "is_input": true,
+            "name": "state",
+            "type": "bool"
+          },
+          {
+            "is_input": false,
+            "name": "state",
+            "type": "bool"
+          }
+        ],
+        "position": {
+          "x": 475.6543273925781,
+          "y": 64.50286102294922
+        },
+        "type": "output.web.led"
+      }
+    ]
+  },
+  "pipeline_name": "pipeline",
+  "target_platform": "jetson_nano"
+}

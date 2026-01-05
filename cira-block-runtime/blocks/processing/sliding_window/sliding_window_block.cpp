@@ -69,29 +69,47 @@ public:
     }
 
     bool Execute() override {
-        // Convert input to float (handle different types)
-        float sample = 0.0f;
-        if (std::holds_alternative<float>(input_value_)) {
-            sample = std::get<float>(input_value_);
-        } else if (std::holds_alternative<int>(input_value_)) {
-            sample = static_cast<float>(std::get<int>(input_value_));
-        } else {
-            // For other types, use 0
-            sample = 0.0f;
-        }
+        // Handle vector input (from Channel Merge)
+        if (std::holds_alternative<std::vector<float>>(input_value_)) {
+            const auto& vec = std::get<std::vector<float>>(input_value_);
 
-        // Add sample to buffer
-        buffer_.push_back(sample);
-        sample_count_++;
+            // Add all vector elements to buffer
+            for (float val : vec) {
+                buffer_.push_back(val);
+                sample_count_++;
+            }
+        } else {
+            // Convert single value input to float
+            float sample = 0.0f;
+            if (std::holds_alternative<float>(input_value_)) {
+                sample = std::get<float>(input_value_);
+            } else if (std::holds_alternative<int>(input_value_)) {
+                sample = static_cast<float>(std::get<int>(input_value_));
+            } else {
+                // For other types, use 0
+                sample = 0.0f;
+            }
+
+            // Add sample to buffer
+            buffer_.push_back(sample);
+            sample_count_++;
+        }
 
         // Check if we have enough samples
         if (buffer_.size() >= window_size_) {
             // Window is ready
             window_ready_ = true;
 
-            // Copy window to output array
+            // Copy exactly window_size_ samples to output array (trim any excess)
             output_window_.clear();
-            output_window_.assign(buffer_.begin(), buffer_.end());
+            output_window_.assign(buffer_.begin(), buffer_.begin() + window_size_);
+
+            // Debug log
+            static int output_count = 0;
+            if (output_count % 100 == 0) {
+                std::cout << "[Sliding Window] Output window ready, size=" << output_window_.size() << std::endl;
+            }
+            output_count++;
 
             // Slide the window (remove step_size samples from front)
             if (step_size_ > 0 && step_size_ <= buffer_.size()) {

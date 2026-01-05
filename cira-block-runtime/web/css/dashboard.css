@@ -174,6 +174,8 @@ body {
     box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3);
     height: calc(100vh - 80px);
     z-index: 100;
+    overflow-y: auto;
+    overflow-x: hidden;
 }
 
 .widget-palette h3 {
@@ -387,16 +389,21 @@ body {
 
 /* Modal */
 .modal {
+    display: none;  /* Hidden by default */
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
     background: rgba(0, 0, 0, 0.7);
-    display: flex;
     justify-content: center;
     align-items: center;
-    z-index: 1000;
+    z-index: 10000;
+    pointer-events: none;  /* Don't block clicks when hidden */
+}
+
+.modal[style*="display: flex"] {
+    pointer-events: auto;  /* Enable clicks when visible */
 }
 
 .modal-content {
@@ -458,14 +465,14 @@ body {
 
 .config-form label {
     font-weight: 600;
-    color: #333;
+    color: #e0e6ed;  /* Light color for dark background */
     font-size: 14px;
 }
 
 .config-form small {
     display: block;
     margin-top: 4px;
-    color: #666;
+    color: #8a9ab0;  /* Lighter gray for better readability */
     font-size: 12px;
     font-style: italic;
 }
@@ -474,7 +481,9 @@ body {
 .config-form input[type="number"],
 .config-form select {
     padding: 10px;
-    border: 2px solid #ddd;
+    border: 2px solid #2a5a7a;  /* Dark blue border to match theme */
+    background: #0a0e27;  /* Dark background for inputs */
+    color: #e0e6ed;  /* Light text color */
     border-radius: 5px;
     font-size: 14px;
     font-family: inherit;
@@ -485,68 +494,10 @@ body {
 .config-form input[type="number"]:focus,
 .config-form select:focus {
     outline: none;
-    border-color: #667eea;
+    border-color: #00a8ff;  /* Bright blue for focus state */
 }
 
-.modal {
-    display: none;
-    position: fixed;
-    z-index: 10000;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.5);
-    align-items: center;
-    justify-content: center;
-}
-
-.modal-content {
-    background-color: #fff;
-    color: #333;
-    border-radius: 10px;
-    max-width: 500px;
-    width: 90%;
-    max-height: 80vh;
-    overflow-y: auto;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-}
-
-.modal-header {
-    padding: 20px;
-    border-bottom: 2px solid #f0f0f0;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.modal-header h2 {
-    margin: 0;
-    font-size: 20px;
-}
-
-.close-modal {
-    font-size: 30px;
-    color: #aaa;
-    cursor: pointer;
-    line-height: 1;
-}
-
-.close-modal:hover {
-    color: #333;
-}
-
-.modal-body {
-    padding: 20px;
-}
-
-.modal-footer {
-    padding: 20px;
-    border-top: 2px solid #f0f0f0;
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-}
+/* Duplicate modal styles removed - see lines 391-446 */
 
 /* Widget: Button (Virtual GPIO Input) */
 .button-widget {
@@ -790,4 +741,417 @@ body {
     color: #00d4ff;
     margin-left: 8px;
     font-weight: normal;
+}
+
+/* ==================== OSCILLOSCOPE WIDGET ==================== */
+
+/* Industrial Color Variables */
+.oscilloscope-widget {
+    --scope-bg-primary: #0a0e27;
+    --scope-bg-secondary: #1e2940;
+    --scope-grid-major: #2a5a7a;
+    --scope-grid-minor: #1a3a52;
+    --scope-text-primary: #e0e6ed;
+    --scope-text-secondary: #8a9ab0;
+    --scope-accent: #00a8ff;
+    --scope-ch1: #ff3b3b;
+    --scope-ch2: #00ff88;
+    --scope-ch3: #ffaa00;
+    --scope-trigger: #ff00ff;
+    --scope-border: #3a4a6a;
+    --scope-status-run: #00ff88;
+    --scope-status-stop: #ff3b3b;
+    --scope-status-armed: #ffaa00;
+}
+
+/* Widget Container */
+.oscilloscope-widget {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: var(--scope-bg-primary);
+    color: var(--scope-text-primary);
+    font-family: 'Roboto Mono', 'Consolas', monospace;
+    border: 1px solid var(--scope-border);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+/* Header */
+.oscilloscope-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: var(--scope-bg-secondary);
+    border-bottom: 2px solid var(--scope-border);
+}
+
+.oscilloscope-title {
+    font-size: 14px;
+    font-weight: bold;
+    letter-spacing: 1px;
+    color: var(--scope-text-primary);
+}
+
+.oscilloscope-node {
+    font-size: 12px;
+    color: var(--scope-accent);
+    font-weight: normal;
+}
+
+.oscilloscope-channel-indicators {
+    display: flex;
+    gap: 8px;
+    margin-left: auto;
+}
+
+.channel-indicator {
+    font-size: 12px;
+}
+
+.channel-indicator.ch1 {
+    color: var(--scope-ch1);
+}
+
+.channel-indicator.ch2 {
+    color: var(--scope-ch2);
+}
+
+.channel-indicator.ch3 {
+    color: var(--scope-ch3);
+}
+
+.btn-expand {
+    padding: 4px 12px;
+    background: var(--scope-bg-secondary);
+    border: 1px solid var(--scope-border);
+    color: var(--scope-accent);
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: all 0.2s;
+}
+
+.btn-expand:hover {
+    background: var(--scope-accent);
+    color: var(--scope-bg-primary);
+}
+
+/* Display Area */
+.oscilloscope-display {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px;
+    background: var(--scope-bg-primary);
+    min-height: 300px;
+}
+
+.oscilloscope-display canvas {
+    display: block;
+    border: 1px solid var(--scope-border);
+    border-radius: 2px;
+    background: var(--scope-bg-primary);
+}
+
+/* Compact Mode Controls */
+.oscilloscope-controls-compact {
+    display: flex;
+    gap: 16px;
+    padding: 12px 16px;
+    background: var(--scope-bg-secondary);
+    border-top: 1px solid var(--scope-border);
+    flex-wrap: wrap;
+}
+
+.control-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.control-group label {
+    font-size: 10px;
+    color: var(--scope-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.control-group select,
+.control-group input {
+    padding: 6px 10px;
+    background: #1a2535;
+    border: 1px solid var(--scope-border);
+    color: var(--scope-text-primary);
+    border-radius: 3px;
+    font-size: 12px;
+    font-family: inherit;
+}
+
+.control-group select:focus,
+.control-group input:focus {
+    outline: none;
+    border-color: var(--scope-accent);
+}
+
+.btn-control {
+    padding: 8px 16px;
+    background: var(--scope-bg-secondary);
+    border: 1px solid var(--scope-border);
+    color: var(--scope-text-primary);
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: bold;
+    font-family: inherit;
+    transition: all 0.2s;
+}
+
+.btn-control:hover {
+    background: #2a3a5a;
+    border-color: var(--scope-accent);
+}
+
+.btn-control.active {
+    background: var(--scope-accent);
+    color: var(--scope-bg-primary);
+    border-color: var(--scope-accent);
+}
+
+/* Compact Measurements */
+.oscilloscope-measurements-compact {
+    display: flex;
+    gap: 16px;
+    padding: 8px 16px;
+    background: #0d1220;
+    border-top: 1px solid var(--scope-border);
+    font-size: 11px;
+    color: var(--scope-text-secondary);
+}
+
+/* ==================== FULLSCREEN MODE ==================== */
+
+.oscilloscope-widget.fullscreen {
+    width: 100%;
+    height: 100vh;
+}
+
+.oscilloscope-main {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+.oscilloscope-display-full {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    position: relative;
+}
+
+.voltage-scale {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 600px;
+    padding: 10px;
+    font-size: 11px;
+    color: var(--scope-text-secondary);
+}
+
+.time-scale {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    font-size: 11px;
+    color: var(--scope-text-secondary);
+    margin-left: 60px;
+}
+
+.oscilloscope-display-full canvas {
+    margin-left: 60px;
+    border: 2px solid var(--scope-border);
+}
+
+/* Control Panels */
+.oscilloscope-controls-full {
+    width: 320px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 20px;
+    background: var(--scope-bg-secondary);
+    border-left: 2px solid var(--scope-border);
+    overflow-y: auto;
+}
+
+.control-panel {
+    background: #151d30;
+    border: 1px solid var(--scope-border);
+    border-radius: 4px;
+    padding: 12px;
+}
+
+.panel-header {
+    font-size: 11px;
+    font-weight: bold;
+    color: var(--scope-accent);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--scope-border);
+}
+
+.control-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.control-row:last-child {
+    margin-bottom: 0;
+}
+
+.control-row label {
+    flex: 1;
+    font-size: 11px;
+    color: var(--scope-text-secondary);
+}
+
+.control-row select,
+.control-row input[type="number"] {
+    flex: 2;
+    padding: 6px 8px;
+    background: #1a2535;
+    border: 1px solid var(--scope-border);
+    color: var(--scope-text-primary);
+    border-radius: 3px;
+    font-size: 11px;
+    font-family: inherit;
+}
+
+.control-row input[type="range"] {
+    flex: 2;
+}
+
+.control-row span {
+    font-size: 11px;
+    color: var(--scope-text-secondary);
+}
+
+/* Channel Controls */
+.channel-control {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    padding: 6px;
+    background: #0d1220;
+    border-radius: 3px;
+}
+
+.channel-control label {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+}
+
+.channel-label {
+    font-weight: bold;
+}
+
+.channel-label.ch1 {
+    color: var(--scope-ch1);
+}
+
+.channel-label.ch2 {
+    color: var(--scope-ch2);
+}
+
+.channel-label.ch3 {
+    color: var(--scope-ch3);
+}
+
+.channel-control select {
+    padding: 4px 8px;
+    background: #1a2535;
+    border: 1px solid var(--scope-border);
+    color: var(--scope-text-primary);
+    border-radius: 3px;
+    font-size: 11px;
+}
+
+/* Status Indicators */
+.status-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.status-indicator {
+    display: inline-block;
+    font-size: 14px;
+}
+
+.status-indicator.running {
+    color: var(--scope-status-run);
+}
+
+.status-indicator.stopped {
+    color: var(--scope-status-stop);
+}
+
+.status-indicator.armed {
+    color: var(--scope-status-armed);
+}
+
+/* Fullscreen Measurements */
+.oscilloscope-measurements-full {
+    padding: 16px 20px;
+    background: #0d1220;
+    border-top: 2px solid var(--scope-border);
+}
+
+.measurement-row {
+    display: flex;
+    gap: 24px;
+    padding: 6px 0;
+    font-size: 12px;
+    color: var(--scope-text-primary);
+}
+
+.measurement-row.info-row {
+    margin-top: 8px;
+    padding-top: 12px;
+    border-top: 1px solid var(--scope-border);
+    color: var(--scope-text-secondary);
+    font-size: 11px;
+}
+
+.ch-label {
+    font-weight: bold;
+    min-width: 40px;
+}
+
+.ch-label.ch1 {
+    color: var(--scope-ch1);
+}
+
+.ch-label.ch2 {
+    color: var(--scope-ch2);
+}
+
+.ch-label.ch3 {
+    color: var(--scope-ch3);
 }

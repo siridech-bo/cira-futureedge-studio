@@ -4,7 +4,9 @@
       "Bash(python:*)",
       "Bash(xargs sed:*)",
       "Bash(ssh:*)",
-      "Bash(mkdir:*)"
+      "Bash(mkdir:*)",
+      "Bash(md5sum:*)",
+      "Bash(./sync_web_files.bat)"
     ],
     "deny": [],
     "ask": []

@@ -25,7 +25,11 @@ class SignalPlotWidget extends Widget {
             <div class="widget-header">
                 <span class="widget-title">${label}</span>
                 <span class="widget-subtitle">${nodeId}:${pinName}</span>
-                <button class="widget-config-btn" onclick="configureWidget('${this.id}')">⚙</button>
+                <span class="widget-config-badge" id="config-badge-${this.id}" style="font-size: 10px; padding: 2px 6px; background: #555; border-radius: 3px; margin-left: 8px; display: none;">Checking...</span>
+                <div class="widget-actions">
+                    <button class="widget-action" onclick="configureWidget('${this.id}')">⚙️</button>
+                    <button class="widget-action" onclick="removeWidget('${this.id}')">🗑️</button>
+                </div>
             </div>
             <div class="widget-body signal-plot-body">
                 <div id="plot-${this.id}" class="signal-plot-container"></div>
@@ -62,6 +66,9 @@ class SignalPlotWidget extends Widget {
         this.dataX = [];
         this.dataY = [];
         this.startTimestamp = null;
+
+        // Check if source block is Signal Generator and fetch its config
+        this.checkSignalGeneratorConfig();
 
         // Initialize uPlot
         const plotContainer = document.getElementById(`plot-${this.id}`);
@@ -186,49 +193,36 @@ class SignalPlotWidget extends Widget {
         }
 
         // Close existing connection
-        if (this.eventSource) {
-            this.eventSource.close();
-        }
+        // Use WebSocket instead of SSE
+        console.log(`[SignalPlot] Subscribing to WebSocket: ${nodeId}:${pinName}`);
 
-        // Build URL with query parameters
-        const url = `/api/signals/stream?token=${token}&node_id=${encodeURIComponent(nodeId)}&pin_name=${encodeURIComponent(pinName)}&sample_rate=${sampleRate}`;
-
-        console.log(`[SignalPlot] Connecting to ${url}`);
-        this.eventSource = new EventSource(url);
-
-        this.eventSource.onopen = () => {
-            console.log('[SignalPlot] Stream connected');
-            this.updateStatus('connected', 'Connected');
-            this.lastDataTime = Date.now();
-            this.sampleCount = 0;
-        };
-
-        this.eventSource.onmessage = (event) => {
+        wsManager.subscribe(this.id, nodeId, pinName, (value, timestamp) => {
             try {
-                const data = JSON.parse(event.data);
-                console.log('[SignalPlot] Received data:', data);
+                console.log('[SignalPlot] Received WebSocket data:', value, timestamp);
 
                 // Calculate relative time in seconds from first sample
                 if (!this.startTimestamp) {
-                    this.startTimestamp = data.timestamp;
-                    console.log('[SignalPlot] First data point received, timestamp:', data.timestamp);
+                    this.startTimestamp = timestamp;
+                    console.log('[SignalPlot] First data point received, timestamp:', timestamp);
+                    this.updateStatus('connected', 'Connected');
+                    this.lastDataTime = Date.now();
+                    this.sampleCount = 0;
                 }
-                const timeInSeconds = (data.timestamp - this.startTimestamp) / 1000.0;
+                const timeInSeconds = (timestamp - this.startTimestamp) / 1000.0;
 
                 // Handle both scalar and array values
-                let value;
-                if (Array.isArray(data.value)) {
+                let plotValue;
+                if (Array.isArray(value)) {
                     // For vector outputs (like Channel Merge), use first element by default
-                    // TODO: Add configuration to select which array element to plot
-                    value = data.value[0];
-                    console.log('[SignalPlot] Array value received, using first element:', value, 'full array:', data.value);
+                    plotValue = value[0];
+                    console.log('[SignalPlot] Array value received, using first element:', plotValue, 'full array:', value);
                 } else {
-                    value = data.value;
+                    plotValue = value;
                 }
 
                 // Add to buffers
                 this.dataX.push(timeInSeconds);
-                this.dataY.push(value);
+                this.dataY.push(plotValue);
 
                 // Limit buffer size
                 if (this.dataX.length > this.maxPoints) {
@@ -248,17 +242,9 @@ class SignalPlotWidget extends Widget {
                 }
 
             } catch (error) {
-                console.error('[SignalPlot] Failed to parse data:', error);
+                console.error('[SignalPlot] Failed to parse WebSocket data:', error);
             }
-        };
-
-        this.eventSource.onerror = (error) => {
-            console.error('[SignalPlot] Stream error:', error);
-            this.updateStatus('error', 'Disconnected');
-
-            // Attempt to reconnect after 2 seconds
-            setTimeout(() => this.connectStream(), 2000);
-        };
+        });
     }
 
     updatePlot() {
@@ -300,6 +286,50 @@ class SignalPlotWidget extends Widget {
         }
     }
 
+    checkSignalGeneratorConfig() {
+        // Fetch block config to check if it's a Signal Generator
+        const nodeId = this.config.node_id;
+        if (!nodeId) return;
+
+        fetch(`/api/blocks`)
+            .then(response => response.json())
+            .then(data => {
+                const block = data.blocks.find(b => b.node_id == nodeId);
+                if (block && block.type.includes('signal_generator')) {
+                    // Check signal_type configuration
+                    const signalType = block.config?.signal_type || 'dataset';
+                    const datasetInline = block.config?.dataset_inline || '';
+                    const datasetPath = block.config?.dataset_path || '';
+
+                    // Show warning if using dataset mode with no dataset
+                    if (signalType === 'dataset' && !datasetInline && !datasetPath) {
+                        this.showConfigWarning('⚠️ Signal Generator: No Dataset Loaded!');
+                    } else if (signalType === 'dataset') {
+                        this.showConfigWarning(`📊 Mode: Dataset`);
+                    } else {
+                        this.showConfigWarning(`📈 Mode: ${signalType}`);
+                    }
+                }
+            })
+            .catch(err => console.error('[SignalPlot] Failed to fetch block config:', err));
+    }
+
+    showConfigWarning(message) {
+        const badge = document.getElementById(`config-badge-${this.id}`);
+        if (badge) {
+            badge.style.display = 'inline-block';
+            badge.textContent = message;
+            if (message.includes('⚠️')) {
+                badge.style.background = '#e74c3c';
+                badge.style.fontWeight = 'bold';
+            } else if (message.includes('📊')) {
+                badge.style.background = '#3498db';
+            } else {
+                badge.style.background = '#2ecc71';
+            }
+        }
+    }
+
     destroy() {
         console.log(`[SignalPlot] Destroying widget ${this.id}`);
 
@@ -309,10 +339,9 @@ class SignalPlotWidget extends Widget {
             this.updateInterval = null;
         }
 
-        // Close SSE connection
-        if (this.eventSource) {
-            this.eventSource.close();
-            this.eventSource = null;
+        // Unsubscribe from WebSocket
+        if (typeof wsManager !== 'undefined') {
+            wsManager.unsubscribe(this.id);
         }
 
         // Destroy plot

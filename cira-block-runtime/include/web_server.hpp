@@ -12,6 +12,8 @@
 #include "metrics_collector.hpp"
 #include "auth_manager.hpp"
 #include "block_interface.hpp"
+#include "signal_aggregator.hpp"
+#include "websocket_server.hpp"
 
 namespace CiraBlockRuntime {
 
@@ -57,6 +59,12 @@ public:
                             const std::string& pin_name,
                             const BlockValue& value);
 
+    // Get signal aggregator (for external access)
+    SignalAggregator* GetSignalAggregator() { return signal_aggregator_.get(); }
+
+    // Get WebSocket server (for external access)
+    WebSocketServer* GetWebSocketServer() { return websocket_server_.get(); }
+
 private:
     int port_;
     BlockRuntime* runtime_;
@@ -64,6 +72,10 @@ private:
     std::unique_ptr<httplib::Server> server_;
     std::thread server_thread_;
     std::atomic<bool> running_;
+
+    // Signal processing and WebSocket
+    std::unique_ptr<SignalAggregator> signal_aggregator_;
+    std::unique_ptr<WebSocketServer> websocket_server_;
 
     // Authentication
     AuthManager auth_manager_;
@@ -94,6 +106,9 @@ private:
 
     // Setup routes
     void SetupRoutes();
+
+    // WebSocket message handler
+    void HandleWebSocketMessage(uint64_t conn_id, const std::vector<uint8_t>& data);
 
     // Route handlers
     void HandleRoot(const httplib::Request& req, httplib::Response& res);

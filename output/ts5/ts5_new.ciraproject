@@ -1,0 +1,48 @@
+{
+  "connections": [],
+  "data": {
+    "sampling_rate": 62.5,
+    "sensor_columns": [
+      "accX",
+      "accY",
+      "accZ"
+    ],
+    "test_dataset_path": "",
+    "window_size": 100
+  },
+  "domain": "rotating_machinery",
+  "model": {
+    "algorithm": "iforest",
+    "class_names": [],
+    "is_deep_learning": false,
+    "metrics": {
+      "accuracy": 0.0,
+      "f1_macro": 0.0,
+      "precision_macro": 0.0,
+      "recall_macro": 0.0
+    },
+    "model_type": "anomaly",
+    "num_classes": 0,
+    "onnx_model_path": ""
+  },
+  "name": "ts5_new",
+  "nodes": [
+    {
+      "config": {
+        "batch_size": "1",
+        "class_names": "",
+        "input_channels": "1",
+        "model_path": "",
+        "num_classes": "0",
+        "sensor_columns": "accX,accY,accZ",
+        "seq_len": "100",
+        "use_tensorrt": "false"
+      },
+      "id": 1,
+      "position_x": 400.0,
+      "position_y": 300.0,
+      "type_id": "processing.model.timesnet"
+    }
+  ],
+  "version": 1
+}

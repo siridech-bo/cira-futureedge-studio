@@ -12,7 +12,7 @@
     "model_type": "classifier",
     "num_classes": 5,
     "onnx_model_path": "D:\\CiRA FES\\output\\ts3\\models\\timesnet_model.onnx",
-    "project_name": "ts3",
+    "project_name": "ts3_sim",
     "sampling_rate": 62.5,
     "sensor_columns": [
         "accX",

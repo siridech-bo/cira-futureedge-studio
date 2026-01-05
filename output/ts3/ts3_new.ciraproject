@@ -1,0 +1,250 @@
+{
+  "connections": [
+    {
+      "from_node_id": 2,
+      "from_pin": "window_out",
+      "to_node_id": 1,
+      "to_pin": "features_in"
+    },
+    {
+      "from_node_id": 3,
+      "from_pin": "merged_out",
+      "to_node_id": 2,
+      "to_pin": "input"
+    },
+    {
+      "from_node_id": 4,
+      "from_pin": "channel_0",
+      "to_node_id": 3,
+      "to_pin": "channel_0"
+    },
+    {
+      "from_node_id": 4,
+      "from_pin": "channel_1",
+      "to_node_id": 3,
+      "to_pin": "channel_1"
+    },
+    {
+      "from_node_id": 4,
+      "from_pin": "channel_2",
+      "to_node_id": 3,
+      "to_pin": "channel_2"
+    },
+    {
+      "from_node_id": 5,
+      "from_pin": "state",
+      "to_node_id": 4,
+      "to_pin": "play"
+    },
+    {
+      "from_node_id": 5,
+      "from_pin": "state",
+      "to_node_id": 6,
+      "to_pin": "state"
+    },
+    {
+      "from_node_id": 4,
+      "from_pin": "ready",
+      "to_node_id": 7,
+      "to_pin": "state"
+    },
+    {
+      "from_node_id": 4,
+      "from_pin": "running",
+      "to_node_id": 8,
+      "to_pin": "state"
+    },
+    {
+      "from_node_id": 2,
+      "from_pin": "ready",
+      "to_node_id": 9,
+      "to_pin": "state"
+    },
+    {
+      "from_node_id": 1,
+      "from_pin": "ready",
+      "to_node_id": 10,
+      "to_pin": "state"
+    },
+    {
+      "from_node_id": 1,
+      "from_pin": "running",
+      "to_node_id": 11,
+      "to_pin": "state"
+    }
+  ],
+  "data": {
+    "sampling_rate": 62.5,
+    "sensor_columns": [
+      "accX",
+      "accY",
+      "accZ"
+    ],
+    "test_dataset_path": "",
+    "window_size": 100
+  },
+  "domain": "unknown",
+  "model": {
+    "class_names": [
+      "idle",
+      "shake",
+      "snake",
+      "updown",
+      "wave"
+    ],
+    "dl_architecture": "timesnet",
+    "dl_config": {
+      "model_info": {
+        "input_channels": 3,
+        "seq_len": 100
+      }
+    },
+    "dl_device_used": "",
+    "is_deep_learning": true,
+    "metrics": {
+      "accuracy": 0.9354838728904724,
+      "f1_macro": 0.0,
+      "precision_macro": 0.0,
+      "recall_macro": 0.0
+    },
+    "model_type": "classifier",
+    "num_classes": 5,
+    "onnx_model_path": "D:\\CiRA FES\\output\\ts3\\models\\timesnet_model.onnx"
+  },
+  "name": "ts3_new",
+  "nodes": [
+    {
+      "config": {
+        "batch_size": "1",
+        "class_names": "idle,shake,snake,updown,wave",
+        "input_channels": "3",
+        "model_path": "D:\\CiRA FES\\output\\ts3\\models\\timesnet_model.onnx",
+        "num_classes": "5",
+        "sensor_columns": "accX,accY,accZ",
+        "seq_len": "100",
+        "use_tensorrt": "false"
+      },
+      "id": 1,
+      "position_x": 400.0,
+      "position_y": 300.0,
+      "type_id": "processing.model.timesnet"
+    },
+    {
+      "config": {
+        "step_size": "64",
+        "window_size": "300"
+      },
+      "id": 2,
+      "position_x": -322.0657653808594,
+      "position_y": 58.372802734375,
+      "type_id": "processing.dsp.sliding_window"
+    },
+    {
+      "config": {
+        "num_channels": "3"
+      },
+      "id": 3,
+      "position_x": -600.732421875,
+      "position_y": -9.627197265625,
+      "type_id": "processing.dsp.channel_merge"
+    },
+    {
+      "config": {
+        "amplitude": "1.0",
+        "dataset_inline": "",
+        "dataset_path": "",
+        "frequency": "1.0",
+        "loop_mode": "true",
+        "num_channels": "3",
+        "offset": "0.0",
+        "phase": "0.0",
+        "sample_rate": "5.000000",
+        "selected_classes": "",
+        "sequential_mode": "true",
+        "signal_type": "square"
+      },
+      "id": 4,
+      "position_x": -694.0657958984375,
+      "position_y": 5.0394697189331055,
+      "type_id": "input.synthetic.signal_generator"
+    },
+    {
+      "config": {
+        "button_id": "button_1",
+        "initial_state": "false",
+        "label": "Button"
+      },
+      "id": 5,
+      "position_x": -1126.0657958984375,
+      "position_y": -5.627197265625,
+      "type_id": "input.web.button"
+    },
+    {
+      "config": {
+        "color": "green",
+        "label": "LED",
+        "led_id": "led_1"
+      },
+      "id": 6,
+      "position_x": -856.732421875,
+      "position_y": 247.70614624023438,
+      "type_id": "output.web.led"
+    },
+    {
+      "config": {
+        "color": "green",
+        "label": "LED",
+        "led_id": "led_2"
+      },
+      "id": 7,
+      "position_x": -448.3460998535156,
+      "position_y": 202.10292053222656,
+      "type_id": "output.web.led"
+    },
+    {
+      "config": {
+        "color": "green",
+        "label": "LED",
+        "led_id": "led_3"
+      },
+      "id": 8,
+      "position_x": -437.94610595703125,
+      "position_y": 263.70294189453125,
+      "type_id": "output.web.led"
+    },
+    {
+      "config": {
+        "color": "green",
+        "label": "LED",
+        "led_id": "led_4"
+      },
+      "id": 9,
+      "position_x": 182.05418395996094,
+      "position_y": 156.50289916992188,
+      "type_id": "output.web.led"
+    },
+    {
+      "config": {
+        "color": "green",
+        "label": "LED",
+        "led_id": "led_5"
+      },
+      "id": 10,
+      "position_x": 492.4543151855469,
+      "position_y": -52.29719161987305,
+      "type_id": "output.web.led"
+    },
+    {
+      "config": {
+        "color": "green",
+        "label": "LED",
+        "led_id": "led_6"
+      },
+      "id": 11,
+      "position_x": 475.6543273925781,
+      "position_y": 64.50286102294922,
+      "type_id": "output.web.led"
+    }
+  ],
+  "version": 1
+}

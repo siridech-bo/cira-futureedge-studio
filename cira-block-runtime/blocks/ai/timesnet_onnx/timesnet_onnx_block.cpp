@@ -59,14 +59,19 @@ bool TimesNetOnnxBlock::Initialize(const BlockConfig& config) {
 bool TimesNetOnnxBlock::Execute() {
     if (!is_initialized_) {
         std::cerr << "[TimesNet ONNX] Not initialized" << std::endl;
+        features_in_.clear();
         return false;
     }
 
     // Check input size
     int expected_size = seq_len_ * num_channels_;
     if (features_in_.size() != expected_size) {
-        std::cerr << "[TimesNet ONNX] Invalid input size: " << features_in_.size()
-                  << " (expected " << expected_size << ")" << std::endl;
+        // Input invalid or stopped - clear features to update "running" status
+        if (features_in_.size() != 0) {
+            std::cerr << "[TimesNet ONNX] Invalid input size: " << features_in_.size()
+                      << " (expected " << expected_size << ")" << std::endl;
+        }
+        features_in_.clear();
         return false;
     }
 
@@ -104,13 +109,21 @@ std::vector<Pin> TimesNetOnnxBlock::GetInputPins() const {
 std::vector<Pin> TimesNetOnnxBlock::GetOutputPins() const {
     return {
         Pin("prediction_out", "int", false),
-        Pin("confidence_out", "float", false)
+        Pin("confidence_out", "float", false),
+        Pin("ready", "bool", false),
+        Pin("running", "bool", false)
     };
 }
 
 void TimesNetOnnxBlock::SetInput(const std::string& pin_name, const BlockValue& value) {
     if (pin_name == "features_in") {
         features_in_ = std::get<std::vector<float>>(value);
+
+        static int input_count = 0;
+        if (input_count % 100 == 0) {
+            std::cout << "[TimesNet] Received input, size=" << features_in_.size() << std::endl;
+        }
+        input_count++;
     }
 }
 
@@ -119,6 +132,12 @@ BlockValue TimesNetOnnxBlock::GetOutput(const std::string& pin_name) const {
         return prediction_out_;
     } else if (pin_name == "confidence_out") {
         return confidence_out_;
+    } else if (pin_name == "ready") {
+        // Ready if block is initialized
+        return is_initialized_;
+    } else if (pin_name == "running") {
+        // Running if we've received input and are processing
+        return !features_in_.empty();
     }
     return 0.0f;
 }

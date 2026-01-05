@@ -87,6 +87,10 @@
                     <span class="widget-icon">📊</span>
                     <span>Signal Plot</span>
                 </div>
+                <div class="palette-item" data-widget="oscilloscope" draggable="true">
+                    <span class="widget-icon">📈</span>
+                    <span>Oscilloscope</span>
+                </div>
                 <div class="palette-item" data-widget="logs" draggable="true">
                     <span class="widget-icon">📋</span>
                     <span>Log Viewer</span>
@@ -128,9 +132,17 @@
     </div>
 
     <!-- Scripts -->
-    <script src="js/auth.js"></script>
-    <script src="js/widgets.js"></script>
-    <script src="js/signalplot.js"></script>
-    <script src="js/dashboard.js"></script>
+    <!-- Core scripts -->
+    <script src="js/auth.js?v=20251231m"></script>
+
+    <!-- WebSocket Manager (Node-RED architecture) - Load FIRST before widgets -->
+    <script src="js/websocket-manager.js?v=20251231p"></script>
+
+    <script src="js/widgets.js?v=20250101c"></script>
+    <script src="js/signalplot.js?v=20250101b"></script>
+    <script src="js/oscilloscope.js?v=20250101a"></script>
+
+    <!-- Dashboard main -->
+    <script src="js/dashboard.js?v=20251231u"></script>
 </body>
 </html>

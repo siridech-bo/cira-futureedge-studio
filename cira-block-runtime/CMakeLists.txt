@@ -33,8 +33,61 @@ if(WITH_WEB_SERVER)
         src/web_server.cpp
         src/metrics_collector.cpp
         src/auth_manager.cpp
+        src/signal_aggregator.cpp
+        src/websocket_server.cpp
     )
     add_definitions(-DWITH_WEB_SERVER)
+
+    # Check for msgpack-c (header-only)
+    if(EXISTS "${CMAKE_SOURCE_DIR}/third_party/msgpack-c/include")
+        include_directories(${CMAKE_SOURCE_DIR}/third_party/msgpack-c/include)
+        message(STATUS "Found msgpack-c: Using MessagePack binary protocol")
+    else()
+        message(STATUS "msgpack-c not found: Using fallback binary protocol")
+        message(STATUS "To enable MessagePack: git clone https://github.com/msgpack/msgpack-c.git third_party/msgpack-c")
+    endif()
+
+    # Check for IXWebSocket (lightweight C++ WebSocket library)
+    if(EXISTS "${CMAKE_SOURCE_DIR}/third_party/IXWebSocket")
+        include_directories(${CMAKE_SOURCE_DIR}/third_party/IXWebSocket)
+        message(STATUS "Found IXWebSocket: Production WebSocket support enabled")
+        add_definitions(-DHAS_IXWEBSOCKET)
+
+        # Add IXWebSocket source files (only the ones we need for server)
+        set(IXWEBSOCKET_SOURCES
+            ${CMAKE_SOURCE_DIR}/third_party/IXWebSocket/ixwebsocket/IXWebSocketServer.cpp
+            ${CMAKE_SOURCE_DIR}/third_party/IXWebSocket/ixwebsocket/IXWebSocket.cpp
+            ${CMAKE_SOURCE_DIR}/third_party/IXWebSocket/ixwebsocket/IXWebSocketTransport.cpp
+            ${CMAKE_SOURCE_DIR}/third_party/IXWebSocket/ixwebsocket/IXWebSocketHandshake.cpp
+            ${CMAKE_SOURCE_DIR}/third_party/IXWebSocket/ixwebsocket/IXWebSocketHttpHeaders.cpp
+            ${CMAKE_SOURCE_DIR}/third_party/IXWebSocket/ixwebsocket/IXWebSocketCloseConstants.cpp
+            ${CMAKE_SOURCE_DIR}/third_party/IXWebSocket/ixwebsocket/IXWebSocketPerMessageDeflate.cpp
+            ${CMAKE_SOURCE_DIR}/third_party/IXWebSocket/ixwebsocket/IXWebSocketPerMessageDeflateCodec.cpp
+            ${CMAKE_SOURCE_DIR}/third_party/IXWebSocket/ixwebsocket/IXWebSocketPerMessageDeflateOptions.cpp
+            ${CMAKE_SOURCE_DIR}/third_party/IXWebSocket/ixwebsocket/IXSocketServer.cpp
+            ${CMAKE_SOURCE_DIR}/third_party/IXWebSocket/ixwebsocket/IXSocket.cpp
+            ${CMAKE_SOURCE_DIR}/third_party/IXWebSocket/ixwebsocket/IXSocketConnect.cpp
+            ${CMAKE_SOURCE_DIR}/third_party/IXWebSocket/ixwebsocket/IXSocketFactory.cpp
+            ${CMAKE_SOURCE_DIR}/third_party/IXWebSocket/ixwebsocket/IXDNSLookup.cpp
+            ${CMAKE_SOURCE_DIR}/third_party/IXWebSocket/ixwebsocket/IXCancellationRequest.cpp
+            ${CMAKE_SOURCE_DIR}/third_party/IXWebSocket/ixwebsocket/IXConnectionState.cpp
+            ${CMAKE_SOURCE_DIR}/third_party/IXWebSocket/ixwebsocket/IXNetSystem.cpp
+            ${CMAKE_SOURCE_DIR}/third_party/IXWebSocket/ixwebsocket/IXSetThreadName.cpp
+            ${CMAKE_SOURCE_DIR}/third_party/IXWebSocket/ixwebsocket/IXSelectInterruptFactory.cpp
+            ${CMAKE_SOURCE_DIR}/third_party/IXWebSocket/ixwebsocket/IXSelectInterrupt.cpp
+            ${CMAKE_SOURCE_DIR}/third_party/IXWebSocket/ixwebsocket/IXSelectInterruptPipe.cpp
+            ${CMAKE_SOURCE_DIR}/third_party/IXWebSocket/ixwebsocket/IXSelectInterruptEvent.cpp
+            ${CMAKE_SOURCE_DIR}/third_party/IXWebSocket/ixwebsocket/IXStrCaseCompare.cpp
+            ${CMAKE_SOURCE_DIR}/third_party/IXWebSocket/ixwebsocket/IXUserAgent.cpp
+            ${CMAKE_SOURCE_DIR}/third_party/IXWebSocket/ixwebsocket/IXHttp.cpp
+            ${CMAKE_SOURCE_DIR}/third_party/IXWebSocket/ixwebsocket/IXExponentialBackoff.cpp
+            ${CMAKE_SOURCE_DIR}/third_party/IXWebSocket/ixwebsocket/IXUrlParser.cpp
+        )
+        list(APPEND RUNTIME_SOURCES ${IXWEBSOCKET_SOURCES})
+    else()
+        message(STATUS "IXWebSocket not found: WebSocket server will not function")
+        message(STATUS "To enable IXWebSocket: git clone https://github.com/machinezone/IXWebSocket.git third_party/IXWebSocket")
+    endif()
 endif()
 
 add_executable(cira-block-runtime ${RUNTIME_SOURCES})

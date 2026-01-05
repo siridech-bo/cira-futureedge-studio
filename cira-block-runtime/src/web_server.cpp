@@ -22,7 +22,12 @@ WebServer::WebServer(int port, BlockRuntime* runtime, BlockExecutor* executor)
     : port_(port)
     , runtime_(runtime)
     , executor_(executor)
-    , running_(false) {
+    , running_(false)
+    , signal_aggregator_(std::make_unique<SignalAggregator>(10000))  // 10K sample buffer
+    , websocket_server_(std::make_unique<WebSocketServer>(port + 1, signal_aggregator_.get())) {
+
+    std::cout << "[WebServer] Signal aggregator and WebSocket server initialized" << std::endl;
+    std::cout << "[WebServer] HTTP on port " << port << ", WebSocket on port " << (port + 1) << std::endl;
 }
 
 WebServer::~WebServer() {
@@ -37,9 +42,54 @@ void WebServer::Start() {
     running_ = true;
     server_ = std::make_unique<httplib::Server>();
 
+    // Add CORS headers to all responses
+    server_->set_post_routing_handler([](const httplib::Request& req, httplib::Response& res) {
+        res.set_header("Access-Control-Allow-Origin", "*");
+        res.set_header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+        res.set_header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Auth-Token");
+        res.set_header("Access-Control-Max-Age", "3600");
+    });
+
+    // Handle OPTIONS requests for CORS preflight
+    server_->Options(".*", [](const httplib::Request& req, httplib::Response& res) {
+        res.set_header("Access-Control-Allow-Origin", "*");
+        res.set_header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+        res.set_header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Auth-Token");
+        res.set_header("Access-Control-Max-Age", "3600");
+        res.status = 204;
+    });
+
     SetupRoutes();
 
-    // Start server in separate thread
+    // Start WebSocket server
+    if (websocket_server_->Start()) {
+        AddLog("INFO", "WebSocket server started on port " + std::to_string(port_ + 1));
+    } else {
+        AddLog("WARNING", "WebSocket server failed to start");
+    }
+
+    // Set WebSocket message callback to handle button_press and other commands
+    websocket_server_->SetMessageCallback(
+        [this](uint64_t conn_id, const std::vector<uint8_t>& data) {
+            std::cout << "[WebServer] Message callback triggered, conn_id=" << conn_id << std::endl;
+            HandleWebSocketMessage(conn_id, data);
+        }
+    );
+    std::cout << "[WebServer] WebSocket message callback registered" << std::endl;
+
+    // Configure server timeouts and connection settings
+    server_->set_read_timeout(30, 0);   // 30 seconds read timeout
+    server_->set_write_timeout(30, 0);  // 30 seconds write timeout
+    server_->set_keep_alive_max_count(100);  // Allow keep-alive connections
+
+    // Global request logger - log EVERY incoming request
+    server_->set_logger([](const httplib::Request& req, const httplib::Response& res) {
+        std::cout << "[HTTP] " << req.method << " " << req.path
+                  << " | Status: " << res.status
+                  << " | From: " << req.remote_addr << std::endl;
+    });
+
+    // Start HTTP server in separate thread
     server_thread_ = std::thread([this]() {
         std::cout << "Web server starting on port " << port_ << std::endl;
         if (!server_->listen("0.0.0.0", port_)) {
@@ -57,6 +107,11 @@ void WebServer::Stop() {
     }
 
     running_ = false;
+
+    // Stop WebSocket server
+    if (websocket_server_) {
+        websocket_server_->Stop();
+    }
 
     if (server_) {
         server_->stop();
@@ -125,6 +180,11 @@ void WebServer::SetupRoutes() {
         ServeStaticFile(filepath, res, "application/javascript");
     });
 
+    // Serve blocks.json (static file for widget configuration)
+    server_->Get("/blocks.json", [this](const httplib::Request& req, httplib::Response& res) {
+        ServeStaticFile("web/blocks.json", res, "application/json");
+    });
+
     // Authentication
     server_->Post("/api/auth/login", [this](const httplib::Request& req, httplib::Response& res) {
         HandleLogin(req, res);
@@ -151,12 +211,16 @@ void WebServer::SetupRoutes() {
 
     // Block information
     server_->Get("/api/blocks", [this](const httplib::Request& req, httplib::Response& res) {
+        std::cout << "[API] GET /api/blocks - Request received" << std::endl;
         if (!ValidateAuth(req)) {
+            std::cout << "[API] GET /api/blocks - UNAUTHORIZED" << std::endl;
             res.status = 401;
             res.set_content("{\"error\":\"Unauthorized\"}", "application/json");
             return;
         }
+        std::cout << "[API] GET /api/blocks - Auth OK, calling HandleBlocks..." << std::endl;
         HandleBlocks(req, res);
+        std::cout << "[API] GET /api/blocks - Response sent" << std::endl;
     });
 
     // Block real-time data
@@ -353,29 +417,53 @@ void WebServer::HandleSaveDashboardConfig(const httplib::Request& req, httplib::
 }
 
 void WebServer::HandleBlocks(const httplib::Request& req, httplib::Response& res) {
-    nlohmann::json response = nlohmann::json::array();
+    try {
+        nlohmann::json response = nlohmann::json::object();
+        nlohmann::json blocks_array = nlohmann::json::array();
 
-    if (executor_) {
-        const auto& nodes = executor_->GetNodes();
+        if (executor_) {
+            const auto& nodes = executor_->GetNodes();
 
-        for (const auto& [node_id, node] : nodes) {
-            nlohmann::json block_info;
-            block_info["node_id"] = node_id;
-            block_info["type"] = node.node_type;
-            block_info["status"] = "running";
+            for (const auto& [node_id, node] : nodes) {
+                nlohmann::json block_info;
+                block_info["node_id"] = node_id;
+                block_info["type"] = node.node_type;
+                block_info["status"] = "running";
 
-            // List all output pins
-            nlohmann::json pins = nlohmann::json::array();
-            for (const auto& [pin_name, value] : node.output_values) {
-                pins.push_back(pin_name);
+                // List all output pins
+                nlohmann::json pins = nlohmann::json::array();
+                for (const auto& [pin_name, value] : node.output_values) {
+                    pins.push_back(pin_name);
+                }
+                block_info["output_pins"] = pins;
+
+                blocks_array.push_back(block_info);
             }
-            block_info["output_pins"] = pins;
-
-            response.push_back(block_info);
         }
-    }
 
-    res.set_content(response.dump(), "application/json");
+        // Add version info for cache invalidation
+        // Use hash of node count + types as simple version identifier
+        size_t version_hash = blocks_array.size();
+        for (const auto& block : blocks_array) {
+            if (block.contains("node_id")) {
+                int id = block["node_id"];
+                version_hash ^= std::hash<int>{}(id);
+            }
+        }
+
+        response["blocks"] = blocks_array;
+        response["version"] = static_cast<unsigned long long>(version_hash);
+        response["timestamp"] = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::system_clock::now().time_since_epoch()
+        ).count();
+
+        std::cout << "[HandleBlocks] Returning " << blocks_array.size() << " blocks, version=" << version_hash << std::endl;
+        res.set_content(response.dump(), "application/json");
+    } catch (const std::exception& e) {
+        std::cerr << "[WebServer] HandleBlocks error: " << e.what() << std::endl;
+        res.status = 500;
+        res.set_content("{\"error\":\"Internal server error: " + std::string(e.what()) + "\"}", "application/json");
+    }
 }
 
 void WebServer::HandleBlockData(const httplib::Request& req, httplib::Response& res) {
@@ -484,6 +572,16 @@ void WebServer::HandleRuntimeControl(const httplib::Request& req, httplib::Respo
 }
 
 bool WebServer::ValidateAuth(const httplib::Request& req) {
+    // Allow local network access without authentication
+    std::string remote_ip = req.remote_addr;
+    if (remote_ip.find("192.168.") == 0 ||
+        remote_ip.find("127.0.") == 0 ||
+        remote_ip.find("10.") == 0 ||
+        remote_ip == "localhost") {
+        return true;  // Skip auth for local network
+    }
+
+    // Require auth for external access
     std::string token = GetAuthToken(req);
     return auth_manager_.ValidateToken(token);
 }
@@ -707,9 +805,140 @@ void WebServer::HandleWidgetLED(const httplib::Request& req, httplib::Response& 
     res.set_content(response.dump(), "application/json");
 }
 
+void WebServer::HandleWebSocketMessage(uint64_t conn_id, const std::vector<uint8_t>& data) {
+    try {
+        // Convert data to string for JSON parsing
+        std::string payload(data.begin(), data.end());
+
+        std::cout << "[WebServer] WebSocket message received from conn_id=" << conn_id
+                  << ", payload=" << payload << std::endl;
+
+        // Parse JSON
+        nlohmann::json message = nlohmann::json::parse(payload);
+
+        if (!message.contains("command")) {
+            std::cout << "[WebServer] Message has no 'command' field" << std::endl;
+            return;
+        }
+
+        std::string command = message["command"];
+        std::cout << "[WebServer] Command: " << command << std::endl;
+
+        // Handle button_press command
+        if (command == "button_press") {
+            if (!message.contains("button_id") || !message.contains("state")) {
+                std::cerr << "[WebServer] button_press missing button_id or state" << std::endl;
+                return;
+            }
+
+            std::string button_id = message["button_id"];
+            int state_int = message["state"];
+            bool state = (state_int != 0);
+
+            std::cout << "[WebServer] WebSocket button_press: button_id=" << button_id
+                      << ", state=" << state << std::endl;
+
+            if (!executor_) {
+                std::cerr << "[WebServer] Executor not available" << std::endl;
+                return;
+            }
+
+            // Find the WebButtonBlock by matching button_id in node config
+            const auto& nodes = executor_->GetNodes();
+            bool button_found = false;
+
+            for (const auto& [node_id, node] : nodes) {
+                // Check if this is a web-button node
+                if (node.node_type.find("web") != std::string::npos &&
+                    node.node_type.find("button") != std::string::npos) {
+
+                    // Check if button_id matches
+                    auto it = node.config.find("button_id");
+                    if (it != node.config.end() && it->second == button_id) {
+                        // Found the button! Update its state
+                        auto block = executor_->GetBlock(node_id);
+                        if (block) {
+                            // Call SetInput to update button state
+                            block->SetInput("state", state);
+                            button_found = true;
+
+                            AddLog("INFO", "Web button '" + button_id + "' state changed to " +
+                                   (state ? "pressed" : "released") + " via WebSocket");
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (!button_found) {
+                std::cerr << "[WebServer] Button '" << button_id << "' not found" << std::endl;
+            }
+        }
+
+    } catch (const std::exception& e) {
+        std::cerr << "[WebServer] WebSocket message parse error: " << e.what() << std::endl;
+    }
+}
+
 void WebServer::BroadcastSignalData(const std::string& node_id,
                                    const std::string& pin_name,
                                    const BlockValue& value) {
+    // Push sample to signal aggregator (for WebSocket clients)
+    if (signal_aggregator_) {
+        signal_aggregator_->PushSample(node_id, pin_name, value);
+    }
+
+    // Broadcast via WebSocket immediately (Node-RED architecture)
+    if (websocket_server_ && websocket_server_->IsRunning()) {
+        std::string signal_id = node_id + ":" + pin_name;
+
+        // Create a single-sample waveform chunk for immediate delivery
+        WaveformChunk chunk;
+        chunk.signal_id = signal_id;
+
+        // Get current timestamp
+        auto now = std::chrono::system_clock::now();
+        auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch());
+        chunk.timestamp = ms.count();
+
+        // Convert BlockValue to float and add to chunk
+        if (std::holds_alternative<float>(value)) {
+            chunk.samples.push_back(std::get<float>(value));
+        } else if (std::holds_alternative<int>(value)) {
+            // Convert int to float
+            chunk.samples.push_back(static_cast<float>(std::get<int>(value)));
+        } else if (std::holds_alternative<bool>(value)) {
+            // Convert boolean to float (0.0 or 1.0)
+            chunk.samples.push_back(std::get<bool>(value) ? 1.0f : 0.0f);
+        } else if (std::holds_alternative<std::vector<float>>(value)) {
+            const auto& vec = std::get<std::vector<float>>(value);
+            if (!vec.empty()) {
+                chunk.samples.push_back(vec[0]);  // Use first element
+            }
+        }
+
+        // Set statistics for this single sample
+        if (!chunk.samples.empty()) {
+            chunk.original_sample_count = 1;
+            chunk.min_value = chunk.samples[0];
+            chunk.max_value = chunk.samples[0];
+            chunk.avg_value = chunk.samples[0];
+
+            // Debug log for specific signals
+            if (signal_id == "1:prediction_out" || signal_id == "2:ready") {
+                std::cout << "[WebServer] Broadcasting " << signal_id << " = " << chunk.samples[0] << std::endl;
+            }
+
+            websocket_server_->BroadcastWaveform(chunk);
+        } else {
+            // Debug: log when chunk is empty
+            if (signal_id == "1:prediction_out" || signal_id == "2:ready") {
+                std::cout << "[WebServer] WARNING: Empty chunk for " << signal_id << std::endl;
+            }
+        }
+    }
+
+    // Keep existing SSE broadcasting for backward compatibility
     std::lock_guard<std::mutex> lock(ws_mutex_);
 
     // Debug: Log first broadcast

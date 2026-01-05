@@ -6,9 +6,24 @@ class DashboardManager {
         this.isEditMode = false;
         this.metricsInterval = null;
         this.widgetIdCounter = 0;
+
+        // Cache for block list (invalidated on deployment)
+        this.blocksCache = null;
+        this.blocksCacheTimestamp = 0;
+        this.blocksCacheVersion = 0; // Incremented on deployment
+
+        // Request guards to prevent piling up
+        this.isFetchingBlocks = false;
+        this.isFetchingBlockData = false;
     }
 
-    initialize() {
+    async initialize() {
+        // CRITICAL: Preload blocks.json BEFORE widgets start SSE connections
+        // This prevents connection pool saturation from blocking the blocks fetch
+        console.log('[Dashboard] Preloading blocks.json before widget initialization...');
+        await this.fetchBlocks(false);
+        console.log('[Dashboard] Blocks preloaded, proceeding with dashboard initialization');
+
         // Initialize GridStack
         this.grid = GridStack.init({
             float: true,
@@ -25,7 +40,8 @@ class DashboardManager {
         this.setupEventListeners();
 
         // Start metrics polling
-        this.startMetricsPolling();
+        // TEMPORARILY DISABLED: Jetson too slow to handle both polling and configuration
+        // this.startMetricsPolling();
 
         // Update connection status
         this.updateConnectionStatus(true);
@@ -280,38 +296,110 @@ class DashboardManager {
     startMetricsPolling() {
         this.fetchMetrics();
 
-        // Poll every 1 second
+        // Poll every 10 seconds (reduced from 1s to prevent connection overload)
         this.metricsInterval = setInterval(() => {
             this.fetchMetrics();
-        }, 1000);
+        }, 2000);
     }
 
-    async fetchBlocks() {
+    async fetchBlocks(forceRefresh = false) {
+        console.log('[Dashboard] fetchBlocks called (forceRefresh:', forceRefresh, ')');
+
+        // Prevent concurrent requests
+        if (this.isFetchingBlocks) {
+            console.log('[Dashboard] Already fetching blocks, skipping...');
+            return this.blocksCache || [];
+        }
+
+        this.isFetchingBlocks = true;
+
         try {
-            const response = await fetch('/api/blocks', {
-                headers: authManager.getHeaders()
-            });
+            // Fetch static blocks.json file (no auth needed, no timeout issues)
+            console.log('[Dashboard] Fetching /blocks.json...');
+
+            // Add timeout to prevent hanging if connection pool is saturated
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
+            const response = await fetch('/blocks.json', { signal: controller.signal });
+            clearTimeout(timeoutId);
+
+            console.log('[Dashboard] Response received, status:', response.status);
 
             if (response.ok) {
-                return await response.json();
+                const data = await response.json();
+                console.log('[Dashboard] Raw response data:', data);
+
+                // Handle response format with version
+                const blocks = data.blocks || data; // Support both old array format and new object format
+                const serverVersion = data.version || 0;
+                console.log('[Dashboard] Extracted blocks:', blocks, 'version:', serverVersion);
+
+                // Check if pipeline changed (version mismatch)
+                if (!forceRefresh && this.blocksCache !== null && this.blocksCacheVersion === serverVersion) {
+                    console.log('[Dashboard] Pipeline unchanged (version:', serverVersion, ') - using cache');
+                    return this.blocksCache;
+                }
+
+                // Version changed or no cache - update cache
+                if (this.blocksCacheVersion !== serverVersion && this.blocksCacheVersion !== 0) {
+                    console.log('[Dashboard] Pipeline changed! Old version:', this.blocksCacheVersion, '→ New version:', serverVersion);
+                } else {
+                    console.log('[Dashboard] Caching blocks (version:', serverVersion, ')');
+                }
+
+                this.blocksCache = blocks;
+                this.blocksCacheVersion = serverVersion;
+                this.blocksCacheTimestamp = Date.now();
+
+                return blocks;
+            } else {
+                console.error('[Dashboard] Failed to fetch blocks.json, status:', response.status);
             }
         } catch (error) {
-            console.error('Failed to fetch blocks:', error);
+            console.error('[Dashboard] Error fetching blocks.json:', error);
+        } finally {
+            this.isFetchingBlocks = false;
+        }
+
+        // Return cached blocks on error, or empty array
+        if (this.blocksCache !== null) {
+            console.log('[Dashboard] Returning cached blocks due to error');
+            return this.blocksCache;
         }
         return [];
     }
 
     async fetchBlockData() {
+        // Prevent concurrent requests
+        if (this.isFetchingBlockData) {
+            return {};
+        }
+
+        this.isFetchingBlockData = true;
+
         try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout (increased for slow Jetson)
+
             const response = await fetch('/api/blocks/data', {
-                headers: authManager.getHeaders()
+                headers: authManager.getHeaders(),
+                signal: controller.signal
             });
+
+            clearTimeout(timeoutId);
 
             if (response.ok) {
                 return await response.json();
             }
         } catch (error) {
-            console.error('Failed to fetch block data:', error);
+            if (error.name === 'AbortError') {
+                console.error('Fetch block data timeout - continuing with empty data');
+            } else {
+                console.error('Failed to fetch block data:', error);
+            }
+        } finally {
+            this.isFetchingBlockData = false;
         }
         return {};
     }
@@ -364,18 +452,50 @@ class DashboardManager {
 }
 
 // Global functions for widget actions
+let isConfigModalOpen = false;  // Prevent multiple simultaneous modal opens
+
 async function configureWidget(widgetId) {
+    console.log('[Dashboard] configureWidget called for:', widgetId, 'isConfigModalOpen:', isConfigModalOpen);
+
+    // Prevent opening modal if already open
+    if (isConfigModalOpen) {
+        console.warn('[Dashboard] Modal already open, ignoring click');
+        return;
+    }
+
+    isConfigModalOpen = true;
+
     const item = dashboard.widgets.get(widgetId);
-    if (!item || !item.widget) return;
+    if (!item || !item.widget) {
+        console.error('[Dashboard] Widget not found:', widgetId);
+        isConfigModalOpen = false;
+        return;
+    }
 
     const widget = item.widget;
+    console.log('[Dashboard] Configuring widget type:', widget.type);
 
-    // Fetch available blocks
-    const blocks = await dashboard.fetchBlocks();
-
-    // Build configuration form
+    // Show modal immediately with loading state
     const modal = document.getElementById('widget-config-modal');
     const modalBody = document.getElementById('widget-config-body');
+    modalBody.innerHTML = '<div style="text-align: center; padding: 40px; color: #00a8ff;">Loading configuration...</div>';
+    modal.style.display = 'flex';
+    modal.style.pointerEvents = 'auto';
+    console.log('[Dashboard] Modal shown with loading state');
+
+    // Fetch available blocks
+    console.log('[Dashboard] Fetching blocks...');
+    let blocks = [];
+    try {
+        blocks = await dashboard.fetchBlocks();
+        console.log('[Dashboard] Fetched', blocks.length, 'blocks');
+    } catch (error) {
+        console.error('[Dashboard] ERROR fetching blocks:', error);
+        blocks = [];
+    }
+
+    // Build configuration form
+    console.log('[Dashboard] Building configuration form...');
 
     let html = `
         <div class="config-form">
@@ -391,7 +511,7 @@ async function configureWidget(widgetId) {
             <div class="form-group">
                 <label>Button ID</label>
                 <input type="text" id="config-button-id" value="${widget.config.buttonId || 'button_1'}" placeholder="button_1" />
-                <small>Must match the button_id in your pipeline node configuration</small>
+                <small>Must match the button_id in your Web Button block configuration</small>
             </div>
             <div class="form-group">
                 <label>Button Label</label>
@@ -489,6 +609,43 @@ async function configureWidget(widgetId) {
                 <small>Maximum Y-axis value</small>
             </div>
         `;
+    } else if (widget.type === 'oscilloscope') {
+        html += `
+            <div class="form-group">
+                <label>Data Source Block</label>
+                <select id="config-scope-node" onchange="updateScopePinOptions()">
+                    <option value="">-- Select Block --</option>
+                    ${blocks.map(b => `<option value="${b.node_id}" ${widget.config.node_id == b.node_id ? 'selected' : ''}>${b.type} (ID: ${b.node_id})</option>`).join('')}
+                </select>
+                <small>Select any block with output signals</small>
+            </div>
+            <div class="form-group">
+                <label>Channel 1 Pin (Red)</label>
+                <select id="config-scope-ch1-pin">
+                    <option value="">-- Select Pin --</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Channel 2 Pin (Green)</label>
+                <select id="config-scope-ch2-pin">
+                    <option value="">-- Select Pin --</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Channel 3 Pin (Orange)</label>
+                <select id="config-scope-ch3-pin">
+                    <option value="">-- Select Pin --</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Mode</label>
+                <select id="config-scope-mode">
+                    <option value="compact" ${widget.config.mode === 'compact' ? 'selected' : ''}>Compact (Dashboard)</option>
+                    <option value="fullscreen" ${widget.config.mode === 'fullscreen' ? 'selected' : ''}>Fullscreen</option>
+                </select>
+                <small>Compact mode for dashboard, fullscreen for dedicated analysis</small>
+            </div>
+        `;
     } else if (widget.type === 'gauge' || widget.type === 'text' || widget.type === 'chart') {
         html += `
             <div class="form-group">
@@ -547,7 +704,33 @@ async function configureWidget(widgetId) {
         }
     }
 
+    // Update oscilloscope pin options if node already selected
+    if (widget.type === 'oscilloscope' && widget.config.node_id) {
+        updateScopePinOptions();
+        if (widget.config.ch1_pin) {
+            document.getElementById('config-scope-ch1-pin').value = widget.config.ch1_pin;
+        }
+        if (widget.config.ch2_pin) {
+            document.getElementById('config-scope-ch2-pin').value = widget.config.ch2_pin;
+        }
+        if (widget.config.ch3_pin) {
+            document.getElementById('config-scope-ch3-pin').value = widget.config.ch3_pin;
+        }
+    }
+
+    // Update LED pin options if node already selected
+    if (widget.type === 'led' && widget.config.node_id) {
+        updateLEDPinOptions();
+        if (widget.config.pin_name) {
+            document.getElementById('config-led-pin').value = widget.config.pin_name;
+        }
+    }
+
+    console.log('[Dashboard] About to show modal...');
     modal.style.display = 'flex';
+    modal.style.pointerEvents = 'auto';  // Enable clicks on modal
+    console.log('[Dashboard] Modal opened, display:', modal.style.display, 'pointer-events:', modal.style.pointerEvents);
+    console.log('[Dashboard] Modal visibility check - offsetWidth:', modal.offsetWidth, 'offsetHeight:', modal.offsetHeight);
 }
 
 function updatePinOptions() {
@@ -586,6 +769,31 @@ function updateSignalPinOptions() {
     }
 }
 
+function updateScopePinOptions() {
+    const modal = document.getElementById('widget-config-modal');
+    const blocks = JSON.parse(modal.dataset.blocks || '[]');
+    const nodeId = parseInt(document.getElementById('config-scope-node').value);
+    const ch1Select = document.getElementById('config-scope-ch1-pin');
+    const ch2Select = document.getElementById('config-scope-ch2-pin');
+    const ch3Select = document.getElementById('config-scope-ch3-pin');
+
+    // Clear all dropdowns
+    ch1Select.innerHTML = '<option value="">-- Select Pin --</option>';
+    ch2Select.innerHTML = '<option value="">-- Select Pin --</option>';
+    ch3Select.innerHTML = '<option value="">-- Select Pin --</option>';
+
+    if (nodeId) {
+        const block = blocks.find(b => b.node_id === nodeId);
+        if (block && block.output_pins) {
+            block.output_pins.forEach(pin => {
+                ch1Select.innerHTML += `<option value="${pin}">${pin}</option>`;
+                ch2Select.innerHTML += `<option value="${pin}">${pin}</option>`;
+                ch3Select.innerHTML += `<option value="${pin}">${pin}</option>`;
+            });
+        }
+    }
+}
+
 function updateLEDPinOptions() {
     const modal = document.getElementById('widget-config-modal');
     const blocks = JSON.parse(modal.dataset.blocks || '[]');
@@ -605,7 +813,22 @@ function updateLEDPinOptions() {
 }
 
 function closeConfigModal() {
-    document.getElementById('widget-config-modal').style.display = 'none';
+    console.log('[Dashboard] Closing config modal');
+    const modal = document.getElementById('widget-config-modal');
+    modal.style.display = 'none';
+    modal.style.pointerEvents = 'none';  // Ensure it doesn't block clicks
+
+    // CRITICAL: Also check for any stray fullscreen overlays that might be blocking
+    const overlays = document.querySelectorAll('[id^="oscilloscope-fullscreen-"]');
+    if (overlays.length > 0) {
+        console.warn('[Dashboard] Found', overlays.length, 'fullscreen overlays, removing...');
+        overlays.forEach(overlay => overlay.remove());
+    }
+
+    // Reset the modal open flag
+    isConfigModalOpen = false;
+
+    console.log('[Dashboard] Modal closed, display:', modal.style.display, 'pointer-events:', modal.style.pointerEvents);
 }
 
 function saveWidgetConfig() {
@@ -659,6 +882,12 @@ function saveWidgetConfig() {
         widget.config.color = document.getElementById('config-plot-color').value;
         widget.config.y_min = parseFloat(document.getElementById('config-y-min').value);
         widget.config.y_max = parseFloat(document.getElementById('config-y-max').value);
+    } else if (widget.type === 'oscilloscope') {
+        widget.config.node_id = document.getElementById('config-scope-node').value || null;
+        widget.config.ch1_pin = document.getElementById('config-scope-ch1-pin').value || '';
+        widget.config.ch2_pin = document.getElementById('config-scope-ch2-pin').value || '';
+        widget.config.ch3_pin = document.getElementById('config-scope-ch3-pin').value || '';
+        widget.config.mode = document.getElementById('config-scope-mode').value || 'compact';
     } else if (widget.type === 'gauge') {
         widget.config.min = parseFloat(document.getElementById('config-min').value) || 0;
         widget.config.max = parseFloat(document.getElementById('config-max').value) || 100;
@@ -667,15 +896,15 @@ function saveWidgetConfig() {
 
     // Re-render widget with new config
     if (widget.element) {
-        // For widgets with SSE connections, destroy old connection before re-rendering
-        if ((widget.type === 'signalplot' || widget.type === 'led') && typeof widget.destroy === 'function') {
+        // For widgets with WebSocket connections, destroy old connection before re-rendering
+        if ((widget.type === 'signalplot' || widget.type === 'led' || widget.type === 'oscilloscope' || widget.type === 'button') && typeof widget.destroy === 'function') {
             widget.destroy();
         }
 
         widget.render(widget.element);
 
         // Reinitialize after rendering
-        if ((widget.type === 'signalplot' || widget.type === 'led') && typeof widget.afterRender === 'function') {
+        if ((widget.type === 'signalplot' || widget.type === 'led' || widget.type === 'oscilloscope' || widget.type === 'button') && typeof widget.afterRender === 'function') {
             widget.afterRender();
         }
     }

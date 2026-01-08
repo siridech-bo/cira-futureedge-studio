@@ -874,6 +874,55 @@ void WebServer::HandleWebSocketMessage(uint64_t conn_id, const std::vector<uint8
                 std::cerr << "[WebServer] Button '" << button_id << "' not found" << std::endl;
             }
         }
+        // Handle start_recording command
+        else if (command == "start_recording") {
+            if (!message.contains("node_id")) {
+                std::cerr << "[WebServer] start_recording missing node_id" << std::endl;
+                return;
+            }
+
+            int node_id = message["node_id"];
+
+            if (!executor_) {
+                std::cerr << "[WebServer] Executor not available" << std::endl;
+                return;
+            }
+
+            // Find the DataRecorderBlock
+            auto block = executor_->GetBlock(node_id);
+            if (block) {
+                block->SetInput("record_trigger", true);
+                AddLog("INFO", "Recording started on node " + std::to_string(node_id));
+                std::cout << "[WebServer] Recording started on node " << node_id << std::endl;
+            } else {
+                std::cerr << "[WebServer] Node " << node_id << " not found" << std::endl;
+            }
+        }
+        // Handle stop_recording command
+        else if (command == "stop_recording") {
+            if (!message.contains("node_id")) {
+                std::cerr << "[WebServer] stop_recording missing node_id" << std::endl;
+                return;
+            }
+
+            int node_id = message["node_id"];
+
+            if (!executor_) {
+                std::cerr << "[WebServer] Executor not available" << std::endl;
+                return;
+            }
+
+            // Find the DataRecorderBlock
+            auto block = executor_->GetBlock(node_id);
+            if (block) {
+                block->SetInput("record_trigger", false);
+                AddLog("INFO", "Recording stopped on node " + std::to_string(node_id));
+                std::cout << "[WebServer] Recording stopped on node " << node_id << std::endl;
+            } else {
+                std::cerr << "[WebServer] Node " << node_id << " not found" << std::endl;
+            }
+        }
+
 
     } catch (const std::exception& e) {
         std::cerr << "[WebServer] WebSocket message parse error: " << e.what() << std::endl;
@@ -984,6 +1033,165 @@ void WebServer::BroadcastSignalData(const std::string& node_id,
                 }
             }
         }
+    }
+}
+
+void WebServer::HandleListDatasets(const httplib::Request& req, httplib::Response& res) {
+    try {
+        std::string datasets_dir = "/home/user/cira_datasets";
+
+        nlohmann::json response;
+        response["datasets"] = nlohmann::json::array();
+
+        // Check if directory exists
+        if (!fs::exists(datasets_dir)) {
+            res.set_content(response.dump(), "application/json");
+            return;
+        }
+
+        // Iterate through files in directory
+        for (const auto& entry : fs::directory_iterator(datasets_dir)) {
+            if (fs::is_regular_file(entry.status())) {
+                nlohmann::json dataset_info;
+
+                std::string filename = entry.path().filename().string();
+                dataset_info["filename"] = filename;
+
+                // Get file size in KB
+                std::uintmax_t size_bytes = fs::file_size(entry.path());
+                dataset_info["size_kb"] = static_cast<int>(size_bytes / 1024);
+
+                // Get modification time
+                auto ftime = fs::last_write_time(entry.path());
+                auto sctp = std::chrono::time_point_cast<std::chrono::system_clock::duration>(
+                    ftime - fs::file_time_type::clock::now() + std::chrono::system_clock::now()
+                );
+                auto time_t_now = std::chrono::system_clock::to_time_t(sctp);
+
+                std::tm tm_now;
+                #ifdef _WIN32
+                localtime_s(&tm_now, &time_t_now);
+                #else
+                localtime_r(&time_t_now, &tm_now);
+                #endif
+
+                char timestamp_str[64];
+                std::strftime(timestamp_str, sizeof(timestamp_str), "%Y-%m-%d %H:%M:%S", &tm_now);
+                dataset_info["timestamp"] = std::string(timestamp_str);
+
+                response["datasets"].push_back(dataset_info);
+            }
+        }
+
+        res.set_content(response.dump(), "application/json");
+
+    } catch (const std::exception& e) {
+        std::cerr << "[WebServer] HandleListDatasets error: " << e.what() << std::endl;
+        res.status = 500;
+        res.set_content("{\"error\":\"Internal server error\"}", "application/json");
+    }
+}
+
+void WebServer::HandleDownloadDataset(const httplib::Request& req, httplib::Response& res) {
+    try {
+        // Extract filename from URL path
+        std::string filename = req.matches[1];
+
+        // Sanitize filename - prevent directory traversal
+        if (filename.find("..") != std::string::npos ||
+            filename.find("/") != std::string::npos ||
+            filename.find("\\") != std::string::npos) {
+            res.status = 400;
+            res.set_content("{\"error\":\"Invalid filename\"}", "application/json");
+            return;
+        }
+
+        std::string datasets_dir = "/home/user/cira_datasets";
+        std::string filepath = datasets_dir + "/" + filename;
+
+        // Check if file exists
+        if (!fs::exists(filepath)) {
+            res.status = 404;
+            res.set_content("{\"error\":\"File not found\"}", "application/json");
+            return;
+        }
+
+        // Read file content
+        std::ifstream file(filepath, std::ios::binary);
+        if (!file.is_open()) {
+            res.status = 500;
+            res.set_content("{\"error\":\"Failed to open file\"}", "application/json");
+            return;
+        }
+
+        std::stringstream buffer;
+        buffer << file.rdbuf();
+        std::string content = buffer.str();
+
+        // Determine content type based on file extension
+        std::string content_type = "application/octet-stream";
+        if (filename.find(".json") != std::string::npos) {
+            content_type = "application/json";
+        } else if (filename.find(".csv") != std::string::npos) {
+            content_type = "text/csv";
+        } else if (filename.find(".cbor") != std::string::npos) {
+            content_type = "application/cbor";
+        }
+
+        // Set download headers
+        res.set_header("Content-Disposition", "attachment; filename=\"" + filename + "\"");
+        res.set_content(content, content_type.c_str());
+
+        AddLog("INFO", "Dataset downloaded: " + filename);
+
+    } catch (const std::exception& e) {
+        std::cerr << "[WebServer] HandleDownloadDataset error: " << e.what() << std::endl;
+        res.status = 500;
+        res.set_content("{\"error\":\"Internal server error\"}", "application/json");
+    }
+}
+
+void WebServer::HandleDeleteDataset(const httplib::Request& req, httplib::Response& res) {
+    try {
+        // Extract filename from URL path
+        std::string filename = req.matches[1];
+
+        // Sanitize filename - prevent directory traversal
+        if (filename.find("..") != std::string::npos ||
+            filename.find("/") != std::string::npos ||
+            filename.find("\\") != std::string::npos) {
+            res.status = 400;
+            res.set_content("{\"error\":\"Invalid filename\"}", "application/json");
+            return;
+        }
+
+        std::string datasets_dir = "/home/user/cira_datasets";
+        std::string filepath = datasets_dir + "/" + filename;
+
+        // Check if file exists
+        if (!fs::exists(filepath)) {
+            res.status = 404;
+            res.set_content("{\"error\":\"File not found\"}", "application/json");
+            return;
+        }
+
+        // Delete the file
+        if (fs::remove(filepath)) {
+            nlohmann::json response;
+            response["success"] = true;
+            response["message"] = "Dataset deleted";
+            res.set_content(response.dump(), "application/json");
+
+            AddLog("INFO", "Dataset deleted: " + filename);
+        } else {
+            res.status = 500;
+            res.set_content("{\"error\":\"Failed to delete file\"}", "application/json");
+        }
+
+    } catch (const std::exception& e) {
+        std::cerr << "[WebServer] HandleDeleteDataset error: " << e.what() << std::endl;
+        res.status = 500;
+        res.set_content("{\"error\":\"Internal server error\"}", "application/json");
     }
 }
 

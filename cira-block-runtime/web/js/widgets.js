@@ -759,6 +759,8 @@ class WidgetFactory {
                 return new SignalPlotWidget(id, type, config);
             case 'oscilloscope':
                 return new OscilloscopeWidget(id, type, config);
+            case 'recorder':
+                return new DataRecorderWidget(id, type, config);
             default:
                 return new Widget(id, type, config);
         }

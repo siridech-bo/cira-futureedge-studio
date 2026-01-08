@@ -122,6 +122,9 @@ private:
     void HandleRuntimeControl(const httplib::Request& req, httplib::Response& res);
     void HandleWidgetButton(const httplib::Request& req, httplib::Response& res);
     void HandleWidgetLED(const httplib::Request& req, httplib::Response& res);
+    void HandleListDatasets(const httplib::Request& req, httplib::Response& res);
+    void HandleDownloadDataset(const httplib::Request& req, httplib::Response& res);
+    void HandleDeleteDataset(const httplib::Request& req, httplib::Response& res);
 
     // Utility
     bool ValidateAuth(const httplib::Request& req);

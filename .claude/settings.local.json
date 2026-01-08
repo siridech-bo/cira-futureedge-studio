@@ -6,7 +6,9 @@
       "Bash(ssh:*)",
       "Bash(mkdir:*)",
       "Bash(md5sum:*)",
-      "Bash(./sync_web_files.bat)"
+      "Bash(./sync_web_files.bat)",
+      "Bash(echo $LOCALAPPDATA)",
+      "Read(//c/Users/bmwsb/AppData/Local/CiRA/**)"
     ],
     "deny": [],
     "ask": []

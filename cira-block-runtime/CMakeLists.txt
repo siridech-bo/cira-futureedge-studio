@@ -174,6 +174,7 @@ if(BUILD_BLOCKS)
     add_subdirectory(blocks/outputs/mqtt_publisher)
     add_subdirectory(blocks/outputs/http_post)
     add_subdirectory(blocks/outputs/websocket)
+    add_subdirectory(blocks/outputs/data_recorder)
 
     # Network/Web widgets
     add_subdirectory(blocks/network/web_button)

@@ -1,0 +1,151 @@
+{
+  "connections": [
+    {
+      "from_node_id": 1,
+      "from_pin": "channel_0",
+      "to_node_id": 2,
+      "to_pin": "input"
+    },
+    {
+      "from_node_id": 2,
+      "from_pin": "window_out",
+      "to_node_id": 3,
+      "to_pin": "signal_data"
+    },
+    {
+      "from_node_id": 1,
+      "from_pin": "class_name",
+      "to_node_id": 3,
+      "to_pin": "class_name"
+    },
+    {
+      "from_node_id": 4,
+      "from_pin": "state",
+      "to_node_id": 1,
+      "to_pin": "play"
+    },
+    {
+      "from_node_id": 1,
+      "from_pin": "ready",
+      "to_node_id": 5,
+      "to_pin": "state"
+    },
+    {
+      "from_node_id": 1,
+      "from_pin": "running",
+      "to_node_id": 6,
+      "to_pin": "state"
+    },
+    {
+      "from_node_id": 2,
+      "from_pin": "ready",
+      "to_node_id": 7,
+      "to_pin": "state"
+    },
+    {
+      "from_node_id": 3,
+      "from_pin": "recording_status",
+      "to_node_id": 8,
+      "to_pin": "state"
+    }
+  ],
+  "nodes": [
+    {
+      "config": {
+        "amplitude": "1.0",
+        "dataset_inline": "",
+        "dataset_path": "",
+        "frequency": "1.0",
+        "loop_mode": "true",
+        "num_channels": "3",
+        "offset": "0.0",
+        "phase": "0.0",
+        "sample_rate": "100",
+        "selected_classes": "",
+        "sequential_mode": "true",
+        "signal_type": "dataset"
+      },
+      "id": 1,
+      "position_x": -558.8184814453125,
+      "position_y": 388.78338623046875,
+      "type_id": "input.synthetic.signal_generator"
+    },
+    {
+      "config": {
+        "step_size": "64",
+        "window_size": "128"
+      },
+      "id": 2,
+      "position_x": -182.9677734375,
+      "position_y": 403.74261474609375,
+      "type_id": "processing.dsp.sliding_window"
+    },
+    {
+      "config": {
+        "max_samples": "10000",
+        "output_dir": "/home/user/cira_datasets",
+        "output_format": "csv"
+      },
+      "id": 3,
+      "position_x": -35.245361328125,
+      "position_y": 388.78338623046875,
+      "type_id": "output.data.recorder"
+    },
+    {
+      "config": {
+        "button_id": "button_1",
+        "initial_state": "false",
+        "label": "Button"
+      },
+      "id": 4,
+      "position_x": -662.59814453125,
+      "position_y": 191.50852966308594,
+      "type_id": "input.web.button"
+    },
+    {
+      "config": {
+        "color": "green",
+        "label": "LED",
+        "led_id": "led_1"
+      },
+      "id": 5,
+      "position_x": -284.9927978515625,
+      "position_y": 483.2135314941406,
+      "type_id": "output.web.led"
+    },
+    {
+      "config": {
+        "color": "green",
+        "label": "LED",
+        "led_id": "led_1"
+      },
+      "id": 6,
+      "position_x": -263.4889221191406,
+      "position_y": 644.960205078125,
+      "type_id": "output.web.led"
+    },
+    {
+      "config": {
+        "color": "green",
+        "label": "LED",
+        "led_id": "led_1"
+      },
+      "id": 7,
+      "position_x": -4.507160186767578,
+      "position_y": 198.98812866210938,
+      "type_id": "output.web.led"
+    },
+    {
+      "config": {
+        "color": "green",
+        "label": "LED",
+        "led_id": "led_1"
+      },
+      "id": 8,
+      "position_x": 365.73382568359375,
+      "position_y": 297.1580810546875,
+      "type_id": "output.web.led"
+    }
+  ],
+  "version": 1
+}

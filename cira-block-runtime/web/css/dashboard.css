@@ -1155,3 +1155,260 @@ body {
 .ch-label.ch3 {
     color: var(--scope-ch3);
 }
+
+/* ========================================
+   Data Recorder Widget Styles
+   ======================================== */
+
+.recorder-widget {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    padding: 15px;
+}
+
+.recorder-controls {
+    display: flex;
+    gap: 10px;
+}
+
+.recorder-btn {
+    flex: 1;
+    padding: 12px;
+    font-size: 16px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-weight: 600;
+}
+
+.start-btn {
+    background: #27ae60;
+    color: white;
+}
+
+.start-btn:hover:not(:disabled) {
+    background: #229954;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(39, 174, 96, 0.3);
+}
+
+.start-btn:disabled {
+    background: #95a5a6;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.stop-btn {
+    background: #e74c3c;
+    color: white;
+}
+
+.stop-btn:hover:not(:disabled) {
+    background: #c0392b;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(231, 76, 60, 0.3);
+}
+
+.stop-btn:disabled {
+    background: #95a5a6;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.btn-icon {
+    font-size: 18px;
+    margin-right: 5px;
+}
+
+.recorder-status {
+    background: #34495e;
+    border-radius: 5px;
+    padding: 15px;
+}
+
+.status-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.status-row:last-child {
+    margin-bottom: 0;
+}
+
+.status-label {
+    color: #95a5a6;
+    font-weight: bold;
+    font-size: 14px;
+}
+
+.status-value {
+    color: #ecf0f1;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.status-value.recording {
+    color: #e74c3c;
+    font-weight: bold;
+    animation: blink 1s infinite;
+}
+
+@keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+.recorder-datasets {
+    border-top: 1px solid #34495e;
+    padding-top: 15px;
+}
+
+.datasets-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.datasets-header h4 {
+    margin: 0;
+    color: #ecf0f1;
+    font-size: 16px;
+}
+
+.refresh-btn {
+    background: transparent;
+    border: 1px solid #3498db;
+    color: #3498db;
+    padding: 5px 10px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 18px;
+    transition: all 0.3s;
+}
+
+.refresh-btn:hover {
+    background: #3498db;
+    color: white;
+    transform: rotate(180deg);
+}
+
+.datasets-list {
+    max-height: 300px;
+    overflow-y: auto;
+    padding-right: 5px;
+}
+
+/* Custom scrollbar for datasets list */
+.datasets-list::-webkit-scrollbar {
+    width: 8px;
+}
+
+.datasets-list::-webkit-scrollbar-track {
+    background: #2c3e50;
+    border-radius: 4px;
+}
+
+.datasets-list::-webkit-scrollbar-thumb {
+    background: #34495e;
+    border-radius: 4px;
+}
+
+.datasets-list::-webkit-scrollbar-thumb:hover {
+    background: #3498db;
+}
+
+.dataset-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #2c3e50;
+    padding: 12px;
+    margin-bottom: 8px;
+    border-radius: 5px;
+    transition: all 0.3s;
+}
+
+.dataset-item:hover {
+    background: #34495e;
+    transform: translateX(5px);
+}
+
+.dataset-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.dataset-name {
+    font-weight: bold;
+    color: #ecf0f1;
+    margin-bottom: 4px;
+    font-size: 14px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.dataset-meta {
+    font-size: 12px;
+    color: #95a5a6;
+}
+
+.dataset-actions {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.download-btn, .delete-btn {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.3s;
+    font-weight: 600;
+}
+
+.download-btn {
+    background: #3498db;
+    color: white;
+}
+
+.download-btn:hover {
+    background: #2980b9;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(52, 152, 219, 0.3);
+}
+
+.delete-btn {
+    background: #e74c3c;
+    color: white;
+}
+
+.delete-btn:hover {
+    background: #c0392b;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(231, 76, 60, 0.3);
+}
+
+.loading, .no-datasets, .error {
+    text-align: center;
+    padding: 30px 20px;
+    color: #95a5a6;
+    font-style: italic;
+    font-size: 14px;
+}
+
+.error {
+    color: #e74c3c;
+    font-style: normal;
+    font-weight: 600;
+}
+
+.no-datasets {
+    color: #7f8c8d;
+}

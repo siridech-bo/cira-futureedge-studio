@@ -1,5 +1,6 @@
 #include "timesnet_onnx_block.hpp"
 #include <iostream>
+#include <sstream>
 #include <algorithm>
 #include <numeric>
 #include <cmath>
@@ -36,11 +37,24 @@ bool TimesNetOnnxBlock::Initialize(const BlockConfig& config) {
     if (config.find("num_channels") != config.end()) {
         num_channels_ = std::stoi(config.at("num_channels"));
     }
+    if (config.find("class_names") != config.end()) {
+        std::string class_names_str = config.at("class_names");
+        // Parse comma-separated class names
+        std::stringstream ss(class_names_str);
+        std::string class_name;
+        while (std::getline(ss, class_name, ',')) {
+            // Trim whitespace
+            class_name.erase(0, class_name.find_first_not_of(" \t"));
+            class_name.erase(class_name.find_last_not_of(" \t") + 1);
+            class_names_.push_back(class_name);
+        }
+    }
 
     std::cout << "  Model Path: " << model_path_ << std::endl;
     std::cout << "  Classes: " << num_classes_ << std::endl;
     std::cout << "  Seq Len: " << seq_len_ << std::endl;
     std::cout << "  Channels: " << num_channels_ << std::endl;
+    std::cout << "  Class Names: " << class_names_.size() << " loaded" << std::endl;
 
 #ifdef USE_ONNXRUNTIME
     if (!LoadModel()) {
@@ -109,6 +123,7 @@ std::vector<Pin> TimesNetOnnxBlock::GetInputPins() const {
 std::vector<Pin> TimesNetOnnxBlock::GetOutputPins() const {
     return {
         Pin("prediction_out", "int", false),
+        Pin("class_name", "string", false),
         Pin("confidence_out", "float", false),
         Pin("ready", "bool", false),
         Pin("running", "bool", false)
@@ -130,6 +145,12 @@ void TimesNetOnnxBlock::SetInput(const std::string& pin_name, const BlockValue& 
 BlockValue TimesNetOnnxBlock::GetOutput(const std::string& pin_name) const {
     if (pin_name == "prediction_out") {
         return prediction_out_;
+    } else if (pin_name == "class_name") {
+        // Return class name if available, otherwise empty string
+        if (prediction_out_ >= 0 && prediction_out_ < static_cast<int>(class_names_.size())) {
+            return class_names_[prediction_out_];
+        }
+        return std::string("");
     } else if (pin_name == "confidence_out") {
         return confidence_out_;
     } else if (pin_name == "ready") {

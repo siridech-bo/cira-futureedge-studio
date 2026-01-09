@@ -14,7 +14,7 @@ class DataRecorderWidget extends Widget {
         return {
             title: 'Dataset Recorder',
             recorderNodeId: 1,
-            format: 'cbor',
+            format: 'cbor',  // CBOR format for IoT compatibility
             autoRefresh: true
         };
     }
@@ -285,8 +285,9 @@ window.deleteDataset = async function(filename, widgetId) {
         if (response.ok) {
             console.log(`[DataRecorder] Deleted: ${filename}`);
             // Refresh the dataset list by finding the widget instance
-            if (widgetManager && widgetManager.widgets) {
-                const widget = widgetManager.widgets.find(w => w.id === widgetId);
+            // widgets is a Map, not an array
+            if (typeof widgets !== 'undefined' && widgets instanceof Map) {
+                const widget = widgets.get(widgetId);
                 if (widget && widget.loadDatasets) {
                     widget.loadDatasets();
                 }

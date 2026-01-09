@@ -6,6 +6,9 @@
 #include <chrono>
 #include <ctime>
 #include <vector>
+#include <map>
+#include <unistd.h>  // for gethostname
+#include "../../../third_party/json.hpp"
 
 // Use experimental filesystem for older compilers (GCC < 8)
 #if __has_include(<filesystem>)
@@ -187,6 +190,8 @@ private:
         if (!samples_.empty()) {
             if (output_format_ == "csv") {
                 SaveAsCSV();
+            } else if (output_format_ == "cbor") {
+                SaveAsCBOR();
             } else {
                 SaveAsJSON();
             }
@@ -271,6 +276,90 @@ private:
 
         file.close();
         std::cout << "✓ Saved " << samples_.size() << " samples to " << ss.str() << std::endl;
+    }
+
+    void SaveAsCBOR() {
+        using json = nlohmann::json;
+
+        // Determine dominant class name from samples
+        std::map<std::string, int> class_counts;
+        for (const auto& sample : samples_) {
+            if (!sample.class_name.empty()) {
+                class_counts[sample.class_name]++;
+            }
+        }
+
+        std::string dominant_class = "unknown";
+        int max_count = 0;
+        for (const auto& pair : class_counts) {
+            if (pair.second > max_count) {
+                max_count = pair.second;
+                dominant_class = pair.first;
+            }
+        }
+
+        // Generate filename: {class_name}.{sequence}.cbor.{unique_id}.{device_id}.cbor
+        auto now = std::chrono::system_clock::now();
+        auto time_t = std::chrono::system_clock::to_time_t(now);
+
+        // Get sequence number (count existing files for this class)
+        int sequence_num = 1;
+        for (const auto& entry : fs::directory_iterator(output_dir_)) {
+            if (entry.path().filename().string().find(dominant_class + ".") == 0) {
+                sequence_num++;
+            }
+        }
+
+        // Generate unique ID (timestamp-based)
+        std::stringstream unique_id;
+        unique_id << std::hex << time_t;
+
+        // Device ID (hostname or "jetson")
+        std::string device_id = "jetson";
+        #ifdef __linux__
+            char hostname[256];
+            if (gethostname(hostname, sizeof(hostname)) == 0) {
+                device_id = hostname;
+            }
+        #endif
+
+        // Build filename
+        std::stringstream ss;
+        ss << output_dir_ << "/" << dominant_class << "." << sequence_num
+           << ".cbor." << unique_id.str() << "." << device_id << ".cbor";
+
+        // Build JSON structure
+        json j;
+        j["samples"] = json::array();
+
+        for (const auto& sample : samples_) {
+            auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                sample.timestamp.time_since_epoch()).count();
+
+            json sample_obj;
+            sample_obj["timestamp"] = ms;
+            sample_obj["class_name"] = sample.class_name;
+            sample_obj["class_id"] = sample.class_id;
+            sample_obj["data"] = sample.data;
+
+            j["samples"].push_back(sample_obj);
+        }
+
+        // Convert to CBOR binary format
+        std::vector<uint8_t> cbor_data = json::to_cbor(j);
+
+        // Write binary data to file
+        std::ofstream file(ss.str(), std::ios::binary);
+        if (!file.is_open()) {
+            std::cerr << "ERROR: Failed to open CBOR file: " << ss.str() << std::endl;
+            return;
+        }
+
+        file.write(reinterpret_cast<const char*>(cbor_data.data()), cbor_data.size());
+        file.close();
+
+        std::cout << "✓ Saved " << samples_.size() << " samples to " << ss.str()
+                  << " (" << cbor_data.size() << " bytes)" << std::endl;
     }
 
     bool record_trigger_;

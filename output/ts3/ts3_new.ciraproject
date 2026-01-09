@@ -273,7 +273,7 @@
       "config": {
         "max_samples": "10000",
         "output_dir": "/home/user/cira_datasets",
-        "output_format": "csv"
+        "output_format": "cbor"
       },
       "id": 12,
       "position_x": 881.8096923828125,

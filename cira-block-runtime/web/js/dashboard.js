@@ -646,6 +646,32 @@ async function configureWidget(widgetId) {
                 <small>Compact mode for dashboard, fullscreen for dedicated analysis</small>
             </div>
         `;
+    } else if (widget.type === 'recorder') {
+        html += `
+            <div class="form-group">
+                <label>Data Recorder Node</label>
+                <select id="config-recorder-node">
+                    <option value="">-- Select Data Recorder Block --</option>
+                    ${blocks.map(b => `<option value="${b.node_id}" ${widget.config.recorderNodeId == b.node_id ? 'selected' : ''}>${b.type} (ID: ${b.node_id})</option>`).join('')}
+                </select>
+                <small>Select the Data Recorder block node from your pipeline</small>
+            </div>
+            <div class="form-group">
+                <label>Recording Format</label>
+                <select id="config-recorder-format">
+                    <option value="cbor" ${widget.config.format === 'cbor' ? 'selected' : ''}>CBOR (Binary, Compact)</option>
+                    <option value="csv" ${widget.config.format === 'csv' ? 'selected' : ''}>CSV (Human-readable)</option>
+                    <option value="json" ${widget.config.format === 'json' ? 'selected' : ''}>JSON (Structured)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="config-recorder-auto-refresh" ${widget.config.autoRefresh !== false ? 'checked' : ''} />
+                    Auto-refresh dataset list
+                </label>
+                <small>Automatically refresh the dataset list after stopping recording</small>
+            </div>
+        `;
     } else if (widget.type === 'gauge' || widget.type === 'text' || widget.type === 'chart') {
         html += `
             <div class="form-group">
@@ -888,6 +914,11 @@ function saveWidgetConfig() {
         widget.config.ch2_pin = document.getElementById('config-scope-ch2-pin').value || '';
         widget.config.ch3_pin = document.getElementById('config-scope-ch3-pin').value || '';
         widget.config.mode = document.getElementById('config-scope-mode').value || 'compact';
+    } else if (widget.type === 'recorder') {
+        const recorderNodeSelect = document.getElementById('config-recorder-node');
+        widget.config.recorderNodeId = parseInt(recorderNodeSelect.value) || 1;
+        widget.config.format = document.getElementById('config-recorder-format').value || 'cbor';
+        widget.config.autoRefresh = document.getElementById('config-recorder-auto-refresh').checked;
     } else if (widget.type === 'gauge') {
         widget.config.min = parseFloat(document.getElementById('config-min').value) || 0;
         widget.config.max = parseFloat(document.getElementById('config-max').value) || 100;
@@ -897,14 +928,14 @@ function saveWidgetConfig() {
     // Re-render widget with new config
     if (widget.element) {
         // For widgets with WebSocket connections, destroy old connection before re-rendering
-        if ((widget.type === 'signalplot' || widget.type === 'led' || widget.type === 'oscilloscope' || widget.type === 'button') && typeof widget.destroy === 'function') {
+        if ((widget.type === 'signalplot' || widget.type === 'led' || widget.type === 'oscilloscope' || widget.type === 'button' || widget.type === 'recorder') && typeof widget.destroy === 'function') {
             widget.destroy();
         }
 
         widget.render(widget.element);
 
         // Reinitialize after rendering
-        if ((widget.type === 'signalplot' || widget.type === 'led' || widget.type === 'oscilloscope' || widget.type === 'button') && typeof widget.afterRender === 'function') {
+        if ((widget.type === 'signalplot' || widget.type === 'led' || widget.type === 'oscilloscope' || widget.type === 'button' || widget.type === 'recorder') && typeof widget.afterRender === 'function') {
             widget.afterRender();
         }
     }

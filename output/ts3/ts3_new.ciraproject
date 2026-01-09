@@ -71,6 +71,30 @@
       "from_pin": "running",
       "to_node_id": 11,
       "to_pin": "state"
+    },
+    {
+      "from_node_id": 2,
+      "from_pin": "window_out",
+      "to_node_id": 12,
+      "to_pin": "signal_data"
+    },
+    {
+      "from_node_id": 4,
+      "from_pin": "class_name",
+      "to_node_id": 12,
+      "to_pin": "class_name"
+    },
+    {
+      "from_node_id": 12,
+      "from_pin": "recording_status",
+      "to_node_id": 13,
+      "to_pin": "state"
+    },
+    {
+      "from_node_id": 1,
+      "from_pin": "prediction_out",
+      "to_node_id": 12,
+      "to_pin": "class_id"
     }
   ],
   "data": {
@@ -243,6 +267,28 @@
       "id": 11,
       "position_x": 475.6543273925781,
       "position_y": 64.50286102294922,
+      "type_id": "output.web.led"
+    },
+    {
+      "config": {
+        "max_samples": "10000",
+        "output_dir": "/home/user/cira_datasets",
+        "output_format": "csv"
+      },
+      "id": 12,
+      "position_x": 881.8096923828125,
+      "position_y": -424.28509521484375,
+      "type_id": "output.data.recorder"
+    },
+    {
+      "config": {
+        "color": "green",
+        "label": "LED",
+        "led_id": "led_1"
+      },
+      "id": 13,
+      "position_x": 1076.71435546875,
+      "position_y": -452.3395690917969,
       "type_id": "output.web.led"
     }
   ],

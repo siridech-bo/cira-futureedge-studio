@@ -230,6 +230,7 @@ public:
         // NEW: Signal generation mode
         if (!signal_type_.empty() && signal_type_ != "dataset") {
             GenerateSignalSample();
+            current_class_name_ = signal_type_;  // Use signal type as class name
             return true;
         }
 

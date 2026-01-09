@@ -69,6 +69,13 @@ public:
     }
 
     bool Execute() override {
+        static int exec_count = 0;
+        if (exec_count % 100 == 0) {
+            std::cout << "[Sliding Window] Execute() called, buffer_.size()=" << buffer_.size()
+                      << ", output_window_.size()=" << output_window_.size() << std::endl;
+        }
+        exec_count++;
+
         // Handle vector input (from Channel Merge)
         if (std::holds_alternative<std::vector<float>>(input_value_)) {
             const auto& vec = std::get<std::vector<float>>(input_value_);
@@ -127,6 +134,12 @@ public:
 
     BlockValue GetOutput(const std::string& pin_name) const override {
         if (pin_name == "window_out") {
+            static int get_count = 0;
+            if (get_count % 100 == 0) {
+                std::cout << "[Sliding Window] GetOutput('window_out') called, returning vector size="
+                          << output_window_.size() << ", window_ready=" << window_ready_ << std::endl;
+            }
+            get_count++;
             return output_window_;
         }
         if (pin_name == "ready") {

@@ -114,6 +114,11 @@ public:
         }
         else if (pin_name == "signal_data" && std::holds_alternative<std::vector<float>>(value)) {
             signal_data_ = std::get<std::vector<float>>(value);
+            static int input_count = 0;
+            if (input_count % 100 == 0) {
+                std::cout << "[DataRecorder] SetInput signal_data, size=" << signal_data_.size() << ", is_recording=" << is_recording_ << std::endl;
+            }
+            input_count++;
         }
         else if (pin_name == "class_name" && std::holds_alternative<std::string>(value)) {
             current_class_name_ = std::get<std::string>(value);
@@ -124,6 +129,14 @@ public:
     }
 
     bool Execute() override {
+        static int exec_count = 0;
+        if (exec_count % 100 == 0 && is_recording_) {
+            std::cout << "[DataRecorder] Execute() - is_recording=" << is_recording_
+                      << ", signal_data_.size()=" << signal_data_.size()
+                      << ", sample_count=" << sample_count_ << std::endl;
+        }
+        exec_count++;
+
         if (is_recording_ && !signal_data_.empty()) {
             Sample sample;
             sample.timestamp = std::chrono::system_clock::now();

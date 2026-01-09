@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.15)
+cmake_minimum_required(VERSION 3.10)
 
 add_library(normalize-v1.0.0 SHARED
     normalize_block.cpp

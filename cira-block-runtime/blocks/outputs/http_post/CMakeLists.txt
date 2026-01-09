@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.15)
+cmake_minimum_required(VERSION 3.10)
 
 add_library(http-post-v1.0.0 SHARED
     http_post_block.cpp

@@ -40,10 +40,6 @@ class DataRecorderWidget extends Widget {
                         <span class="status-label">Time:</span>
                         <span class="status-value" id="elapsed-time-${this.id}">00:00</span>
                     </div>
-                    <div class="status-row">
-                        <span class="status-label">Samples:</span>
-                        <span class="status-value" id="sample-count-${this.id}">0</span>
-                    </div>
                 </div>
 
                 <div class="recorder-datasets">
@@ -84,17 +80,12 @@ class DataRecorderWidget extends Widget {
     }
 
     subscribeToRecorderStatus() {
-        // Subscribe to recording_status and sample_count outputs
+        // Subscribe to recording_status output
         const nodeId = this.config.recorderNodeId || 1;
 
         if (typeof wsManager !== 'undefined' && wsManager.isConnected()) {
             wsManager.subscribe(`${nodeId}:recording_status`, (value) => {
                 this.updateRecordingStatus(value > 0);
-            });
-
-            wsManager.subscribe(`${nodeId}:sample_count`, (value) => {
-                this.sampleCount = value;
-                this.updateSampleCount();
             });
         }
     }
@@ -202,13 +193,6 @@ class DataRecorderWidget extends Widget {
         }
     }
 
-    updateSampleCount() {
-        const countText = document.getElementById(`sample-count-${this.id}`);
-        if (countText) {
-            countText.textContent = this.sampleCount.toLocaleString();
-        }
-    }
-
     async loadDatasets() {
         const listContainer = document.getElementById(`datasets-list-${this.id}`);
         if (!listContainer) return;
@@ -291,17 +275,21 @@ window.deleteDataset = async function(filename, widgetId) {
 
     try {
         const response = await fetch(`/api/datasets/${filename}`, {
-            method: 'DELETE'
+            method: 'DELETE',
+            credentials: 'include',
+            headers: {
+                'Authorization': 'Bearer ' + (localStorage.getItem('auth_token') || '')
+            }
         });
 
         if (response.ok) {
             console.log(`[DataRecorder] Deleted: ${filename}`);
-            // Find the widget and refresh its dataset list
-            const listContainer = document.getElementById(`datasets-list-${widgetId}`);
-            if (listContainer && listContainer.closest('.widget')) {
-                // Trigger reload by dispatching custom event
-                const event = new CustomEvent('refreshDatasets', { detail: { widgetId } });
-                document.dispatchEvent(event);
+            // Refresh the dataset list by finding the widget instance
+            if (widgetManager && widgetManager.widgets) {
+                const widget = widgetManager.widgets.find(w => w.id === widgetId);
+                if (widget && widget.loadDatasets) {
+                    widget.loadDatasets();
+                }
             }
         } else {
             alert('Failed to delete dataset');

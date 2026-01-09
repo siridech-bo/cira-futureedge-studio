@@ -370,6 +370,31 @@ void WebServer::SetupRoutes() {
             }
         );
     });
+
+    // Dataset API routes
+    server_->Get("/api/datasets", [this](const httplib::Request& req, httplib::Response& res) {
+        if (!ValidateAuth(req)) {
+            res.status = 401;
+            return;
+        }
+        HandleListDatasets(req, res);
+    });
+
+    server_->Get(R"(/api/datasets/download/(.+))", [this](const httplib::Request& req, httplib::Response& res) {
+        if (!ValidateAuth(req)) {
+            res.status = 401;
+            return;
+        }
+        HandleDownloadDataset(req, res);
+    });
+
+    server_->Delete(R"(/api/datasets/(.+))", [this](const httplib::Request& req, httplib::Response& res) {
+        if (!ValidateAuth(req)) {
+            res.status = 401;
+            return;
+        }
+        HandleDeleteDataset(req, res);
+    });
 }
 
 void WebServer::HandleRoot(const httplib::Request& req, httplib::Response& res) {

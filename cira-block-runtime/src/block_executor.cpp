@@ -57,6 +57,8 @@ bool BlockExecutor::BuildFromManifest(const BlockManifest& manifest, BlockLoader
             node_type.find("button") != std::string::npos) return "web-button";
         if (node_type.find("web") != std::string::npos &&
             node_type.find("led") != std::string::npos) return "web-led";
+        if (node_type.find("data") != std::string::npos &&
+            node_type.find("recorder") != std::string::npos) return "data-recorder";
 
         return "";
     };
@@ -249,6 +251,19 @@ void BlockExecutor::TransferData() {
         // Set value to input pin of destination node
         to_node.input_values[conn.to_pin] = output_it->second;
         to_node.block->SetInput(conn.to_pin, output_it->second);
+
+        // Debug: Log data transfers from node 2 (Sliding Window)
+        static int transfer_count = 0;
+        if (conn.from_node_id == 2 && conn.from_pin == "window_out" && transfer_count % 100 == 0) {
+            std::string type_info = "unknown";
+            if (std::holds_alternative<std::vector<float>>(output_it->second)) {
+                type_info = "vector<float>, size=" + std::to_string(std::get<std::vector<float>>(output_it->second).size());
+            }
+            std::cout << "[BlockExecutor] Transfer FROM node 2 (Sliding Window) pin 'window_out'"
+                      << " TO node " << conn.to_node_id << " pin '" << conn.to_pin
+                      << "', type: " << type_info << std::endl;
+        }
+        transfer_count++;
     }
 }
 

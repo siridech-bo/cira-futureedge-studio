@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.15)
+cmake_minimum_required(VERSION 3.10)
 
 add_library(analog-input-v1.0.0 SHARED
     analog_input_block.cpp

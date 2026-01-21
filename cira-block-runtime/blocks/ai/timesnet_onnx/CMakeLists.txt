@@ -7,10 +7,11 @@ target_include_directories(timesnet-v1.2.0 PRIVATE
 )
 
 
-# ONNX Runtime support (optional)
-# Uncomment if ONNX Runtime is available
-# target_compile_definitions(timesnet-v1.2.0 PRIVATE USE_ONNXRUNTIME)
-# target_link_libraries(timesnet-v1.2.0 PRIVATE onnxruntime)
+# ONNX Runtime support (required for TimesNet inference on Linux/Jetson)
+if(UNIX)
+    target_compile_definitions(timesnet-v1.2.0 PRIVATE USE_ONNXRUNTIME)
+    target_link_libraries(timesnet-v1.2.0 PRIVATE onnxruntime)
+endif()
 
 # Set output name
 set_target_properties(timesnet-v1.2.0 PROPERTIES

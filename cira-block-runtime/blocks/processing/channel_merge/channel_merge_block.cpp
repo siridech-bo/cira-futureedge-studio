@@ -50,7 +50,7 @@ public:
 
     std::vector<Pin> GetOutputPins() const override {
         return {
-            Pin("merged_out", "vector3", false)
+            Pin("merged_out", "array", false)
         };
     }
 

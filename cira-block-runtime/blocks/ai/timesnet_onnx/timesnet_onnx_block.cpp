@@ -12,8 +12,10 @@ TimesNetOnnxBlock::TimesNetOnnxBlock()
     , num_classes_(2)
     , seq_len_(100)
     , num_channels_(3)
+    , confidence_threshold_(0.7f)  // Default 70% confidence threshold
     , prediction_out_(0)
     , confidence_out_(0.0f)
+    , last_valid_class_name_("")
     , is_initialized_(false) {
 }
 
@@ -34,8 +36,11 @@ bool TimesNetOnnxBlock::Initialize(const BlockConfig& config) {
     if (config.find("seq_len") != config.end()) {
         seq_len_ = std::stoi(config.at("seq_len"));
     }
+    // Support both "num_channels" and "input_channels" for compatibility
     if (config.find("num_channels") != config.end()) {
         num_channels_ = std::stoi(config.at("num_channels"));
+    } else if (config.find("input_channels") != config.end()) {
+        num_channels_ = std::stoi(config.at("input_channels"));
     }
     if (config.find("class_names") != config.end()) {
         std::string class_names_str = config.at("class_names");
@@ -49,12 +54,16 @@ bool TimesNetOnnxBlock::Initialize(const BlockConfig& config) {
             class_names_.push_back(class_name);
         }
     }
+    if (config.find("confidence_threshold") != config.end()) {
+        confidence_threshold_ = std::stof(config.at("confidence_threshold"));
+    }
 
     std::cout << "  Model Path: " << model_path_ << std::endl;
     std::cout << "  Classes: " << num_classes_ << std::endl;
     std::cout << "  Seq Len: " << seq_len_ << std::endl;
     std::cout << "  Channels: " << num_channels_ << std::endl;
     std::cout << "  Class Names: " << class_names_.size() << " loaded" << std::endl;
+    std::cout << "  Confidence Threshold: " << confidence_threshold_ << std::endl;
 
 #ifdef USE_ONNXRUNTIME
     if (!LoadModel()) {
@@ -146,11 +155,8 @@ BlockValue TimesNetOnnxBlock::GetOutput(const std::string& pin_name) const {
     if (pin_name == "prediction_out") {
         return prediction_out_;
     } else if (pin_name == "class_name") {
-        // Return class name if available, otherwise empty string
-        if (prediction_out_ >= 0 && prediction_out_ < static_cast<int>(class_names_.size())) {
-            return class_names_[prediction_out_];
-        }
-        return std::string("");
+        // Return last valid class name (cached value prevents flickering)
+        return last_valid_class_name_;
     } else if (pin_name == "confidence_out") {
         return confidence_out_;
     } else if (pin_name == "ready") {
@@ -198,6 +204,14 @@ bool TimesNetOnnxBlock::LoadModel() {
 void TimesNetOnnxBlock::RunInference() {
 #ifdef USE_ONNXRUNTIME
     try {
+        // Debug: Print first 10 input values
+        std::cout << "[TimesNet] Input data (first 10): [";
+        for (int i = 0; i < std::min(10, (int)features_in_.size()); i++) {
+            std::cout << features_in_[i];
+            if (i < 9 && i < (int)features_in_.size() - 1) std::cout << ", ";
+        }
+        std::cout << "]" << std::endl;
+
         // Prepare input tensor
         std::vector<int64_t> input_shape = {1, seq_len_, num_channels_};
         Ort::MemoryInfo memory_info = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
@@ -224,21 +238,53 @@ void TimesNetOnnxBlock::RunInference() {
         float* output_data = output_tensors[0].GetTensorMutableData<float>();
         int output_size = num_classes_;
 
-        // Find max probability
+        // Debug: Print raw logits
+        std::cout << "[TimesNet] Raw logits: [";
+        for (int i = 0; i < output_size; i++) {
+            std::cout << output_data[i];
+            if (i < output_size - 1) std::cout << ", ";
+        }
+        std::cout << "]" << std::endl;
+
+        // Find max logit (which corresponds to max probability after softmax)
         int max_idx = 0;
-        float max_prob = output_data[0];
+        float max_logit = output_data[0];
         for (int i = 1; i < output_size; i++) {
-            if (output_data[i] > max_prob) {
-                max_prob = output_data[i];
+            if (output_data[i] > max_logit) {
+                max_logit = output_data[i];
                 max_idx = i;
             }
         }
 
+        // Compute softmax only to get confidence value (0.0 - 1.0)
+        // Use numerical stability: exp(x - max) / sum(exp(x - max))
+        float sum_exp = 0.0f;
+        for (int i = 0; i < output_size; i++) {
+            sum_exp += std::exp(output_data[i] - max_logit);
+        }
+        float max_prob = 1.0f / sum_exp;  // exp(max - max) / sum_exp = 1 / sum_exp
+
         prediction_out_ = max_idx;
         confidence_out_ = max_prob;
 
-        std::cout << "[TimesNet ONNX] Prediction: Class " << prediction_out_
-                  << " (confidence: " << confidence_out_ << ")" << std::endl;
+        // Update cached class name if:
+        // 1. Confidence exceeds threshold, OR
+        // 2. This is the first prediction (cache is empty)
+        if (prediction_out_ >= 0 && prediction_out_ < static_cast<int>(class_names_.size())) {
+            if (confidence_out_ >= confidence_threshold_ || last_valid_class_name_.empty()) {
+                last_valid_class_name_ = class_names_[prediction_out_];
+                std::cout << "[TimesNet ONNX] Prediction: Class " << prediction_out_
+                          << " (" << last_valid_class_name_ << ") confidence: " << confidence_out_;
+                if (confidence_out_ < confidence_threshold_) {
+                    std::cout << " [FIRST - below threshold]";
+                }
+                std::cout << std::endl;
+            } else {
+                std::cout << "[TimesNet ONNX] Prediction: Class " << prediction_out_
+                          << " (confidence: " << confidence_out_ << " < threshold " << confidence_threshold_
+                          << ") - keeping last: \"" << last_valid_class_name_ << "\"" << std::endl;
+            }
+        }
 
     } catch (const Ort::Exception& e) {
         std::cerr << "[TimesNet ONNX] Inference error: " << e.what() << std::endl;

@@ -27,7 +27,7 @@ public:
     bool Execute() override;
     void Shutdown() override;
 
-    std::string GetBlockId() const override { return "websocket"; }
+    std::string GetBlockId() const override { return "websocket-client"; }
     std::string GetBlockVersion() const override { return "1.0.0"; }
     std::string GetBlockType() const override { return "output"; }
 

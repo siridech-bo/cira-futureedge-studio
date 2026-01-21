@@ -90,6 +90,8 @@ struct WaveformChunk {
     float min_value;                // Min value in chunk
     float max_value;                // Max value in chunk
     float avg_value;                // Average value
+    std::string string_value;       // For string-type signals (e.g., class names)
+    bool is_string = false;         // Flag to indicate this is a string value
 };
 
 /**

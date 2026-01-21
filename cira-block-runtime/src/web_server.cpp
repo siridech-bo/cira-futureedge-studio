@@ -975,6 +975,23 @@ void WebServer::BroadcastSignalData(const std::string& node_id,
         auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch());
         chunk.timestamp = ms.count();
 
+        // Handle string values differently - broadcast as text message
+        if (std::holds_alternative<std::string>(value)) {
+            const std::string& str_value = std::get<std::string>(value);
+
+            // Debug log for string broadcasting
+            std::cout << "[WebServer] Broadcasting string " << signal_id << " = \"" << str_value << "\"" << std::endl;
+
+            // Create a WaveformChunk with string value
+            // We'll use the chunk structure but with type=2 for string data
+            chunk.signal_id = signal_id;
+            chunk.string_value = str_value;  // Store string in chunk
+            chunk.is_string = true;
+
+            websocket_server_->BroadcastWaveform(chunk);
+            return;  // Skip numeric waveform broadcasting for strings
+        }
+
         // Convert BlockValue to float and add to chunk
         if (std::holds_alternative<float>(value)) {
             chunk.samples.push_back(std::get<float>(value));

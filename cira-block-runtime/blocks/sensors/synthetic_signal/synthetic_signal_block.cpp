@@ -178,8 +178,9 @@ public:
             pins.push_back(Pin("channel_" + std::to_string(i), "float", false));
         }
 
-        // Additional output: current class name
+        // Additional outputs: current class name and class ID
         pins.push_back(Pin("class_name", "string", false));
+        pins.push_back(Pin("class_id", "int", false));
 
         // Status outputs
         pins.push_back(Pin("ready", "bool", false));
@@ -287,7 +288,32 @@ public:
 
     BlockValue GetOutput(const std::string& pin_name) const override {
         if (pin_name == "class_name") {
+            static int name_debug_count = 0;
+            if (name_debug_count < 3) {
+                std::cout << "[DEBUG] GetOutput(class_name): current_class_name_='" << current_class_name_
+                          << "', signal_type_='" << signal_type_ << "'" << std::endl;
+                name_debug_count++;
+            }
             return current_class_name_;
+        }
+
+        if (pin_name == "class_id") {
+            // Map class name to class ID using standardized mapping
+            static const std::map<std::string, int> class_id_map = {
+                {"sawtooth", 0},
+                {"sine", 1},
+                {"square", 2},
+                {"triangular", 3}
+            };
+
+            // If current_class_name_ is empty (Execute hasn't run yet), use signal_type_ as fallback
+            std::string class_name = current_class_name_.empty() ? signal_type_ : current_class_name_;
+
+            auto it = class_id_map.find(class_name);
+            if (it != class_id_map.end()) {
+                return it->second;
+            }
+            return 0; // Default to 0 if unknown
         }
 
         // Status outputs
@@ -651,33 +677,39 @@ private:
     }
 
     void GenerateSine() {
-        float value = amplitude_ * std::sin(2.0f * M_PI * frequency_ * time_ + phase_) + offset_;
+        // Generate independent sine waves for each channel with phase offset
         for (size_t i = 0; i < num_channels_; ++i) {
-            current_output_[i] = value;
+            float channel_phase = phase_ + (2.0f * M_PI * i / num_channels_);
+            current_output_[i] = amplitude_ * std::sin(2.0f * M_PI * frequency_ * time_ + channel_phase) + offset_;
         }
     }
 
     void GenerateSquare() {
-        float phase_value = std::fmod(frequency_ * time_ + phase_ / (2.0f * M_PI), 1.0f);
-        float value = (phase_value < 0.5f) ? amplitude_ : -amplitude_;
-        value += offset_;
+        // Generate independent square waves for each channel with phase offset
         for (size_t i = 0; i < num_channels_; ++i) {
-            current_output_[i] = value;
+            float channel_phase = phase_ + (2.0f * M_PI * i / num_channels_);
+            float phase_value = std::fmod(frequency_ * time_ + channel_phase / (2.0f * M_PI), 1.0f);
+            float value = (phase_value < 0.5f) ? amplitude_ : -amplitude_;
+            current_output_[i] = value + offset_;
         }
     }
 
     void GenerateTriangular() {
-        float phase_value = std::fmod(frequency_ * time_ + phase_ / (2.0f * M_PI), 1.0f);
-        float value = amplitude_ * (2.0f * std::abs(2.0f * phase_value - 1.0f) - 1.0f) + offset_;
+        // Generate independent triangular waves for each channel with phase offset
         for (size_t i = 0; i < num_channels_; ++i) {
+            float channel_phase = phase_ + (2.0f * M_PI * i / num_channels_);
+            float phase_value = std::fmod(frequency_ * time_ + channel_phase / (2.0f * M_PI), 1.0f);
+            float value = amplitude_ * (2.0f * std::abs(2.0f * phase_value - 1.0f) - 1.0f) + offset_;
             current_output_[i] = value;
         }
     }
 
     void GenerateSawtooth() {
-        float phase_value = std::fmod(frequency_ * time_ + phase_ / (2.0f * M_PI), 1.0f);
-        float value = amplitude_ * (2.0f * phase_value - 1.0f) + offset_;
+        // Generate independent sawtooth waves for each channel with phase offset
         for (size_t i = 0; i < num_channels_; ++i) {
+            float channel_phase = phase_ + (2.0f * M_PI * i / num_channels_);
+            float phase_value = std::fmod(frequency_ * time_ + channel_phase / (2.0f * M_PI), 1.0f);
+            float value = amplitude_ * (2.0f * phase_value - 1.0f) + offset_;
             current_output_[i] = value;
         }
     }

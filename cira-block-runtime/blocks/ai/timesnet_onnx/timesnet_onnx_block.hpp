@@ -50,12 +50,14 @@ private:
     int num_classes_;
     int seq_len_;
     int num_channels_;
+    float confidence_threshold_;  // Minimum confidence to output class name
     std::vector<std::string> class_names_;
 
     // Input/Output
     std::vector<float> features_in_;
     int prediction_out_;
     float confidence_out_;
+    std::string last_valid_class_name_;  // Cache last high-confidence class name
 
 #ifdef USE_ONNXRUNTIME
     // ONNX Runtime

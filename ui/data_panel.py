@@ -5,7 +5,7 @@ UI for data ingestion, windowing, and visualization.
 """
 
 import customtkinter as ctk
-from tkinter import filedialog, messagebox
+from tkinter import filedialog, messagebox, simpledialog
 from pathlib import Path
 from typing import Optional, List
 import pandas as pd
@@ -16,6 +16,7 @@ from core.windowing import WindowingEngine, WindowConfig
 from data_sources.base import DataSourceConfig, DataSourceFactory
 from data_sources.csv_loader import CSVDataSource
 from data_sources.edgeimpulse_loader import EdgeImpulseDataSource
+from data_sources.cira_cbor_loader import CiraCBORDataSource
 from data_sources.database_loader import DatabaseDataSource
 from data_sources.restapi_loader import RestAPIDataSource
 from data_sources.streaming_loader import StreamingDataSource
@@ -39,6 +40,7 @@ class DataSourcesPanel(ctk.CTkFrame):
         self.current_data_source: Optional[CSVDataSource] = None
         self.windowing_engine: Optional[WindowingEngine] = None
         self.loaded_data: Optional[pd.DataFrame] = None
+        self.windows: List = []  # Initialize windows list to prevent AttributeError
 
         self._setup_ui()
         self._load_project_data()  # Load existing data if available
@@ -167,7 +169,7 @@ class DataSourcesPanel(ctk.CTkFrame):
         source_menu = ctk.CTkOptionMenu(
             source_frame,
             variable=self.source_type_var,
-            values=["CSV File", "Edge Impulse JSON", "Edge Impulse CBOR", "Database", "REST API", "Streaming"],
+            values=["CSV File", "Edge Impulse JSON", "Edge Impulse CBOR", "CiRA CBOR", "Database", "REST API", "Streaming"],
             command=self._on_source_type_change
         )
         source_menu.grid(row=0, column=1, padx=10, pady=10, sticky="ew")
@@ -977,7 +979,7 @@ class DataSourcesPanel(ctk.CTkFrame):
         # Show relevant frame
         if choice == "CSV File":
             self.csv_frame.grid()
-        elif choice in ["Edge Impulse JSON", "Edge Impulse CBOR"]:
+        elif choice in ["Edge Impulse JSON", "Edge Impulse CBOR", "CiRA CBOR"]:
             self.ei_frame.grid()
         elif choice == "Database":
             self.db_frame.grid()
@@ -1204,7 +1206,7 @@ class DataSourcesPanel(ctk.CTkFrame):
                     return
                 self._load_csv_data(file_path)
 
-            elif source_type in ["Edge Impulse JSON", "Edge Impulse CBOR"]:
+            elif source_type in ["Edge Impulse JSON", "Edge Impulse CBOR", "CiRA CBOR"]:
                 # Check for train/test split folders first
                 train_path = self.ei_train_path_entry.get().strip()
                 test_path = self.ei_test_path_entry.get().strip()
@@ -1425,7 +1427,8 @@ class DataSourcesPanel(ctk.CTkFrame):
         # Convert UI format type to internal format
         format_map = {
             "Edge Impulse JSON": "json",
-            "Edge Impulse CBOR": "cbor"
+            "Edge Impulse CBOR": "cbor",
+                "CiRA CBOR": "cbor"
         }
         internal_format = format_map.get(format_type, "auto")
 
@@ -1445,15 +1448,125 @@ class DataSourcesPanel(ctk.CTkFrame):
             all_dataframes = []
             class_labels = set()
 
-            for file_path in all_files:
-                try:
-                    data_source = EdgeImpulseDataSource()
-                    data_source.file_path = Path(file_path)
-                    data_source.format_type = internal_format
+            # Auto-detect channel configuration from first CBOR file
+            channel_config_confirmed = False
+            detected_channels = None
+            detected_samples = None
 
-                    if not data_source.connect():
-                        logger.warning(f"Skipping {file_path}: {data_source.last_error}")
-                        continue
+            for idx, file_path in enumerate(all_files):
+                try:
+                    # Try CiRA CBOR format first for CBOR files, fallback to Edge Impulse
+                    if file_path.endswith('.cbor'):
+                        data_source = CiraCBORDataSource()
+                        data_source.file_path = Path(file_path)
+
+                        if not data_source.connect():
+                            # Try Edge Impulse format as fallback
+                            data_source = EdgeImpulseDataSource()
+                            data_source.file_path = Path(file_path)
+                            data_source.format_type = 'cbor'
+
+                            if not data_source.connect():
+                                logger.warning(f"Skipping {file_path}: {data_source.last_error}")
+                                continue
+                        else:
+                            # First CBOR file with CiRA format - detect and confirm (only once!)
+                            if format_type == "CiRA CBOR" and not channel_config_confirmed and isinstance(data_source, CiraCBORDataSource):
+                                # Load just to get window size
+                                import cbor2
+                                with open(file_path, 'rb') as f:
+                                    cbor_data = cbor2.load(f)
+                                window_size = len(cbor_data['samples'][0]['data'])
+
+                                # Auto-detect
+                                num_ch, samples_per_ch = data_source._detect_channel_config(window_size)
+
+                                # Show confirmation dialog
+                                from tkinter import Toplevel, Label, Entry, Button, StringVar
+
+                                dialog = Toplevel(self)
+                                dialog.title("Confirm Channel Configuration")
+                                dialog.geometry("1000x560")
+                                dialog.resizable(False, False)
+                                dialog.transient(self)
+                                dialog.grab_set()
+
+                                Label(dialog, text=f"Detected Window Size: {window_size} values",
+                                      font=("Arial", 22, "bold")).pack(pady=10)
+                                Label(dialog, text=f"Auto-detected Configuration:",
+                                      font=("Arial", 20)).pack(pady=5)
+                                Label(dialog, text=f"{num_ch} channel(s) × {samples_per_ch} samples per channel",
+                                      font=("Arial", 24, "bold"), fg="blue").pack(pady=5)
+
+                                # Manual override option
+                                frame = ctk.CTkFrame(dialog)
+                                frame.pack(pady=10)
+
+                                Label(frame, text="Override - Number of channels:", font=("Arial", 18)).grid(row=0, column=0, padx=5, pady=5)
+                                channels_var = StringVar(value=str(num_ch))
+                                channels_entry = Entry(frame, textvariable=channels_var, width=20, font=("Arial", 18))
+                                channels_entry.grid(row=0, column=1, padx=5, pady=5)
+
+                                confirmed = [False]
+                                user_channels = [num_ch]
+
+                                def on_confirm():
+                                    try:
+                                        user_ch = int(channels_var.get())
+                                        if user_ch < 1 or user_ch > 32:
+                                            messagebox.showerror("Invalid Input", "Number of channels must be between 1 and 32")
+                                            return
+                                        if window_size % user_ch != 0:
+                                            messagebox.showerror("Invalid Input",
+                                                f"Window size {window_size} is not divisible by {user_ch} channels")
+                                            return
+                                        user_channels[0] = user_ch
+                                        confirmed[0] = True
+                                        dialog.destroy()
+                                    except ValueError:
+                                        messagebox.showerror("Invalid Input", "Please enter a valid number")
+
+                                def on_cancel():
+                                    dialog.destroy()
+
+                                btn_frame = ctk.CTkFrame(dialog)
+                                btn_frame.pack(pady=10)
+                                Button(btn_frame, text="✓ Confirm", command=on_confirm,
+                                       bg="green", fg="white", width=20, font=("Arial", 16)).grid(row=0, column=0, padx=5)
+                                Button(btn_frame, text="✗ Cancel", command=on_cancel,
+                                       bg="red", fg="white", width=20, font=("Arial", 16)).grid(row=0, column=1, padx=5)
+
+                                dialog.wait_window()
+
+                                if not confirmed[0]:
+                                    logger.info("User cancelled channel configuration")
+                                    return pd.DataFrame(), set(), []
+
+                                detected_channels = user_channels[0]
+                                detected_samples = window_size // detected_channels
+                                channel_config_confirmed = True
+
+                                logger.info(f"User confirmed: {detected_channels} channels × {detected_samples} samples")
+
+                                # Store config for all subsequent files
+                                # The config is already stored in detected_channels and detected_samples variables
+                    else:
+                        # JSON files use Edge Impulse format
+                        data_source = EdgeImpulseDataSource()
+                        data_source.file_path = Path(file_path)
+                        data_source.format_type = internal_format
+
+                        if not data_source.connect():
+                            logger.warning(f"Skipping {file_path}: {data_source.last_error}")
+                            continue
+
+                    # Apply confirmed channel config for CiRA CBOR files
+                    if format_type == "CiRA CBOR" and isinstance(data_source, CiraCBORDataSource) and detected_channels:
+                        # Override detection for this file with confirmed values
+                        def fixed_config(window_size):
+                            return (detected_channels, detected_samples)
+                        data_source._detect_channel_config = fixed_config
+                        logger.info(f"Applying user-confirmed config: {detected_channels} channels × {detected_samples} samples")
 
                     df = data_source.load_data()
 
@@ -1485,17 +1598,17 @@ class DataSourcesPanel(ctk.CTkFrame):
             if 'time' in combined_df.columns:
                 combined_df['time'] = range(len(combined_df))
 
-            return combined_df, class_labels, all_files
+            return combined_df, class_labels, all_files, detected_channels, detected_samples
 
         # Load training data
-        train_df, train_classes, train_files = load_folder(train_folder, "training")
+        train_df, train_classes, train_files, train_detected_ch, train_detected_samp = load_folder(train_folder, "training")
 
         # Load test data if provided
         test_df = None
         test_classes = set()
         test_files = []
         if test_folder:
-            test_df, test_classes, test_files = load_folder(test_folder, "test")
+            test_df, test_classes, test_files, test_detected_ch, test_detected_samp = load_folder(test_folder, "test")
 
         # Save train and test data separately
         project = self.project_manager.current_project
@@ -1531,6 +1644,30 @@ class DataSourcesPanel(ctk.CTkFrame):
             project.data.num_classes = len(all_classes)
             project.data.class_mapping = {cls: idx for idx, cls in enumerate(sorted(all_classes))}
 
+            # Update sensor columns from actual loaded data
+            actual_sensor_columns = [col for col in train_df.columns
+                                    if col not in ['time', 'label', 'class_label', 'timestamp', '_source_file']]
+            project.data.sensor_columns = actual_sensor_columns
+            logger.info(f"Updated project sensor columns: {actual_sensor_columns}")
+
+            # Delete old window files to force regeneration with new channel config
+            import os
+            window_files = [
+                data_dir / "train_windows.pkl",
+                data_dir / "test_windows.pkl",
+                data_dir / "windows.pkl"
+            ]
+            for wf in window_files:
+                if wf.exists():
+                    os.remove(wf)
+                    logger.info(f"Deleted old window file: {wf}")
+
+            # Clear windowing metadata (will be regenerated when user applies windowing)
+            project.data.num_windows = 0
+            project.data.num_train_windows = 0
+            project.data.num_test_windows = 0
+            self.windows = []  # Clear in-memory windows
+
             project.save()
 
         # For UI display, show combined data (but keep them separate internally)
@@ -1542,12 +1679,26 @@ class DataSourcesPanel(ctk.CTkFrame):
             self.loaded_data = train_df
             info_text = f"Train: {len(train_df)} rows, {len(train_files)} files | Classes: {sorted(train_classes)}"
 
-        # Store data source reference
-        self.current_data_source = EdgeImpulseDataSource()
-        self.current_data_source.file_path = Path(train_files[0])
-        self.current_data_source.format_type = internal_format  # Use internal format
-        self.current_data_source.connect()
-        self.current_data_source.load_data()
+        # Store data source reference - use appropriate loader based on format
+        if format_type == "CiRA CBOR":
+            self.current_data_source = CiraCBORDataSource()
+            self.current_data_source.file_path = Path(train_files[0])
+            if self.current_data_source.connect():
+                # Apply the user-confirmed channel configuration (captured from load_folder)
+                if train_detected_ch is not None:
+                    def fixed_config(window_size):
+                        return (train_detected_ch, train_detected_samp)
+                    self.current_data_source._detect_channel_config = fixed_config
+                    logger.info(f"Applied confirmed config to UI data source: {train_detected_ch} ch × {train_detected_samp} samples")
+                else:
+                    logger.info("No channel config from this session - using auto-detection for UI preview")
+                self.current_data_source.load_data()
+        else:
+            self.current_data_source = EdgeImpulseDataSource()
+            self.current_data_source.file_path = Path(train_files[0])
+            self.current_data_source.format_type = internal_format
+            if self.current_data_source.connect():
+                self.current_data_source.load_data()
 
         self.ei_info_label.configure(text=info_text, text_color="blue")
         logger.info(f"Train/Test split loading complete")
@@ -1758,9 +1909,15 @@ class DataSourcesPanel(ctk.CTkFrame):
                 with open(project.data.train_data_file, 'rb') as f:
                     train_data = pickle.load(f)
 
+                # For manual train/test split, detect sensor columns from the actual pickle data
+                # instead of from UI data source (which may have pre-windowed data)
+                actual_sensor_columns = [col for col in train_data.columns
+                                        if col not in ['time', 'label', 'class_label', 'timestamp', '_source_file']]
+                logger.info(f"Detected {len(actual_sensor_columns)} sensor columns from pickle data: {actual_sensor_columns}")
+
                 train_windows = self.windowing_engine.segment_data(
                     train_data,
-                    sensor_columns=sensor_columns,
+                    sensor_columns=actual_sensor_columns,
                     time_column=time_column,
                     label_column=label_column
                 )
@@ -1775,9 +1932,13 @@ class DataSourcesPanel(ctk.CTkFrame):
                     with open(project.data.test_data_file, 'rb') as f:
                         test_data = pickle.load(f)
 
+                    # Use same sensor columns from pickle data
+                    test_sensor_columns = [col for col in test_data.columns
+                                          if col not in ['time', 'label', 'class_label', 'timestamp', '_source_file']]
+
                     test_windows = self.windowing_engine.segment_data(
                         test_data,
-                        sensor_columns=sensor_columns,
+                        sensor_columns=test_sensor_columns,
                         time_column=time_column,
                         label_column=label_column
                     )
@@ -2266,8 +2427,9 @@ To proceed to feature extraction, go to the Feature Extraction stage.
 
                 # Load windows based on split type
                 if project.data.train_test_split_type == "manual":
-                    # Load train and test windows
-                    if project.data.train_windows_file and project.data.test_windows_file:
+                    # Load train and test windows (only if files exist)
+                    if (project.data.train_windows_file and project.data.test_windows_file and
+                        Path(project.data.train_windows_file).exists() and Path(project.data.test_windows_file).exists()):
                         with open(project.data.train_windows_file, 'rb') as f:
                             train_windows = pickle.load(f)
                         with open(project.data.test_windows_file, 'rb') as f:
@@ -2276,6 +2438,8 @@ To proceed to feature extraction, go to the Feature Extraction stage.
                         self.windows = train_windows + test_windows
                         logger.info(f"Loaded {len(train_windows)} train + {len(test_windows)} test windows for preview")
                         logger.info(f"Total combined windows: {len(self.windows)}")
+                    else:
+                        logger.info("Window files not found - please go to Windowing tab and click 'Apply Windowing' to generate them")
                 else:
                     # Load single windows file
                     if project.data.windows_file:
@@ -2369,11 +2533,18 @@ To proceed to feature extraction, go to the Feature Extraction stage.
                 logger.warning(f"No files found, using stored/default format: {source_type}")
 
             # Map internal format to UI format string
-            format_map = {
-                "json": "Edge Impulse JSON",
-                "cbor": "Edge Impulse CBOR"
-            }
-            ui_format = format_map.get(source_type, "Edge Impulse JSON")
+            # Check if project has saved source_type first (from initial load)
+            if hasattr(project.data, 'source_type') and project.data.source_type in ["CiRA CBOR", "Edge Impulse JSON", "Edge Impulse CBOR"]:
+                # Use the saved format directly
+                ui_format = project.data.source_type
+                logger.info(f"Using saved source format from project: {ui_format}")
+            else:
+                # Fallback to extension-based detection
+                format_map = {
+                    "json": "Edge Impulse JSON",
+                    "cbor": "CiRA CBOR"  # Default .cbor files to CiRA CBOR for better compatibility
+                }
+                ui_format = format_map.get(source_type, "Edge Impulse JSON")
 
             logger.info(f"Re-loading source data from: {project.data.train_folder_path}")
             logger.info(f"Format: {ui_format}")

@@ -59,6 +59,7 @@ bool BlockExecutor::BuildFromManifest(const BlockManifest& manifest, BlockLoader
             node_type.find("led") != std::string::npos) return "web-led";
         if (node_type.find("data") != std::string::npos &&
             node_type.find("recorder") != std::string::npos) return "data-recorder";
+        if (node_type.find("websocket") != std::string::npos) return "websocket-client";
 
         return "";
     };

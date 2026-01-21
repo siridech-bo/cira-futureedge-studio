@@ -444,17 +444,24 @@ void WebSocketServer::BroadcastWaveform(const WaveformChunk& chunk) {
 
     // Send JSON text instead of MessagePack binary for browser compatibility
     std::ostringstream json;
-    json << "{\"type\":1,\"signal_id\":\"" << chunk.signal_id << "\",\"timestamp\":"
-         << chunk.timestamp << ",\"value\":";
 
-    // Send first sample value for real-time display
-    if (!chunk.samples.empty()) {
-        json << chunk.samples[0];
+    // Handle string values (type 2) vs numeric values (type 1)
+    if (chunk.is_string) {
+        json << "{\"type\":2,\"signal_id\":\"" << chunk.signal_id << "\",\"timestamp\":"
+             << chunk.timestamp << ",\"value\":\"" << chunk.string_value << "\"}";
     } else {
-        json << "null";
-    }
+        json << "{\"type\":1,\"signal_id\":\"" << chunk.signal_id << "\",\"timestamp\":"
+             << chunk.timestamp << ",\"value\":";
 
-    json << "}";
+        // Send first sample value for real-time display
+        if (!chunk.samples.empty()) {
+            json << chunk.samples[0];
+        } else {
+            json << "null";
+        }
+
+        json << "}";
+    }
 
     std::string json_str = json.str();
     std::vector<uint8_t> data(json_str.begin(), json_str.end());

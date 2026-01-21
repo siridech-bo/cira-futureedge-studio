@@ -1,0 +1,265 @@
+{
+  "connections": [
+    {
+      "from_node_id": 3,
+      "from_pin": "state",
+      "to_node_id": 2,
+      "to_pin": "play"
+    },
+    {
+      "from_node_id": 2,
+      "from_pin": "channel_0",
+      "to_node_id": 4,
+      "to_pin": "channel_0"
+    },
+    {
+      "from_node_id": 2,
+      "from_pin": "channel_1",
+      "to_node_id": 4,
+      "to_pin": "channel_1"
+    },
+    {
+      "from_node_id": 2,
+      "from_pin": "channel_2",
+      "to_node_id": 4,
+      "to_pin": "channel_2"
+    },
+    {
+      "from_node_id": 4,
+      "from_pin": "merged_out",
+      "to_node_id": 5,
+      "to_pin": "input"
+    },
+    {
+      "from_node_id": 5,
+      "from_pin": "window_out",
+      "to_node_id": 1,
+      "to_pin": "features_in"
+    },
+    {
+      "from_node_id": 3,
+      "from_pin": "state",
+      "to_node_id": 6,
+      "to_pin": "state"
+    },
+    {
+      "from_node_id": 2,
+      "from_pin": "ready",
+      "to_node_id": 7,
+      "to_pin": "state"
+    },
+    {
+      "from_node_id": 2,
+      "from_pin": "running",
+      "to_node_id": 8,
+      "to_pin": "state"
+    },
+    {
+      "from_node_id": 5,
+      "from_pin": "ready",
+      "to_node_id": 9,
+      "to_pin": "state"
+    },
+    {
+      "from_node_id": 1,
+      "from_pin": "ready",
+      "to_node_id": 10,
+      "to_pin": "state"
+    },
+    {
+      "from_node_id": 1,
+      "from_pin": "running",
+      "to_node_id": 11,
+      "to_pin": "state"
+    },
+    {
+      "from_node_id": 1,
+      "from_pin": "class_name",
+      "to_node_id": 13,
+      "to_pin": "message"
+    }
+  ],
+  "data": {
+    "sampling_rate": 9.899999618530273,
+    "sensor_columns": [
+      "ch0",
+      "ch1",
+      "ch2"
+    ],
+    "test_dataset_path": "",
+    "window_size": 300
+  },
+  "domain": "rotating_machinery",
+  "model": {
+    "class_names": [
+      "sawtooth",
+      "sine",
+      "square",
+      "triangular"
+    ],
+    "dl_architecture": "timesnet",
+    "dl_config": {
+      "model_info": {
+        "input_channels": 3,
+        "seq_len": 300
+      }
+    },
+    "dl_device_used": "CPU (4 threads)",
+    "is_deep_learning": true,
+    "metrics": {
+      "accuracy": 0.9975816011428833,
+      "f1_macro": 0.9975808262825012,
+      "precision_macro": 0.9976190328598022,
+      "recall_macro": 0.9975543022155762
+    },
+    "model_type": "classifier",
+    "num_classes": 4,
+    "onnx_model_path": "D:\\CiRA FES\\output\\StandardWave\\models\\timesnet_model.onnx"
+  },
+  "name": "StandardWave_new",
+  "nodes": [
+    {
+      "config": {
+        "batch_size": "1",
+        "class_names": "sawtooth,sine,square,triangular",
+        "confidence_threshold": "0.85",
+        "input_channels": "3",
+        "model_path": "D:\\CiRA FES\\output\\StandardWave\\models\\timesnet_model.onnx",
+        "num_classes": "4",
+        "sensor_columns": "ch0,ch1,ch2",
+        "seq_len": "300",
+        "use_tensorrt": "false"
+      },
+      "id": 1,
+      "position_x": 400.0,
+      "position_y": 300.0,
+      "type_id": "processing.model.timesnet"
+    },
+    {
+      "config": {
+        "amplitude": "1.0",
+        "dataset_inline": "",
+        "dataset_path": "",
+        "frequency": "1.0",
+        "loop_mode": "true",
+        "num_channels": "3",
+        "offset": "0.0",
+        "phase": "0.0",
+        "sample_rate": "100",
+        "selected_classes": "",
+        "sequential_mode": "true",
+        "signal_type": "square"
+      },
+      "id": 2,
+      "position_x": 61.31941604614258,
+      "position_y": -169.16632080078125,
+      "type_id": "input.synthetic.signal_generator"
+    },
+    {
+      "config": {
+        "button_id": "button_1",
+        "initial_state": "false",
+        "label": "Button"
+      },
+      "id": 3,
+      "position_x": 3.7193851470947266,
+      "position_y": -221.16632080078125,
+      "type_id": "input.web.button"
+    },
+    {
+      "config": {
+        "num_channels": "3"
+      },
+      "id": 4,
+      "position_x": 498.3861083984375,
+      "position_y": -155.2996826171875,
+      "type_id": "processing.dsp.channel_merge"
+    },
+    {
+      "config": {
+        "step_size": "100",
+        "window_size": "300"
+      },
+      "id": 5,
+      "position_x": 751.7194213867188,
+      "position_y": -177.9663543701172,
+      "type_id": "processing.dsp.sliding_window"
+    },
+    {
+      "config": {
+        "color": "green",
+        "label": "LED",
+        "led_id": "led_1"
+      },
+      "id": 6,
+      "position_x": 117.05278015136719,
+      "position_y": 127.36698913574219,
+      "type_id": "output.web.led"
+    },
+    {
+      "config": {
+        "color": "green",
+        "label": "LED",
+        "led_id": "led_1"
+      },
+      "id": 7,
+      "position_x": 501.05279541015625,
+      "position_y": 44.7003173828125,
+      "type_id": "output.web.led"
+    },
+    {
+      "config": {
+        "color": "green",
+        "label": "LED",
+        "led_id": "led_1"
+      },
+      "id": 8,
+      "position_x": 465.05279541015625,
+      "position_y": 163.3669891357422,
+      "type_id": "output.web.led"
+    },
+    {
+      "config": {
+        "color": "green",
+        "label": "LED",
+        "led_id": "led_1"
+      },
+      "id": 9,
+      "position_x": 1146.3861083984375,
+      "position_y": -16.63301658630371,
+      "type_id": "output.web.led"
+    },
+    {
+      "config": {
+        "color": "green",
+        "label": "LED",
+        "led_id": "led_1"
+      },
+      "id": 10,
+      "position_x": 1617.052734375,
+      "position_y": -193.96630859375,
+      "type_id": "output.web.led"
+    },
+    {
+      "config": {
+        "color": "green",
+        "label": "LED",
+        "led_id": "led_1"
+      },
+      "id": 11,
+      "position_x": 1591.719482421875,
+      "position_y": -105.96630859375,
+      "type_id": "output.web.led"
+    },
+    {
+      "config": {
+        "server": "ws://localhost:8080"
+      },
+      "id": 13,
+      "position_x": 1522.09423828125,
+      "position_y": -355.1595153808594,
+      "type_id": "output.network.websocket"
+    }
+  ],
+  "version": 1
+}

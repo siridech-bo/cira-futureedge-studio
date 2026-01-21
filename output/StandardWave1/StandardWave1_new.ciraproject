@@ -1,0 +1,265 @@
+{
+  "connections": [
+    {
+      "from_node_id": 3,
+      "from_pin": "window_out",
+      "to_node_id": 1,
+      "to_pin": "features_in"
+    },
+    {
+      "from_node_id": 2,
+      "from_pin": "merged_out",
+      "to_node_id": 3,
+      "to_pin": "input"
+    },
+    {
+      "from_node_id": 4,
+      "from_pin": "channel_0",
+      "to_node_id": 2,
+      "to_pin": "channel_0"
+    },
+    {
+      "from_node_id": 4,
+      "from_pin": "channel_1",
+      "to_node_id": 2,
+      "to_pin": "channel_1"
+    },
+    {
+      "from_node_id": 4,
+      "from_pin": "channel_2",
+      "to_node_id": 2,
+      "to_pin": "channel_2"
+    },
+    {
+      "from_node_id": 4,
+      "from_pin": "running",
+      "to_node_id": 5,
+      "to_pin": "state"
+    },
+    {
+      "from_node_id": 4,
+      "from_pin": "ready",
+      "to_node_id": 6,
+      "to_pin": "state"
+    },
+    {
+      "from_node_id": 1,
+      "from_pin": "running",
+      "to_node_id": 7,
+      "to_pin": "state"
+    },
+    {
+      "from_node_id": 1,
+      "from_pin": "ready",
+      "to_node_id": 8,
+      "to_pin": "state"
+    },
+    {
+      "from_node_id": 1,
+      "from_pin": "class_name",
+      "to_node_id": 9,
+      "to_pin": "message"
+    },
+    {
+      "from_node_id": 10,
+      "from_pin": "state",
+      "to_node_id": 4,
+      "to_pin": "play"
+    },
+    {
+      "from_node_id": 10,
+      "from_pin": "state",
+      "to_node_id": 11,
+      "to_pin": "state"
+    },
+    {
+      "from_node_id": 3,
+      "from_pin": "ready",
+      "to_node_id": 12,
+      "to_pin": "state"
+    }
+  ],
+  "data": {
+    "sampling_rate": 9.899999618530273,
+    "sensor_columns": [
+      "ch0",
+      "ch1",
+      "ch2"
+    ],
+    "test_dataset_path": "",
+    "window_size": 300
+  },
+  "domain": "rotating_machinery",
+  "model": {
+    "class_names": [
+      "sawtooth",
+      "sine",
+      "square",
+      "triangular"
+    ],
+    "dl_architecture": "timesnet",
+    "dl_config": {
+      "model_info": {
+        "input_channels": 3,
+        "seq_len": 300
+      }
+    },
+    "dl_device_used": "CPU (4 threads)",
+    "is_deep_learning": true,
+    "metrics": {
+      "accuracy": 0.9975816011428833,
+      "f1_macro": 0.9975808262825012,
+      "precision_macro": 0.9976190328598022,
+      "recall_macro": 0.9975543022155762
+    },
+    "model_type": "classifier",
+    "num_classes": 4,
+    "onnx_model_path": "D:\\CiRA FES\\output\\StandardWave1\\models\\timesnet_model.onnx"
+  },
+  "name": "StandardWave1_new",
+  "nodes": [
+    {
+      "config": {
+        "batch_size": "1",
+        "class_names": "sawtooth,sine,square,triangular",
+        "confidence_threshold": "0.7",
+        "input_channels": "3",
+        "model_path": "D:\\CiRA FES\\output\\StandardWave1\\models\\timesnet_model.onnx",
+        "num_classes": "4",
+        "sensor_columns": "ch0,ch1,ch2",
+        "seq_len": "300",
+        "use_tensorrt": "false"
+      },
+      "id": 1,
+      "position_x": 400.0,
+      "position_y": 300.0,
+      "type_id": "processing.model.timesnet"
+    },
+    {
+      "config": {
+        "num_channels": "3"
+      },
+      "id": 2,
+      "position_x": 500.4787902832031,
+      "position_y": -252.8162841796875,
+      "type_id": "processing.dsp.channel_merge"
+    },
+    {
+      "config": {
+        "step_size": "100",
+        "window_size": "300"
+      },
+      "id": 3,
+      "position_x": 794.0537109375,
+      "position_y": -256.55609130859375,
+      "type_id": "processing.dsp.sliding_window"
+    },
+    {
+      "config": {
+        "amplitude": "1.0",
+        "dataset_inline": "",
+        "dataset_path": "D:\\CiRA FES\\output\\StandardWave1\\data\\",
+        "frequency": "1.0",
+        "loop_mode": "true",
+        "num_channels": "3",
+        "offset": "0.0",
+        "phase": "0.0",
+        "sample_rate": "9.900000",
+        "selected_classes": "",
+        "sequential_mode": "false",
+        "signal_type": "sine"
+      },
+      "id": 4,
+      "position_x": 316.29327392578125,
+      "position_y": -386.514404296875,
+      "type_id": "input.synthetic.signal_generator"
+    },
+    {
+      "config": {
+        "color": "green",
+        "label": "LED",
+        "led_id": "led_3"
+      },
+      "id": 5,
+      "position_x": 616.412841796875,
+      "position_y": 46.368343353271484,
+      "type_id": "output.web.led"
+    },
+    {
+      "config": {
+        "color": "green",
+        "label": "LED",
+        "led_id": "led_2"
+      },
+      "id": 6,
+      "position_x": 588.3642578125,
+      "position_y": -57.41132354736328,
+      "type_id": "output.web.led"
+    },
+    {
+      "config": {
+        "color": "green",
+        "label": "LED",
+        "led_id": "led_6"
+      },
+      "id": 7,
+      "position_x": 1438.235595703125,
+      "position_y": -93.87445068359375,
+      "type_id": "output.web.led"
+    },
+    {
+      "config": {
+        "color": "green",
+        "label": "LED",
+        "led_id": "led_5"
+      },
+      "id": 8,
+      "position_x": 1427.951171875,
+      "position_y": -141.5570068359375,
+      "type_id": "output.web.led"
+    },
+    {
+      "config": {
+        "server": "ws://localhost:8080"
+      },
+      "id": 9,
+      "position_x": 1465.34912109375,
+      "position_y": -238.79200744628906,
+      "type_id": "output.network.websocket"
+    },
+    {
+      "config": {
+        "button_id": "button_1",
+        "initial_state": "false",
+        "label": "Button"
+      },
+      "id": 10,
+      "position_x": -32.44392776489258,
+      "position_y": -230.37744140625,
+      "type_id": "input.web.button"
+    },
+    {
+      "config": {
+        "color": "green",
+        "label": "LED",
+        "led_id": "led_1"
+      },
+      "id": 11,
+      "position_x": 203.16397094726563,
+      "position_y": 41.69358444213867,
+      "type_id": "output.web.led"
+    },
+    {
+      "config": {
+        "color": "green",
+        "label": "LED",
+        "led_id": "led_4"
+      },
+      "id": 12,
+      "position_x": 979.174072265625,
+      "position_y": -16.2734375,
+      "type_id": "output.web.led"
+    }
+  ],
+  "version": 1
+}

@@ -216,13 +216,13 @@ class WebSocketManager {
     handleJSONMessage(data) {
         console.log('[WebSocketManager] Received JSON message:', data);
 
-        // Handle signal data (type: 1)
-        if (data.type === 1 && data.signal_id) {
+        // Handle signal data (type: 1 for numbers, type: 2 for strings)
+        if ((data.type === 1 || data.type === 2) && data.signal_id) {
             // Deliver to all widgets subscribed to this signal
             for (const [widgetId, subscription] of this.subscriptions.entries()) {
                 const subscriptionSignalId = `${subscription.nodeId}:${subscription.pinName}`;
                 if (subscriptionSignalId === data.signal_id) {
-                    console.log(`[WebSocketManager] Delivering to widget ${widgetId}: value=${data.value}`);
+                    console.log(`[WebSocketManager] Delivering to widget ${widgetId}: value=${data.value} (type=${data.type})`);
                     subscription.callback(data.value, data.timestamp);
                 }
             }

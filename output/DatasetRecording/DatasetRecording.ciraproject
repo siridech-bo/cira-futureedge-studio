@@ -1,0 +1,194 @@
+{
+  "connections": [
+    {
+      "from_node_id": 2,
+      "from_pin": "merged_out",
+      "to_node_id": 1,
+      "to_pin": "signal_data"
+    },
+    {
+      "from_node_id": 3,
+      "from_pin": "channel_0",
+      "to_node_id": 2,
+      "to_pin": "channel_0"
+    },
+    {
+      "from_node_id": 3,
+      "from_pin": "channel_1",
+      "to_node_id": 2,
+      "to_pin": "channel_1"
+    },
+    {
+      "from_node_id": 3,
+      "from_pin": "channel_2",
+      "to_node_id": 2,
+      "to_pin": "channel_2"
+    },
+    {
+      "from_node_id": 4,
+      "from_pin": "state",
+      "to_node_id": 3,
+      "to_pin": "play"
+    },
+    {
+      "from_node_id": 4,
+      "from_pin": "state",
+      "to_node_id": 5,
+      "to_pin": "state"
+    },
+    {
+      "from_node_id": 3,
+      "from_pin": "running",
+      "to_node_id": 6,
+      "to_pin": "state"
+    },
+    {
+      "from_node_id": 3,
+      "from_pin": "ready",
+      "to_node_id": 7,
+      "to_pin": "state"
+    },
+    {
+      "from_node_id": 3,
+      "from_pin": "class_name",
+      "to_node_id": 1,
+      "to_pin": "class_name"
+    },
+    {
+      "from_node_id": 1,
+      "from_pin": "recording_status",
+      "to_node_id": 8,
+      "to_pin": "state"
+    },
+    {
+      "from_node_id": 3,
+      "from_pin": "class_id",
+      "to_node_id": 1,
+      "to_pin": "class_id"
+    }
+  ],
+  "data": {
+    "sampling_rate": 100.0,
+    "sensor_columns": [
+      "x",
+      "y",
+      "z"
+    ],
+    "test_dataset_path": "",
+    "window_size": 100
+  },
+  "domain": "rotating_machinery",
+  "model": {
+    "algorithm": "unknown",
+    "class_names": [],
+    "is_deep_learning": false,
+    "metrics": {
+      "accuracy": 0.0,
+      "f1_macro": 0.0,
+      "precision_macro": 0.0,
+      "recall_macro": 0.0
+    },
+    "model_type": "classifier",
+    "num_classes": 0,
+    "onnx_model_path": ""
+  },
+  "name": "DatasetRecording",
+  "nodes": [
+    {
+      "config": {
+        "max_samples": "10000",
+        "output_dir": "/home/user/cira_datasets",
+        "output_format": "cbor"
+      },
+      "id": 1,
+      "position_x": 1097.1644287109375,
+      "position_y": -248.7576904296875,
+      "type_id": "output.data.recorder"
+    },
+    {
+      "config": {
+        "num_channels": "3"
+      },
+      "id": 2,
+      "position_x": 700.449462890625,
+      "position_y": -210.85499572753906,
+      "type_id": "processing.dsp.channel_merge"
+    },
+    {
+      "config": {
+        "amplitude": "1.0",
+        "dataset_inline": "",
+        "dataset_path": "",
+        "frequency": "1.0",
+        "loop_mode": "true",
+        "num_channels": "3",
+        "offset": "0.0",
+        "phase": "0.0",
+        "sample_rate": "100",
+        "selected_classes": "",
+        "sequential_mode": "true",
+        "signal_type": "square"
+      },
+      "id": 3,
+      "position_x": 334.0566711425781,
+      "position_y": -227.2794952392578,
+      "type_id": "input.synthetic.signal_generator"
+    },
+    {
+      "config": {
+        "button_id": "button_1",
+        "initial_state": "false",
+        "label": "Button"
+      },
+      "id": 4,
+      "position_x": 207.71432495117188,
+      "position_y": -137.57643127441406,
+      "type_id": "input.web.button"
+    },
+    {
+      "config": {
+        "color": "green",
+        "label": "LED",
+        "led_id": "led_2"
+      },
+      "id": 5,
+      "position_x": 480.93243408203125,
+      "position_y": 41.2691650390625,
+      "type_id": "output.web.led"
+    },
+    {
+      "config": {
+        "color": "green",
+        "label": "LED",
+        "led_id": "led_1"
+      },
+      "id": 6,
+      "position_x": 866.9324340820313,
+      "position_y": -51.7308349609375,
+      "type_id": "output.web.led"
+    },
+    {
+      "config": {
+        "color": "green",
+        "label": "LED",
+        "led_id": "led_3"
+      },
+      "id": 7,
+      "position_x": 834.9324340820313,
+      "position_y": -85.7308349609375,
+      "type_id": "output.web.led"
+    },
+    {
+      "config": {
+        "color": "green",
+        "label": "LED",
+        "led_id": "led_4"
+      },
+      "id": 8,
+      "position_x": 1466.932373046875,
+      "position_y": -230.7308349609375,
+      "type_id": "output.web.led"
+    }
+  ],
+  "version": 1
+}

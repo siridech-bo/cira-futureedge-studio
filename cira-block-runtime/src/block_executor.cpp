@@ -232,8 +232,15 @@ bool BlockExecutor::Execute() {
                 // Dynamic throttling based on recording state
                 int throttle_rate = is_recording ? 100 : 1;  // 100x during recording, NO throttle normally
 
-                // Broadcast if: interactive, string changed, or throttle interval reached
-                if (is_interactive || string_value_changed || (stats_.total_executions % throttle_rate == 0)) {
+                // Determine if we should broadcast
+                bool should_broadcast = is_interactive || string_value_changed;
+
+                // For non-string numeric data, apply throttling only during recording
+                if (!should_broadcast && !std::holds_alternative<std::string>(value)) {
+                    should_broadcast = (throttle_rate == 1) || (stats_.total_executions % throttle_rate == 0);
+                }
+
+                if (should_broadcast) {
                     web_server_->BroadcastSignalData(
                         std::to_string(node_id),
                         pin.name,

@@ -189,7 +189,7 @@ bool BlockExecutor::Execute() {
             // Broadcast signal data to web dashboard subscribers
             // Throttle broadcasts to reduce blocking overhead (WebSocket sends are synchronous)
             if (web_server_) {
-                // Detect if any Data Recorder block is currently recording
+                // Detect recording state FIRST (before throttling decision)
                 static bool is_recording = false;
                 if (pin.name == "recording_status" && std::holds_alternative<bool>(value)) {
                     bool new_status = std::get<bool>(value);
@@ -201,12 +201,15 @@ bool BlockExecutor::Execute() {
                             std::cout << "║  Dashboard updates will be slower for faster recording       ║" << std::endl;
                             std::cout << "╚═══════════════════════════════════════════════════════════════╝\n" << std::endl;
                         } else {
-                            std::cout << "\n[RECORDING STOPPED] Full-rate broadcasting restored for responsive dashboard\n" << std::endl;
+                            std::cout << "\n╔═══════════════════════════════════════════════════════════════╗" << std::endl;
+                            std::cout << "║  RECORDING STOPPED: Normal throttling restored               ║" << std::endl;
+                            std::cout << "║  Dashboard graphs should be responsive again                 ║" << std::endl;
+                            std::cout << "╚═══════════════════════════════════════════════════════════════╝\n" << std::endl;
                         }
                     }
                 }
 
-                // Always broadcast interactive controls at full rate
+                // Always broadcast interactive controls and recording status at full rate
                 bool is_interactive = (pin.name.find("button") != std::string::npos ||
                                       pin.name.find("trigger") != std::string::npos ||
                                       pin.name == "recording_status");
@@ -214,6 +217,7 @@ bool BlockExecutor::Execute() {
                 // Dynamic throttling based on recording state
                 int throttle_rate = is_recording ? 100 : 10;  // 100x during recording, 10x normally
 
+                // Interactive controls bypass throttling, everything else gets throttled
                 if (is_interactive || (stats_.total_executions % throttle_rate == 0)) {
                     web_server_->BroadcastSignalData(
                         std::to_string(node_id),

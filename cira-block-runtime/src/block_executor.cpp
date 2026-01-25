@@ -187,12 +187,20 @@ bool BlockExecutor::Execute() {
             node.output_values[pin.name] = value;
 
             // Broadcast signal data to web dashboard subscribers
+            // Throttle waveform broadcasts to reduce blocking overhead
             if (web_server_) {
-                web_server_->BroadcastSignalData(
-                    std::to_string(node_id),
-                    pin.name,
-                    value
-                );
+                bool is_waveform = (pin.name.find("signal") != std::string::npos ||
+                                   pin.name.find("channel") != std::string::npos ||
+                                   pin.name.find("_data") != std::string::npos);
+
+                // Broadcast control signals every iteration, waveforms every 10th
+                if (!is_waveform || (stats_.total_executions % 10 == 0)) {
+                    web_server_->BroadcastSignalData(
+                        std::to_string(node_id),
+                        pin.name,
+                        value
+                    );
+                }
             }
         }
     }

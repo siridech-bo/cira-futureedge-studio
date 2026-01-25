@@ -39,6 +39,9 @@ public:
         , output_dir_("/home/user/cira_datasets")
         , current_class_name_("")
         , current_class_id_(0)
+        , window_size_(300)
+        , num_channels_(3)
+        , window_count_(0)
     {
         std::cout << "DataRecorderBlock constructor called" << std::endl;
     }
@@ -59,8 +62,16 @@ public:
         if (config.count("output_dir")) {
             output_dir_ = config.at("output_dir");
         }
+        if (config.count("window_size")) {
+            window_size_ = std::stoi(config.at("window_size"));
+        }
+        if (config.count("num_channels")) {
+            num_channels_ = std::stoi(config.at("num_channels"));
+        }
 
-        std::cout << "  Max samples: " << max_samples_ << std::endl;
+        std::cout << "  Max samples (windows): " << max_samples_ << std::endl;
+        std::cout << "  Window size: " << window_size_ << std::endl;
+        std::cout << "  Num channels: " << num_channels_ << std::endl;
         std::cout << "  Output format: " << output_format_ << std::endl;
         std::cout << "  Output directory: " << output_dir_ << std::endl;
 
@@ -92,6 +103,7 @@ public:
     std::vector<Pin> GetInputPins() const override {
         return {
             Pin("record_trigger", "bool", true),
+            Pin("stop_trigger", "bool", true),
             Pin("signal_data", "array", true),
             Pin("class_name", "string", true),
             Pin("class_id", "int", true)
@@ -107,13 +119,18 @@ public:
 
     void SetInput(const std::string& pin_name, const BlockValue& value) override {
         if (pin_name == "record_trigger" && std::holds_alternative<bool>(value)) {
-            bool new_trigger = std::get<bool>(value);
-            if (new_trigger && !record_trigger_) {
+            bool trigger = std::get<bool>(value);
+
+            // Original working logic: level-based trigger
+            if (trigger && !is_recording_) {
+                // Trigger HIGH and not recording → START
+                std::cout << "[DataRecorder] Start recording (trigger=HIGH)" << std::endl;
                 StartRecording();
-            } else if (!new_trigger && record_trigger_) {
+            } else if (!trigger && is_recording_) {
+                // Trigger LOW and IS recording → STOP and save
+                std::cout << "[DataRecorder] Stop recording (trigger=LOW, windows=" << window_count_ << ")" << std::endl;
                 StopRecording();
             }
-            record_trigger_ = new_trigger;
         }
         else if (pin_name == "signal_data" && std::holds_alternative<std::vector<float>>(value)) {
             signal_data_ = std::get<std::vector<float>>(value);
@@ -136,23 +153,79 @@ public:
         if (exec_count % 100 == 0 && is_recording_) {
             std::cout << "[DataRecorder] Execute() - is_recording=" << is_recording_
                       << ", signal_data_.size()=" << signal_data_.size()
-                      << ", sample_count=" << sample_count_ << std::endl;
+                      << ", window_buffer_.size()=" << window_buffer_.size()
+                      << "/" << window_size_ << ", windows=" << window_count_ << std::endl;
         }
         exec_count++;
 
         if (is_recording_ && !signal_data_.empty()) {
-            Sample sample;
-            sample.timestamp = std::chrono::system_clock::now();
-            sample.data = signal_data_;
-            sample.class_name = current_class_name_;
-            sample.class_id = current_class_id_;
+            // Verify signal_data has correct number of channels
+            if (signal_data_.size() != static_cast<size_t>(num_channels_)) {
+                std::cerr << "[DataRecorder] WARNING: Expected " << num_channels_
+                          << " channels but got " << signal_data_.size() << std::endl;
+            }
 
-            samples_.push_back(sample);
-            sample_count_ = static_cast<int>(samples_.size());
+            // Add this sample to the window buffer
+            window_buffer_.push_back(signal_data_);
 
-            if (sample_count_ >= max_samples_) {
-                std::cout << "Max samples reached, stopping recording" << std::endl;
-                StopRecording();
+            // Check if we've accumulated enough samples for a complete window
+            if (static_cast<int>(window_buffer_.size()) >= window_size_) {
+                // Flatten buffer into channel-by-channel format
+                std::vector<float> windowed_data;
+                windowed_data.reserve(window_size_ * num_channels_);
+
+                // Reshape: [ch0_all_samples, ch1_all_samples, ch2_all_samples, ...]
+                for (int ch = 0; ch < num_channels_; ++ch) {
+                    for (int sample_idx = 0; sample_idx < window_size_; ++sample_idx) {
+                        if (ch < static_cast<int>(window_buffer_[sample_idx].size())) {
+                            windowed_data.push_back(window_buffer_[sample_idx][ch]);
+                        } else {
+                            windowed_data.push_back(0.0f); // Pad if needed
+                        }
+                    }
+                }
+
+                // Create window sample
+                Sample window_sample;
+                window_sample.timestamp = std::chrono::system_clock::now();
+                window_sample.data = windowed_data;
+                window_sample.class_name = current_class_name_;
+                window_sample.class_id = current_class_id_;
+
+                samples_.push_back(window_sample);
+                window_count_++;
+                sample_count_ = window_count_;
+
+                // Progress logging - show every window for easy monitoring
+                std::cout << "=== [DataRecorder] Window " << window_count_ << "/" << max_samples_
+                          << " completed (class: " << current_class_name_ << ", id: " << current_class_id_ << ") ===" << std::endl;
+
+                // Clear buffer for next window
+                window_buffer_.clear();
+
+                // Check if we've reached max windows - auto-save and continue
+                if (window_count_ >= max_samples_) {
+                    std::cout << "\n╔════════════════════════════════════════════════════════════╗" << std::endl;
+                    std::cout << "║  AUTO-SAVE: " << max_samples_ << " windows completed!                    ║" << std::endl;
+                    std::cout << "║  Saving batch and continuing recording...                 ║" << std::endl;
+                    std::cout << "╚════════════════════════════════════════════════════════════╝\n" << std::endl;
+
+                    // Save current batch
+                    if (!samples_.empty()) {
+                        if (output_format_ == "cbor") {
+                            SaveAsCBOR();
+                        } else if (output_format_ == "csv") {
+                            SaveAsCSV();
+                        } else {
+                            SaveAsJSON();
+                        }
+                    }
+
+                    // Clear samples and reset counter to continue recording next batch
+                    samples_.clear();
+                    window_count_ = 0;
+                    std::cout << "=== Recording continues - next batch starting... ===" << std::endl;
+                }
             }
         }
         return true;
@@ -178,14 +251,23 @@ public:
 private:
     void StartRecording() {
         samples_.clear();
+        window_buffer_.clear();
         sample_count_ = 0;
+        window_count_ = 0;
         is_recording_ = true;
-        std::cout << "Recording started" << std::endl;
+        std::cout << "Recording started (windowed mode: " << window_size_
+                  << " samples × " << num_channels_ << " channels)" << std::endl;
     }
 
     void StopRecording() {
         is_recording_ = false;
-        std::cout << "Recording stopped with " << sample_count_ << " samples" << std::endl;
+        std::cout << "Recording stopped with " << window_count_ << " windows" << std::endl;
+
+        // If there's a partial window in the buffer, warn but don't save it
+        if (!window_buffer_.empty()) {
+            std::cout << "  WARNING: Discarding partial window with "
+                      << window_buffer_.size() << "/" << window_size_ << " samples" << std::endl;
+        }
 
         if (!samples_.empty()) {
             if (output_format_ == "csv") {
@@ -372,6 +454,12 @@ private:
     int current_class_id_;
     std::vector<float> signal_data_;
     std::vector<Sample> samples_;
+
+    // Windowing parameters
+    int window_size_;
+    int num_channels_;
+    int window_count_;
+    std::vector<std::vector<float>> window_buffer_;  // Buffer to accumulate samples for current window
 };
 
 } // namespace CiraBlockRuntime

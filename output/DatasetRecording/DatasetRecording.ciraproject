@@ -96,7 +96,7 @@
   "nodes": [
     {
       "config": {
-        "max_samples": "10000",
+        "max_samples": "100",
         "output_dir": "/home/user/cira_datasets",
         "output_format": "cbor"
       },

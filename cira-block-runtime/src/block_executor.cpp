@@ -233,10 +233,16 @@ bool BlockExecutor::Execute() {
                 int throttle_rate = is_recording ? 100 : 1;  // 100x during recording, NO throttle normally
 
                 // Determine if we should broadcast
-                bool should_broadcast = is_interactive || string_value_changed;
+                bool should_broadcast = false;
 
-                // For non-string numeric data, apply throttling only during recording
-                if (!should_broadcast && !std::holds_alternative<std::string>(value)) {
+                if (is_interactive) {
+                    // Interactive controls: always broadcast
+                    should_broadcast = true;
+                } else if (std::holds_alternative<std::string>(value)) {
+                    // String values: ONLY broadcast if changed (never throttle)
+                    should_broadcast = string_value_changed;
+                } else {
+                    // Numeric values: apply dynamic throttling
                     should_broadcast = (throttle_rate == 1) || (stats_.total_executions % throttle_rate == 0);
                 }
 

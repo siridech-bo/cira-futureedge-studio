@@ -215,7 +215,7 @@ bool BlockExecutor::Execute() {
                                       pin.name == "recording_status");
 
                 // Dynamic throttling based on recording state
-                int throttle_rate = is_recording ? 100 : 10;  // 100x during recording, 10x normally
+                int throttle_rate = is_recording ? 100 : 1;  // 100x during recording, NO throttle normally
 
                 // Interactive controls bypass throttling, everything else gets throttled
                 if (is_interactive || (stats_.total_executions % throttle_rate == 0)) {

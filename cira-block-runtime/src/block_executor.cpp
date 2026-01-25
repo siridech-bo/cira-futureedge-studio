@@ -3,6 +3,7 @@
 #include <iostream>
 #include <algorithm>
 #include <set>
+#include <map>
 #include <chrono>
 
 namespace CiraBlockRuntime {
@@ -209,6 +210,20 @@ bool BlockExecutor::Execute() {
                     }
                 }
 
+                // Track previous string values to detect changes (avoids expensive string broadcasts)
+                static std::map<std::string, std::string> previous_string_values;
+                std::string pin_key = std::to_string(node_id) + ":" + pin.name;
+
+                // Check if this is a string value that changed
+                bool string_value_changed = false;
+                if (std::holds_alternative<std::string>(value)) {
+                    const std::string& str_value = std::get<std::string>(value);
+                    if (previous_string_values[pin_key] != str_value) {
+                        previous_string_values[pin_key] = str_value;
+                        string_value_changed = true;
+                    }
+                }
+
                 // Always broadcast interactive controls and recording status at full rate
                 bool is_interactive = (pin.name.find("button") != std::string::npos ||
                                       pin.name.find("trigger") != std::string::npos ||
@@ -217,8 +232,8 @@ bool BlockExecutor::Execute() {
                 // Dynamic throttling based on recording state
                 int throttle_rate = is_recording ? 100 : 1;  // 100x during recording, NO throttle normally
 
-                // Interactive controls bypass throttling, everything else gets throttled
-                if (is_interactive || (stats_.total_executions % throttle_rate == 0)) {
+                // Broadcast if: interactive, string changed, or throttle interval reached
+                if (is_interactive || string_value_changed || (stats_.total_executions % throttle_rate == 0)) {
                     web_server_->BroadcastSignalData(
                         std::to_string(node_id),
                         pin.name,

@@ -127,7 +127,7 @@
         "sample_rate": "100",
         "selected_classes": "",
         "sequential_mode": "true",
-        "signal_type": "square"
+        "signal_type": "sawtooth"
       },
       "id": 3,
       "position_x": 334.0566711425781,

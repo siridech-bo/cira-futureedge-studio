@@ -346,23 +346,23 @@ class LicenseManager:
         # FREE tier: Check usage limits
         if feature_name == "dl":
             used = license.dl_training_count
-            max_allowed = 10
+            max_allowed = 100
             remaining = max_allowed - used
 
             if remaining > 0:
                 return True, f"{remaining} trainings remaining", used, max_allowed
             else:
-                return False, "Trial limit reached (10/10). Upgrade to PRO for unlimited.", used, max_allowed
+                return False, "Trial limit reached (100/100). Upgrade to PRO for unlimited.", used, max_allowed
 
         elif feature_name == "llm":
             used = license.llm_analysis_count
-            max_allowed = 10
+            max_allowed = 100
             remaining = max_allowed - used
 
             if remaining > 0:
                 return True, f"{remaining} analyses remaining", used, max_allowed
             else:
-                return False, "Trial limit reached (10/10). Upgrade to PRO for unlimited.", used, max_allowed
+                return False, "Trial limit reached (100/100). Upgrade to PRO for unlimited.", used, max_allowed
 
         # Other features: use standard check
         if license.has_feature(feature_name):
@@ -387,19 +387,19 @@ class LicenseManager:
             return True
 
         if feature_name == "dl":
-            if license.dl_training_count < 10:
+            if license.dl_training_count < 100:
                 license.dl_training_count += 1
                 self._save_license()
-                logger.info(f"DL training usage: {license.dl_training_count}/10")
+                logger.info(f"DL training usage: {license.dl_training_count}/100")
                 return True
             else:
                 return False
 
         elif feature_name == "llm":
-            if license.llm_analysis_count < 10:
+            if license.llm_analysis_count < 100:
                 license.llm_analysis_count += 1
                 self._save_license()
-                logger.info(f"LLM analysis usage: {license.llm_analysis_count}/10")
+                logger.info(f"LLM analysis usage: {license.llm_analysis_count}/100")
                 return True
             else:
                 return False
@@ -423,9 +423,9 @@ class LicenseManager:
             return 0, 0
 
         if feature_name == "dl":
-            return license.dl_training_count, 10
+            return license.dl_training_count, 100
         elif feature_name == "llm":
-            return license.llm_analysis_count, 10
+            return license.llm_analysis_count, 100
 
         return 0, 0
 

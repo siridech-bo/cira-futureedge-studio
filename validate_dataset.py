@@ -132,8 +132,8 @@ def main():
         print(f"Error: Directory not found: {dataset_dir}")
         sys.exit(1)
 
-    # Find all CBOR files
-    cbor_files = list(dataset_dir.glob("*.cbor"))
+    # Find all CBOR files (including subdirectories)
+    cbor_files = list(dataset_dir.glob("**/*.cbor"))
 
     if not cbor_files:
         print(f"Error: No .cbor files found in {dataset_dir}")
@@ -145,7 +145,7 @@ def main():
     results = {}
     for cbor_file in sorted(cbor_files):
         try:
-            results[cbor_file.name] = validate_cbor_file(cbor_file)
+            results[cbor_file.relative_to(dataset_dir)] = validate_cbor_file(cbor_file)
         except Exception as e:
             print(f"\n❌ EXCEPTION while validating {cbor_file.name}: {e}")
             results[cbor_file.name] = False

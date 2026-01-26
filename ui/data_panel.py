@@ -1455,13 +1455,10 @@ class DataSourcesPanel(ctk.CTkFrame):
 
             for idx, file_path in enumerate(all_files):
                 try:
-                    # Try CiRA CBOR format first for CBOR files, fallback to Edge Impulse
+                    # Choose loader based on user-selected format_type
                     if file_path.endswith('.cbor'):
-                        data_source = CiraCBORDataSource()
-                        data_source.file_path = Path(file_path)
-
-                        if not data_source.connect():
-                            # Try Edge Impulse format as fallback
+                        if format_type == "Edge Impulse CBOR":
+                            # User explicitly selected Edge Impulse CBOR - use Edge Impulse loader only
                             data_source = EdgeImpulseDataSource()
                             data_source.file_path = Path(file_path)
                             data_source.format_type = 'cbor'
@@ -1469,9 +1466,31 @@ class DataSourcesPanel(ctk.CTkFrame):
                             if not data_source.connect():
                                 logger.warning(f"Skipping {file_path}: {data_source.last_error}")
                                 continue
+                        elif format_type == "CiRA CBOR":
+                            # User explicitly selected CiRA CBOR
+                            data_source = CiraCBORDataSource()
+                            data_source.file_path = Path(file_path)
+
+                            if not data_source.connect():
+                                logger.warning(f"Skipping {file_path}: {data_source.last_error}")
+                                continue
                         else:
-                            # First CBOR file with CiRA format - detect and confirm (only once!)
-                            if format_type == "CiRA CBOR" and not channel_config_confirmed and isinstance(data_source, CiraCBORDataSource):
+                            # Auto-detect: Try CiRA first, then Edge Impulse
+                            data_source = CiraCBORDataSource()
+                            data_source.file_path = Path(file_path)
+
+                            if not data_source.connect():
+                                # Try Edge Impulse format as fallback
+                                data_source = EdgeImpulseDataSource()
+                                data_source.file_path = Path(file_path)
+                                data_source.format_type = 'cbor'
+
+                                if not data_source.connect():
+                                    logger.warning(f"Skipping {file_path}: {data_source.last_error}")
+                                    continue
+
+                        # First CBOR file with CiRA format - detect and confirm (only once!)
+                        if format_type == "CiRA CBOR" and not channel_config_confirmed and isinstance(data_source, CiraCBORDataSource):
                                 # Load just to get window size
                                 import cbor2
                                 with open(file_path, 'rb') as f:

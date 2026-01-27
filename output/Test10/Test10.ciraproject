@@ -4,7 +4,7 @@
   "domain": "rotating_machinery",
   "description": "",
   "created_at": "2026-01-26T14:47:28.906078",
-  "modified_at": "2026-01-26T17:52:53.049042",
+  "modified_at": "2026-01-27T07:58:37.290130",
   "version": "1.0.0",
   "project_path": "D:\\CiRA FES\\output\\Test10\\Test10.ciraproject",
   "data": {
@@ -25,7 +25,7 @@
     ],
     "data_file": null,
     "windows_file": "D:\\CiRA FES\\output\\Test10\\data\\windows.pkl",
-    "num_windows": 572,
+    "num_windows": 0,
     "time_column": "time",
     "task_type": "classification",
     "class_mapping": {
@@ -624,8 +624,8 @@
     "test_data_file": "D:\\CiRA FES\\output\\Test10\\data\\test_data.pkl",
     "train_windows_file": "D:\\CiRA FES\\output\\Test10\\data\\train_windows.pkl",
     "test_windows_file": "D:\\CiRA FES\\output\\Test10\\data\\test_windows.pkl",
-    "num_train_windows": 479,
-    "num_test_windows": 93,
+    "num_train_windows": 0,
+    "num_test_windows": 0,
     "train_folder_path": "D:/CiRA FES/Dataset/Motion+Classification+-+Continuous+motion+recognition/training",
     "test_folder_path": "D:/CiRA FES/Dataset/Motion+Classification+-+Continuous+motion+recognition/testing",
     "pipeline_mode": "ml",

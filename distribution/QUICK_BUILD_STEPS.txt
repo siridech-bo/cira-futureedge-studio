@@ -1,0 +1,110 @@
+╔════════════════════════════════════════════════════════════════════════════╗
+║                                                                            ║
+║          CiRA FutureEdge Studio v1.0 - Installer Build Guide              ║
+║                                                                            ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+✅ ALL PREPARATION COMPLETE!
+
+Package Size: ~80 MB
+Expected Installer: ~80-100 MB
+Status: READY TO BUILD
+
+────────────────────────────────────────────────────────────────────────────
+
+📥 STEP 1: DOWNLOAD INNO SETUP (if not installed)
+
+   Website: https://jrsoftware.org/isinfo.php
+   Version: Inno Setup 6.x (Unicode)
+   Install: Use default settings
+
+────────────────────────────────────────────────────────────────────────────
+
+🔨 STEP 2: BUILD THE INSTALLER
+
+   METHOD 1 (Quick - Recommended):
+   1. Go to: D:\CiRA FES\distribution\
+   2. Right-click: CiRA_FES_Installer.iss
+   3. Select: "Compile"
+   4. Wait 1-2 minutes
+
+   METHOD 2 (IDE):
+   1. Open Inno Setup Compiler
+   2. File → Open: D:\CiRA FES\distribution\CiRA_FES_Installer.iss
+   3. Build → Compile (Ctrl+F9)
+
+────────────────────────────────────────────────────────────────────────────
+
+📦 OUTPUT
+
+   File: D:\CiRA FES\distribution\CiRA-FES-v1.0-Setup.exe
+   Size: ~80-100 MB (compressed)
+
+────────────────────────────────────────────────────────────────────────────
+
+🧪 STEP 3: TEST (On clean Windows machine or VM)
+
+   1. Run CiRA-FES-v1.0-Setup.exe
+   2. Complete installation wizard
+   3. From Start Menu:
+      - Run "Check Python Installation"
+      - Install Python if needed (python.org)
+      - Run "Install CiRA Studio Dependencies"
+      - Launch "Pipeline Builder" ✓
+      - Launch "CiRA Studio" ✓
+
+────────────────────────────────────────────────────────────────────────────
+
+🚀 STEP 4: DISTRIBUTE
+
+   Upload: CiRA-FES-v1.0-Setup.exe
+
+   Options:
+   - Google Drive / Dropbox / OneDrive
+   - Company website
+   - GitHub Releases
+   - Email to customers
+
+   Customer Requirements:
+   - Windows 10/11 (64-bit)
+   - Python 3.8+ (installable via python.org)
+   - Internet (for dependency installation)
+
+────────────────────────────────────────────────────────────────────────────
+
+📖 DETAILED GUIDES
+
+   • BUILD_INSTALLER_GUIDE.md    - Complete build instructions
+   • INSTALLER_READY.md          - Status & checklist
+   • TROUBLESHOOTING_V1.0.md     - Known issues & solutions
+
+────────────────────────────────────────────────────────────────────────────
+
+✨ WHAT'S INCLUDED IN INSTALLER
+
+   ✓ Pipeline Builder (Visual Programming)
+   ✓ CiRA Studio (ML/DL Training)
+   ✓ Runtime Source Code (Jetson Deployment)
+   ✓ Example Datasets (2 projects)
+   ✓ Complete Documentation
+   ✓ Start Menu Integration
+   ✓ Desktop Shortcuts
+   ✓ Automatic Uninstaller
+
+────────────────────────────────────────────────────────────────────────────
+
+🎯 QUICK CUSTOMER INSTRUCTIONS
+
+   "Download CiRA-FES-v1.0-Setup.exe and run it.
+    After installation, follow the Start Menu prompts to:
+    1. Check Python Installation
+    2. Install Dependencies
+    3. Launch Pipeline Builder or CiRA Studio!"
+
+────────────────────────────────────────────────────────────────────────────
+
+Version: 1.0.0
+Build Date: 2026-01-27
+Status: ✅ READY
+
+Next: Download Inno Setup → Compile → Test → Distribute!

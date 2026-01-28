@@ -88,6 +88,51 @@ copy /Y "%MINGW_BIN%\zlib1.dll" "%DIST_DIR%\" >nul 2>&1
 if %ERRORLEVEL%==0 echo   [OK] zlib1.dll (optional)
 
 echo.
+
+REM Copy cira-block-runtime (CRITICAL for Setup Device and Deploy)
+echo Copying cira-block-runtime...
+if not exist "cira-block-runtime" (
+    echo   [ERROR] cira-block-runtime directory not found!
+    echo   This is CRITICAL - Pipeline Builder cannot function without it.
+    echo   The Setup Device and Deploy functions will fail.
+    pause
+    exit /b 1
+)
+
+REM Copy source directories
+echo   Copying source files...
+xcopy /Y /E /I "cira-block-runtime\src" "%DIST_DIR%\cira-block-runtime\src" >nul
+xcopy /Y /E /I "cira-block-runtime\include" "%DIST_DIR%\cira-block-runtime\include" >nul
+xcopy /Y /E /I "cira-block-runtime\blocks" "%DIST_DIR%\cira-block-runtime\blocks" >nul
+xcopy /Y /E /I "cira-block-runtime\web" "%DIST_DIR%\cira-block-runtime\web" >nul
+xcopy /Y /E /I "cira-block-runtime\platforms" "%DIST_DIR%\cira-block-runtime\platforms" >nul
+xcopy /Y /E /I "cira-block-runtime\tests" "%DIST_DIR%\cira-block-runtime\tests" >nul
+xcopy /Y /E /I "cira-block-runtime\templates" "%DIST_DIR%\cira-block-runtime\templates" >nul
+echo   [OK] Source directories copied
+
+REM Copy CMakeLists and documentation
+echo   Copying build configuration...
+copy /Y "cira-block-runtime\CMakeLists.txt" "%DIST_DIR%\cira-block-runtime\" >nul
+copy /Y "cira-block-runtime\*.md" "%DIST_DIR%\cira-block-runtime\" >nul 2>&1
+echo   [OK] CMakeLists.txt and docs
+
+REM Copy pre-built binaries (optional reference)
+echo   Copying pre-built binaries...
+if exist "cira-block-runtime\build\cira-block-runtime.exe" (
+    if not exist "%DIST_DIR%\cira-block-runtime\build" mkdir "%DIST_DIR%\cira-block-runtime\build"
+    copy /Y "cira-block-runtime\build\cira-block-runtime.exe" "%DIST_DIR%\cira-block-runtime\build\" >nul
+    echo   [OK] cira-block-runtime.exe
+)
+
+if exist "cira-block-runtime\build\blocks" (
+    if not exist "%DIST_DIR%\cira-block-runtime\build\blocks" mkdir "%DIST_DIR%\cira-block-runtime\build\blocks"
+    xcopy /Y "cira-block-runtime\build\blocks\*.dll" "%DIST_DIR%\cira-block-runtime\build\blocks\" >nul 2>&1
+    if %ERRORLEVEL%==0 echo   [OK] Block DLLs
+)
+
+echo   [OK] cira-block-runtime complete
+echo.
+
 echo ============================================================
 echo Distribution preparation complete!
 echo ============================================================

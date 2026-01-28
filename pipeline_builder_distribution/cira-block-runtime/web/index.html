@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CiRA Runtime Dashboard</title>
+
+    <!-- External Libraries -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gridstack@10.1.0/dist/gridstack.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gridstack@10.1.0/dist/gridstack-extra.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/uplot@1.6.24/dist/uPlot.min.css">
+    <link rel="stylesheet" href="css/dashboard.css">
+
+    <script src="https://cdn.jsdelivr.net/npm/gridstack@10.1.0/dist/gridstack-all.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/uplot@1.6.24/dist/uPlot.iife.min.js"></script>
+</head>
+<body>
+    <!-- Login Screen -->
+    <div id="login-screen" class="login-container">
+        <div class="login-box">
+            <h1>CiRA Runtime Dashboard</h1>
+            <p class="subtitle">Block Runtime Monitoring & Control</p>
+            <form id="login-form">
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" placeholder="Enter username" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" placeholder="Enter password" required>
+                </div>
+                <button type="submit" class="btn-primary">Login</button>
+                <div id="login-error" class="error-message"></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main Dashboard -->
+    <div id="dashboard-screen" style="display:none;">
+        <!-- Header -->
+        <header class="dashboard-header">
+            <div class="header-left">
+                <h1>🎯 CiRA Dashboard</h1>
+                <div id="connection-status" class="status-indicator">
+                    <span class="status-dot"></span>
+                    <span class="status-text">Connecting...</span>
+                </div>
+            </div>
+            <div class="header-right">
+                <button id="btn-edit-mode" class="btn-secondary">✏️ Edit Layout</button>
+                <button id="btn-save-dashboard" class="btn-primary" style="display:none;">💾 Save</button>
+                <button id="btn-cancel-edit" class="btn-secondary" style="display:none;">❌ Cancel</button>
+                <button id="btn-logout" class="btn-secondary">🚪 Logout</button>
+            </div>
+        </header>
+
+        <!-- Widget Palette (Edit Mode) -->
+        <div id="widget-palette" class="widget-palette" style="display:none;">
+            <h3>Add Widget</h3>
+            <div class="palette-widgets">
+                <div class="palette-item" data-widget="status" draggable="true">
+                    <span class="widget-icon">🟢</span>
+                    <span>Status</span>
+                </div>
+                <div class="palette-item" data-widget="gauge" draggable="true">
+                    <span class="widget-icon">📊</span>
+                    <span>Gauge</span>
+                </div>
+                <div class="palette-item" data-widget="chart" draggable="true">
+                    <span class="widget-icon">📈</span>
+                    <span>Line Chart</span>
+                </div>
+                <div class="palette-item" data-widget="text" draggable="true">
+                    <span class="widget-icon">📝</span>
+                    <span>Text Display</span>
+                </div>
+                <div class="palette-item" data-widget="button" draggable="true">
+                    <span class="widget-icon">🔘</span>
+                    <span>Button</span>
+                </div>
+                <div class="palette-item" data-widget="led" draggable="true">
+                    <span class="widget-icon">💡</span>
+                    <span>LED</span>
+                </div>
+                <div class="palette-item" data-widget="signalplot" draggable="true">
+                    <span class="widget-icon">📊</span>
+                    <span>Signal Plot</span>
+                </div>
+                <div class="palette-item" data-widget="oscilloscope" draggable="true">
+                    <span class="widget-icon">📈</span>
+                    <span>Oscilloscope</span>
+                </div>
+                <div class="palette-item" data-widget="recorder" draggable="true">
+                    <span class="widget-icon">⏺️</span>
+                    <span>Data Recorder</span>
+                </div>
+                <div class="palette-item" data-widget="logs" draggable="true">
+                    <span class="widget-icon">📋</span>
+                    <span>Log Viewer</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="dashboard-content">
+            <!-- GridStack Container -->
+            <div class="grid-stack" id="dashboard-grid"></div>
+
+            <!-- Empty State -->
+            <div id="empty-state" class="empty-state">
+                <h2>Welcome to CiRA Dashboard</h2>
+                <p>Click "Edit Layout" to add widgets and customize your dashboard</p>
+                <button class="btn-primary" onclick="document.getElementById('btn-edit-mode').click()">
+                    Get Started
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Widget Configuration Modal -->
+    <div id="widget-config-modal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Widget Configuration</h2>
+                <span class="close-modal">×</span>
+            </div>
+            <div class="modal-body" id="widget-config-body">
+                <!-- Dynamic configuration form -->
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeConfigModal()">Cancel</button>
+                <button class="btn-primary" onclick="saveWidgetConfig()">Apply</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <!-- Core scripts -->
+    <script src="js/auth.js?v=20251231m"></script>
+
+    <!-- WebSocket Manager (Node-RED architecture) - Load FIRST before widgets -->
+    <script src="js/websocket-manager.js?v=20251231p"></script>
+
+    <script src="js/widgets.js?v=20250101c"></script>
+    <script src="js/signalplot.js?v=20250101b"></script>
+    <script src="js/oscilloscope.js?v=20250101a"></script>
+    <script src="js/recorder-widget.js?v=20260106a"></script>
+
+    <!-- Dashboard main -->
+    <script src="js/dashboard.js?v=20260109a"></script>
+</body>
+</html>

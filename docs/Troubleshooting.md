@@ -334,6 +334,118 @@ Common issues and solutions for CiRA FES v1.0
    - Use fewer windows to verify training works
    - Then train on full dataset
 
+### LLM Model Loading - Access Violation Error
+
+**Symptoms**:
+- Error when clicking "Load Model" in LLM Feature Selection panel
+- Error message: `exception: access violation reading 0x0000000000000000`
+- Model file exists and is valid (e.g., 1925.8 MB GGUF file)
+- Works on dev machine but fails on deployment machine
+
+**Root Cause**:
+- llama-cpp-python binary incompatible with CPU on target machine
+- CPU missing required instruction sets (AVX/AVX2/AVX512)
+- Possible GPU driver conflicts (if machine has GPU)
+
+**Attempted Solutions**:
+1. ✗ **CPU-only wheel installation** (still crashes):
+   ```bash
+   pip uninstall llama-cpp-python
+   pip install llama-cpp-python --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu
+   ```
+
+2. ✓ **Code improvements added** (in `core/llm_manager.py`):
+   - Force CPU-only mode: `n_gpu_layers=0`
+   - Use memory-mapped file access: `use_mmap=True`
+   - Disable memory locking: `use_mlock=False`
+   - Enhanced error messages with troubleshooting steps
+
+**Current Workaround**:
+- **Use statistical fallback selection** (already built-in)
+- LLM feature is optional - CiRA FES continues to work without it
+- Statistical feature selection uses importance scores and works fine
+
+**Status**:
+- ⏸️ Deferred for later investigation
+- Not blocking - fallback mechanism works
+
+**Related Issue**:
+- GPU auto-detection not working on same machine (see below)
+
+**Future Investigation Needed**:
+1. Check CPU capabilities: `wmic cpu get name,NumberOfCores,NumberOfLogicalProcessors`
+2. Check for AVX support: Use CPU-Z or similar tool
+3. Try building llama-cpp-python from source with specific CPU flags:
+   ```bash
+   CMAKE_ARGS="-DLLAMA_AVX=OFF -DLLAMA_AVX2=OFF -DLLAMA_F16C=OFF" pip install llama-cpp-python --force-reinstall --no-cache-dir
+   ```
+4. Consider alternative LLM backends (transformers library, etc.)
+5. Investigate if GPU drivers are causing conflicts
+
+### GPU Auto-Detection Not Working
+
+**Symptoms**:
+- Machine has GPU but CiRA FES doesn't detect it
+- Training runs on CPU instead of GPU (very slow)
+- May be related to LLM loading access violation issue
+
+**Status**:
+- ⏸️ Issue identified but not yet investigated
+- Deferred for later when other issues are resolved
+
+**Possible Causes**:
+1. Missing CUDA/cuDNN installation
+2. Incompatible or outdated GPU drivers
+3. PyTorch not built with GPU support
+4. Wrong PyTorch version for installed CUDA version
+5. GPU driver conflicts with other software
+
+**Investigation Steps** (when time available):
+
+1. **Check CUDA installation**:
+   ```bash
+   nvidia-smi
+   # Should show GPU info and CUDA version
+   ```
+
+2. **Check PyTorch GPU support**:
+   ```python
+   import torch
+   print(f"CUDA available: {torch.cuda.is_available()}")
+   print(f"CUDA version: {torch.version.cuda}")
+   print(f"GPU count: {torch.cuda.device_count()}")
+   if torch.cuda.is_available():
+       print(f"GPU name: {torch.cuda.get_device_name(0)}")
+   ```
+
+3. **Check installed PyTorch version**:
+   ```bash
+   pip show torch
+   # Check if it's CPU-only or CUDA build
+   ```
+
+4. **Reinstall PyTorch with correct CUDA version**:
+   ```bash
+   # First, uninstall current PyTorch
+   pip uninstall torch torchvision torchaudio
+
+   # Then install with CUDA (adjust version to match nvidia-smi output)
+   # For CUDA 11.8:
+   pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+
+   # For CUDA 12.1:
+   pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+   ```
+
+5. **Update GPU drivers**:
+   - Download latest drivers from NVIDIA website
+   - May require system reboot
+
+**Notes**:
+- This may also fix the LLM access violation issue
+- GPU conflicts can cause multiple problems
+- Recommend fixing GPU detection first, then retry LLM loading
+
 ### Cannot Load Dataset
 
 **Symptoms**:

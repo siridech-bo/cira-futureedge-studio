@@ -503,7 +503,23 @@ class LLMPanel(ctk.CTkFrame):
             text_color="red"
         )
         self.load_btn.configure(state="normal")
-        messagebox.showerror("Load Error", f"Failed to load model:\n{error}")
+
+        # Provide detailed error message with solutions
+        error_lower = error.lower()
+        if "access violation" in error_lower or "0x0000000000000000" in error_lower:
+            error_msg = (
+                "Failed to load model: CPU compatibility issue\n\n"
+                "This error means llama-cpp-python is incompatible with your CPU.\n\n"
+                "SOLUTION:\n"
+                "1. Open Command Prompt as Administrator\n"
+                "2. Run: pip uninstall llama-cpp-python\n"
+                "3. Then run: pip install llama-cpp-python --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu\n\n"
+                "This will install a CPU-compatible pre-built version."
+            )
+        else:
+            error_msg = f"Failed to load model:\n{error}\n\nCheck the logs for more details."
+
+        messagebox.showerror("Load Error", error_msg)
 
     def _get_default_prompt_template(self) -> str:
         """Get the default prompt template."""

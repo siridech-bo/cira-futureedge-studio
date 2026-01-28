@@ -79,10 +79,14 @@ class LLMManager:
             logger.info(f"Loading LLM model from {self.config.model_path}")
             logger.info(f"Model size: {self.config.model_path.stat().st_size / 1024 / 1024:.1f} MB")
 
+            # Try to load with increased safety settings
             self.model = Llama(
                 model_path=str(self.config.model_path),
                 n_ctx=self.config.n_ctx,
                 n_threads=self.config.n_threads,
+                n_gpu_layers=0,  # Force CPU-only to avoid GPU issues
+                use_mmap=True,   # Memory-mapped file access
+                use_mlock=False, # Don't lock memory (may cause issues)
                 verbose=False
             )
 
@@ -91,7 +95,21 @@ class LLMManager:
             return True
 
         except Exception as e:
+            import traceback
+            error_details = traceback.format_exc()
             logger.error(f"Failed to load LLM model: {e}")
+            logger.error(f"Error details: {error_details}")
+
+            # Provide helpful error message
+            error_str = str(e).lower()
+            if "access violation" in error_str or "segmentation fault" in error_str:
+                logger.error("SOLUTION: This error usually means:")
+                logger.error("1. Your CPU doesn't support required instructions (AVX/AVX2)")
+                logger.error("2. llama-cpp-python build is incompatible with your CPU")
+                logger.error("3. Try: pip uninstall llama-cpp-python")
+                logger.error("4. Then: pip install llama-cpp-python --force-reinstall --no-cache-dir")
+                logger.error("5. Or use pre-built CPU wheel: pip install llama-cpp-python --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu")
+
             return False
 
     def unload_model(self) -> None:

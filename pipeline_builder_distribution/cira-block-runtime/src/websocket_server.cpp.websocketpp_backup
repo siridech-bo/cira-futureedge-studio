@@ -1,0 +1,583 @@
+#include "websocket_server.hpp"
+#include <iostream>
+#include <sstream>
+#include <cstring>
+#include <algorithm>
+
+// Check if msgpack is available
+#ifdef __has_include
+#  if __has_include(<msgpack.hpp>)
+#    include <msgpack.hpp>
+#    define HAS_MSGPACK 1
+#  endif
+#endif
+
+namespace CiraBlockRuntime {
+
+//
+// MessagePack Utilities
+//
+
+std::vector<uint8_t> MessagePackUtil::EncodeWaveform(const WaveformChunk& chunk) {
+#ifdef HAS_MSGPACK
+    // Use MessagePack library if available
+    msgpack::sbuffer buffer;
+    msgpack::packer<msgpack::sbuffer> pk(&buffer);
+
+    pk.pack_map(8);  // 8 key-value pairs
+
+    pk.pack(std::string("type"));
+    pk.pack(static_cast<uint8_t>(WSMessageType::SignalData));
+
+    pk.pack(std::string("signal_id"));
+    pk.pack(chunk.signal_id);
+
+    pk.pack(std::string("timestamp"));
+    pk.pack(chunk.timestamp);
+
+    pk.pack(std::string("samples"));
+    pk.pack(chunk.samples);
+
+    pk.pack(std::string("count"));
+    pk.pack(chunk.original_sample_count);
+
+    pk.pack(std::string("min"));
+    pk.pack(chunk.min_value);
+
+    pk.pack(std::string("max"));
+    pk.pack(chunk.max_value);
+
+    pk.pack(std::string("avg"));
+    pk.pack(chunk.avg_value);
+
+    return std::vector<uint8_t>(buffer.data(), buffer.data() + buffer.size());
+#else
+    // Fallback: Use simple binary format
+    // Format: [type:1][signal_id_len:2][signal_id][timestamp:8][num_samples:4][samples...]
+    std::vector<uint8_t> data;
+
+    // Type
+    data.push_back(static_cast<uint8_t>(WSMessageType::SignalData));
+
+    // Signal ID length and string
+    uint16_t id_len = chunk.signal_id.length();
+    data.push_back((id_len >> 8) & 0xFF);
+    data.push_back(id_len & 0xFF);
+    data.insert(data.end(), chunk.signal_id.begin(), chunk.signal_id.end());
+
+    // Timestamp (8 bytes, little-endian)
+    for (int i = 0; i < 8; ++i) {
+        data.push_back((chunk.timestamp >> (i * 8)) & 0xFF);
+    }
+
+    // Number of samples (4 bytes)
+    uint32_t num_samples = chunk.samples.size();
+    for (int i = 0; i < 4; ++i) {
+        data.push_back((num_samples >> (i * 8)) & 0xFF);
+    }
+
+    // Samples (4 bytes each, float as bytes)
+    for (float sample : chunk.samples) {
+        uint32_t sample_bits;
+        std::memcpy(&sample_bits, &sample, sizeof(float));
+        for (int i = 0; i < 4; ++i) {
+            data.push_back((sample_bits >> (i * 8)) & 0xFF);
+        }
+    }
+
+    return data;
+#endif
+}
+
+std::vector<uint8_t> MessagePackUtil::EncodeImage(
+    const std::string& node_id,
+    const std::vector<uint8_t>& jpeg_data
+) {
+#ifdef HAS_MSGPACK
+    msgpack::sbuffer buffer;
+    msgpack::packer<msgpack::sbuffer> pk(&buffer);
+
+    pk.pack_map(4);
+
+    pk.pack(std::string("type"));
+    pk.pack(static_cast<uint8_t>(WSMessageType::ImageFrame));
+
+    pk.pack(std::string("node_id"));
+    pk.pack(node_id);
+
+    pk.pack(std::string("format"));
+    pk.pack(std::string("jpeg"));
+
+    pk.pack(std::string("data"));
+    pk.pack(jpeg_data);
+
+    return std::vector<uint8_t>(buffer.data(), buffer.data() + buffer.size());
+#else
+    // Simple binary format for images
+    std::vector<uint8_t> data;
+    data.push_back(static_cast<uint8_t>(WSMessageType::ImageFrame));
+
+    // Node ID
+    uint16_t id_len = node_id.length();
+    data.push_back((id_len >> 8) & 0xFF);
+    data.push_back(id_len & 0xFF);
+    data.insert(data.end(), node_id.begin(), node_id.end());
+
+    // Image data length
+    uint32_t img_len = jpeg_data.size();
+    for (int i = 0; i < 4; ++i) {
+        data.push_back((img_len >> (i * 8)) & 0xFF);
+    }
+
+    // Image data
+    data.insert(data.end(), jpeg_data.begin(), jpeg_data.end());
+
+    return data;
+#endif
+}
+
+MessagePackUtil::Command MessagePackUtil::DecodeCommand(const std::vector<uint8_t>& data) {
+    Command cmd;
+
+#ifdef HAS_MSGPACK
+    try {
+        msgpack::object_handle oh = msgpack::unpack(
+            reinterpret_cast<const char*>(data.data()),
+            data.size()
+        );
+        msgpack::object obj = oh.get();
+
+        if (obj.type == msgpack::type::MAP) {
+            for (size_t i = 0; i < obj.via.map.size; ++i) {
+                std::string key = obj.via.map.ptr[i].key.as<std::string>();
+                if (key == "command") {
+                    cmd.command = obj.via.map.ptr[i].val.as<std::string>();
+                } else if (key == "signal_id") {
+                    cmd.signal_id = obj.via.map.ptr[i].val.as<std::string>();
+                } else if (key == "target_samples") {
+                    cmd.target_samples = obj.via.map.ptr[i].val.as<int>();
+                }
+            }
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "[MessagePack] Decode error: " << e.what() << std::endl;
+    }
+#else
+    // Simple fallback parsing (JSON-like text)
+    std::string text(data.begin(), data.end());
+    // Very simple parser - production code should use JSON library
+    size_t cmd_pos = text.find("\"command\":");
+    if (cmd_pos != std::string::npos) {
+        size_t start = text.find("\"", cmd_pos + 10);
+        size_t end = text.find("\"", start + 1);
+        if (start != std::string::npos && end != std::string::npos) {
+            cmd.command = text.substr(start + 1, end - start - 1);
+        }
+    }
+
+    size_t sig_pos = text.find("\"signal_id\":");
+    if (sig_pos != std::string::npos) {
+        size_t start = text.find("\"", sig_pos + 12);
+        size_t end = text.find("\"", start + 1);
+        if (start != std::string::npos && end != std::string::npos) {
+            cmd.signal_id = text.substr(start + 1, end - start - 1);
+        }
+    }
+#endif
+
+    return cmd;
+}
+
+//
+// WebSocketServer Implementation using websocketpp
+//
+
+#include <websocketpp/config/asio_no_tls.hpp>
+#include <websocketpp/server.hpp>
+#include <thread>
+#include <set>
+
+typedef websocketpp::server<websocketpp::config::asio> server_t;
+typedef server_t::message_ptr message_ptr;
+typedef websocketpp::connection_hdl connection_hdl;
+
+class WebSocketServer::Impl {
+public:
+    Impl(int port, WebSocketServer* parent)
+        : port_(port)
+        , running_(false)
+        , parent_(parent)
+        , next_conn_id_(1)
+    {
+        // Initialize websocketpp server
+        server_.init_asio();
+        server_.set_reuse_addr(true);
+
+        // Set handlers
+        server_.set_open_handler([this](connection_hdl hdl) {
+            OnOpen(hdl);
+        });
+
+        server_.set_close_handler([this](connection_hdl hdl) {
+            OnClose(hdl);
+        });
+
+        server_.set_message_handler([this](connection_hdl hdl, message_ptr msg) {
+            OnMessage(hdl, msg);
+        });
+
+        // Disable logging (too verbose)
+        server_.set_access_channels(websocketpp::log::alevel::none);
+        server_.set_error_channels(websocketpp::log::elevel::none);
+    }
+
+    bool Start() {
+        try {
+            // Listen on all interfaces (0.0.0.0)
+            server_.listen(port_);
+            server_.start_accept();
+
+            // Run server in background thread
+            server_thread_ = std::thread([this]() {
+                std::cout << "[WebSocketServer] Running on 0.0.0.0:" << port_ << std::endl;
+                server_.run();
+                std::cout << "[WebSocketServer] Server stopped" << std::endl;
+            });
+
+            running_ = true;
+            std::cout << "[WebSocketServer] Started successfully on port " << port_ << std::endl;
+            std::cout << "[WebSocketServer] Production-ready websocketpp implementation" << std::endl;
+            return true;
+
+        } catch (const std::exception& e) {
+            std::cerr << "[WebSocketServer] Failed to start: " << e.what() << std::endl;
+            return false;
+        }
+    }
+
+    void Stop() {
+        if (!running_) return;
+
+        running_ = false;
+
+        try {
+            server_.stop_listening();
+
+            // Close all connections
+            std::lock_guard<std::mutex> lock(connections_mutex_);
+            for (auto& [conn_id, info] : connections_) {
+                try {
+                    server_.close(info.hdl, websocketpp::close::status::going_away, "Server shutting down");
+                } catch (...) {}
+            }
+            connections_.clear();
+
+        } catch (const std::exception& e) {
+            std::cerr << "[WebSocketServer] Error during stop: " << e.what() << std::endl;
+        }
+
+        if (server_thread_.joinable()) {
+            server_thread_.join();
+        }
+    }
+
+    bool IsRunning() const {
+        return running_;
+    }
+
+    void Send(WSConnectionId conn_id, const std::vector<uint8_t>& data) {
+        std::lock_guard<std::mutex> lock(connections_mutex_);
+
+        auto it = connections_.find(conn_id);
+        if (it == connections_.end()) {
+            return; // Connection not found
+        }
+
+        try {
+            server_.send(it->second.hdl, data.data(), data.size(),
+                        websocketpp::frame::opcode::binary);
+        } catch (const std::exception& e) {
+            std::cerr << "[WebSocketServer] Send error: " << e.what() << std::endl;
+        }
+    }
+
+    void Broadcast(const std::vector<uint8_t>& data) {
+        std::lock_guard<std::mutex> lock(connections_mutex_);
+
+        for (const auto& [conn_id, info] : connections_) {
+            try {
+                server_.send(info.hdl, data.data(), data.size(),
+                            websocketpp::frame::opcode::binary);
+            } catch (const std::exception& e) {
+                // Skip failed connections
+            }
+        }
+    }
+
+    std::set<WSConnectionId> GetSubscribedConnections(const std::string& signal_id) {
+        std::lock_guard<std::mutex> lock(connections_mutex_);
+        std::set<WSConnectionId> result;
+
+        for (const auto& [conn_id, info] : connections_) {
+            if (info.subscribed_signals.count(signal_id) > 0) {
+                result.insert(conn_id);
+            }
+        }
+
+        return result;
+    }
+
+private:
+    struct ConnectionInfo {
+        connection_hdl hdl;
+        std::set<std::string> subscribed_signals; // Format: "node_id:pin_name"
+    };
+
+    void OnOpen(connection_hdl hdl) {
+        std::lock_guard<std::mutex> lock(connections_mutex_);
+
+        WSConnectionId conn_id = next_conn_id_++;
+        connections_[conn_id] = ConnectionInfo{hdl, {}};
+        hdl_to_id_[hdl] = conn_id;
+
+        std::cout << "[WebSocketServer] Client connected (ID: " << conn_id << ")" << std::endl;
+
+        // Notify parent
+        if (parent_) {
+            parent_->OnClientConnected(conn_id);
+        }
+    }
+
+    void OnClose(connection_hdl hdl) {
+        std::lock_guard<std::mutex> lock(connections_mutex_);
+
+        auto it = hdl_to_id_.find(hdl);
+        if (it != hdl_to_id_.end()) {
+            WSConnectionId conn_id = it->second;
+
+            std::cout << "[WebSocketServer] Client disconnected (ID: " << conn_id << ")" << std::endl;
+
+            // Notify parent
+            if (parent_) {
+                parent_->OnClientDisconnected(conn_id);
+            }
+
+            connections_.erase(conn_id);
+            hdl_to_id_.erase(it);
+        }
+    }
+
+    void OnMessage(connection_hdl hdl, message_ptr msg) {
+        std::lock_guard<std::mutex> lock(connections_mutex_);
+
+        auto it = hdl_to_id_.find(hdl);
+        if (it == hdl_to_id_.end()) {
+            return;
+        }
+
+        WSConnectionId conn_id = it->second;
+
+        // Parse message (JSON text commands)
+        const std::string& payload = msg->get_payload();
+
+        try {
+            // Simple JSON parsing for commands
+            if (payload.find("\"command\":\"subscribe\"") != std::string::npos) {
+                // Extract signal_id
+                size_t start = payload.find("\"signal_id\":\"");
+                if (start != std::string::npos) {
+                    start += 13; // Length of "signal_id":"
+                    size_t end = payload.find("\"", start);
+                    if (end != std::string::npos) {
+                        std::string signal_id = payload.substr(start, end - start);
+                        connections_[conn_id].subscribed_signals.insert(signal_id);
+                        std::cout << "[WebSocketServer] Client " << conn_id << " subscribed to: " << signal_id << std::endl;
+                    }
+                }
+            }
+            else if (payload.find("\"command\":\"unsubscribe\"") != std::string::npos) {
+                // Extract signal_id
+                size_t start = payload.find("\"signal_id\":\"");
+                if (start != std::string::npos) {
+                    start += 13;
+                    size_t end = payload.find("\"", start);
+                    if (end != std::string::npos) {
+                        std::string signal_id = payload.substr(start, end - start);
+                        connections_[conn_id].subscribed_signals.erase(signal_id);
+                        std::cout << "[WebSocketServer] Client " << conn_id << " unsubscribed from: " << signal_id << std::endl;
+                    }
+                }
+            }
+
+            // Notify parent of message
+            if (parent_) {
+                std::vector<uint8_t> data(payload.begin(), payload.end());
+                parent_->OnClientMessage(conn_id, data);
+            }
+
+        } catch (const std::exception& e) {
+            std::cerr << "[WebSocketServer] Message parse error: " << e.what() << std::endl;
+        }
+    }
+
+    int port_;
+    bool running_;
+    WebSocketServer* parent_;
+    server_t server_;
+    std::thread server_thread_;
+
+    WSConnectionId next_conn_id_;
+    std::mutex connections_mutex_;
+    std::map<WSConnectionId, ConnectionInfo> connections_;
+    std::map<connection_hdl, WSConnectionId, std::owner_less<connection_hdl>> hdl_to_id_;
+};
+
+WebSocketServer::WebSocketServer(int port, SignalAggregator* aggregator)
+    : port_(port)
+    , running_(false)
+    , aggregator_(aggregator)
+    , impl_(std::make_unique<Impl>(port, this))
+{
+}
+
+WebSocketServer::~WebSocketServer() {
+    Stop();
+}
+
+bool WebSocketServer::Start() {
+    if (running_) {
+        return true;
+    }
+
+    running_ = impl_->Start();
+    return running_;
+}
+
+void WebSocketServer::Stop() {
+    if (!running_) {
+        return;
+    }
+
+    impl_->Stop();
+    running_ = false;
+}
+
+void WebSocketServer::BroadcastWaveform(const WaveformChunk& chunk) {
+    if (!running_) {
+        return;
+    }
+
+    std::vector<uint8_t> data = MessagePackUtil::EncodeWaveform(chunk);
+
+    // Get connections subscribed to this signal (uses Impl's subscription tracking)
+    std::set<WSConnectionId> subscribers = impl_->GetSubscribedConnections(chunk.signal_id);
+
+    // Send only to subscribed clients (Node-RED architecture)
+    for (WSConnectionId conn_id : subscribers) {
+        impl_->Send(conn_id, data);
+    }
+}
+
+void WebSocketServer::BroadcastImage(const std::string& node_id,
+                                    const std::vector<uint8_t>& jpeg_data) {
+    if (!running_) {
+        return;
+    }
+
+    std::vector<uint8_t> data = MessagePackUtil::EncodeImage(node_id, jpeg_data);
+
+    std::lock_guard<std::mutex> lock(connections_mutex_);
+
+    // Broadcast to all connections
+    for (const auto& [conn_id, conn] : connections_) {
+        if (conn.active) {
+            impl_->Send(conn_id, data);
+        }
+    }
+}
+
+void WebSocketServer::SendToConnection(WSConnectionId conn_id,
+                                      const std::vector<uint8_t>& data) {
+    if (!running_) {
+        return;
+    }
+
+    impl_->Send(conn_id, data);
+}
+
+void WebSocketServer::SetMessageCallback(WSMessageCallback callback) {
+    message_callback_ = callback;
+}
+
+size_t WebSocketServer::GetConnectionCount() const {
+    std::lock_guard<std::mutex> lock(connections_mutex_);
+    size_t count = 0;
+    for (const auto& [id, conn] : connections_) {
+        if (conn.active) {
+            count++;
+        }
+    }
+    return count;
+}
+
+void WebSocketServer::OnClientConnected(WSConnectionId conn_id) {
+    std::lock_guard<std::mutex> lock(connections_mutex_);
+
+    Connection conn;
+    conn.id = conn_id;
+    conn.active = true;
+    connections_[conn_id] = conn;
+
+    std::cout << "[WebSocketServer] Client connected: " << conn_id << std::endl;
+}
+
+void WebSocketServer::OnClientDisconnected(WSConnectionId conn_id) {
+    std::lock_guard<std::mutex> lock(connections_mutex_);
+    connections_.erase(conn_id);
+
+    std::cout << "[WebSocketServer] Client disconnected: " << conn_id << std::endl;
+}
+
+void WebSocketServer::OnClientMessage(WSConnectionId conn_id,
+                                     const std::vector<uint8_t>& data) {
+    auto cmd = MessagePackUtil::DecodeCommand(data);
+
+    std::lock_guard<std::mutex> lock(connections_mutex_);
+
+    auto it = connections_.find(conn_id);
+    if (it == connections_.end()) {
+        return;
+    }
+
+    if (cmd.command == "subscribe") {
+        // Add signal to subscription list
+        it->second.subscribed_signals.push_back(cmd.signal_id);
+        std::cout << "[WebSocketServer] Client " << conn_id
+                  << " subscribed to: " << cmd.signal_id << std::endl;
+
+    } else if (cmd.command == "unsubscribe") {
+        // Remove signal from subscription list
+        auto& subs = it->second.subscribed_signals;
+        subs.erase(std::remove(subs.begin(), subs.end(), cmd.signal_id), subs.end());
+        std::cout << "[WebSocketServer] Client " << conn_id
+                  << " unsubscribed from: " << cmd.signal_id << std::endl;
+
+    } else if (cmd.command == "get_waveform") {
+        // Send current waveform chunk
+        if (aggregator_) {
+            WaveformChunk chunk = aggregator_->GetWaveformChunk(
+                cmd.signal_id,
+                cmd.target_samples
+            );
+            std::vector<uint8_t> msg = MessagePackUtil::EncodeWaveform(chunk);
+            impl_->Send(conn_id, msg);
+        }
+    }
+
+    // Call user callback if set
+    if (message_callback_) {
+        message_callback_(conn_id, data);
+    }
+}
+
+} // namespace CiraBlockRuntime

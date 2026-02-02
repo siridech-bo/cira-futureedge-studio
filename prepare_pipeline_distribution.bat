@@ -108,7 +108,8 @@ xcopy /Y /E /I "cira-block-runtime\web" "%DIST_DIR%\cira-block-runtime\web" >nul
 xcopy /Y /E /I "cira-block-runtime\platforms" "%DIST_DIR%\cira-block-runtime\platforms" >nul
 xcopy /Y /E /I "cira-block-runtime\tests" "%DIST_DIR%\cira-block-runtime\tests" >nul
 xcopy /Y /E /I "cira-block-runtime\templates" "%DIST_DIR%\cira-block-runtime\templates" >nul
-echo   [OK] Source directories copied
+xcopy /Y /E /I "cira-block-runtime\third_party" "%DIST_DIR%\cira-block-runtime\third_party" >nul
+echo   [OK] Source directories copied (including third_party)
 
 REM Copy CMakeLists and documentation
 echo   Copying build configuration...
@@ -128,6 +129,16 @@ if exist "cira-block-runtime\build\blocks" (
     if not exist "%DIST_DIR%\cira-block-runtime\build\blocks" mkdir "%DIST_DIR%\cira-block-runtime\build\blocks"
     xcopy /Y "cira-block-runtime\build\blocks\*.dll" "%DIST_DIR%\cira-block-runtime\build\blocks\" >nul 2>&1
     if %ERRORLEVEL%==0 echo   [OK] Block DLLs
+)
+
+REM Copy ONNX Runtime for Jetson (pre-downloaded for offline installation)
+echo   Copying ONNX Runtime...
+if exist "cira-block-runtime\onnx_runtime" (
+    if not exist "%DIST_DIR%\cira-block-runtime\onnx_runtime" mkdir "%DIST_DIR%\cira-block-runtime\onnx_runtime"
+    xcopy /Y /E /I "cira-block-runtime\onnx_runtime" "%DIST_DIR%\cira-block-runtime\onnx_runtime" >nul
+    echo   [OK] ONNX Runtime (for Jetson ARM64)
+) else (
+    echo   [WARNING] ONNX Runtime not found - Install ONNX button will require internet
 )
 
 echo   [OK] cira-block-runtime complete

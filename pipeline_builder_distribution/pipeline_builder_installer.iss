@@ -58,6 +58,7 @@ Source: "cira-block-runtime\web\*"; DestDir: "{app}\..\cira-block-runtime\web"; 
 Source: "cira-block-runtime\platforms\*"; DestDir: "{app}\..\cira-block-runtime\platforms"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "cira-block-runtime\tests\*"; DestDir: "{app}\..\cira-block-runtime\tests"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "cira-block-runtime\templates\*"; DestDir: "{app}\..\cira-block-runtime\templates"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "cira-block-runtime\third_party\*"; DestDir: "{app}\..\cira-block-runtime\third_party"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "cira-block-runtime\CMakeLists.txt"; DestDir: "{app}\..\cira-block-runtime"; Flags: ignoreversion
 Source: "cira-block-runtime\README.md"; DestDir: "{app}\..\cira-block-runtime"; Flags: ignoreversion
 Source: "cira-block-runtime\*.md"; DestDir: "{app}\..\cira-block-runtime"; Flags: ignoreversion
@@ -65,6 +66,9 @@ Source: "cira-block-runtime\*.md"; DestDir: "{app}\..\cira-block-runtime"; Flags
 ; CiRA Block Runtime - Pre-built binaries (optional reference)
 Source: "cira-block-runtime\build\cira-block-runtime.exe"; DestDir: "{app}\..\cira-block-runtime\build"; Flags: ignoreversion
 Source: "cira-block-runtime\build\blocks\*.dll"; DestDir: "{app}\..\cira-block-runtime\build\blocks"; Flags: ignoreversion skipifsourcedoesntexist
+
+; ONNX Runtime for Jetson (ARM64) - pre-downloaded for offline installation
+Source: "cira-block-runtime\onnx_runtime\*"; DestDir: "{app}\..\cira-block-runtime\onnx_runtime"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"

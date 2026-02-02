@@ -8,7 +8,9 @@
       "Bash(md5sum:*)",
       "Bash(./sync_web_files.bat)",
       "Bash(echo $LOCALAPPDATA)",
-      "Read(//c/Users/bmwsb/AppData/Local/CiRA/**)"
+      "Read(//c/Users/bmwsb/AppData/Local/CiRA/**)",
+      "Bash(cmd /c prepare_pipeline_distribution.bat)",
+      "Bash(call prepare_pipeline_distribution.bat)"
     ],
     "deny": [],
     "ask": []

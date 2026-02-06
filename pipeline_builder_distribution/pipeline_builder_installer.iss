@@ -41,6 +41,9 @@ Source: "libcrypto-3-x64.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "libssl-3-x64.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "zlib1.dll"; DestDir: "{app}"; Flags: ignoreversion
 
+; SSH password utility (required for password-based SSH authentication)
+Source: "sshpass.exe"; DestDir: "{app}"; Flags: ignoreversion
+
 ; Templates and fonts
 Source: "templates\*"; DestDir: "{app}\templates"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "fonts\*"; DestDir: "{app}\fonts"; Flags: ignoreversion recursesubdirs createallsubdirs

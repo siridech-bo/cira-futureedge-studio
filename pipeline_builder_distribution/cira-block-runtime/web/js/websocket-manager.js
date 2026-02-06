@@ -31,9 +31,11 @@ class WebSocketManager {
 
         this.isConnecting = true;
 
-        // WebSocket server runs on port 8084 (HTTP on 8083)
+        // WebSocket server runs on HTTP port + 1
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsUrl = `${protocol}//${window.location.hostname}:8084`;
+        const httpPort = parseInt(window.location.port) || 8080;
+        const wsPort = httpPort + 1;
+        const wsUrl = `${protocol}//${window.location.hostname}:${wsPort}`;
 
         console.log('[WebSocketManager] Connecting to:', wsUrl);
 

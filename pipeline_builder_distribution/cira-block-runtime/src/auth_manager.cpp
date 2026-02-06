@@ -3,6 +3,7 @@
 #include <sstream>
 #include <iomanip>
 #include <algorithm>
+#include <iostream>
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
@@ -29,8 +30,9 @@ void AuthManager::SetCredentials(const std::string& username, const std::string&
     }
 
     username_ = username;
-    password_hash_ = HashPassword(password);
+    password_hash_ = password;  // Store plaintext for local embedded dashboard
     auth_enabled_ = true;
+    std::cout << "[Auth] SetCredentials - user: '" << username_ << "', pass length: " << password_hash_.length() << std::endl;
 }
 
 std::string AuthManager::Login(const std::string& username, const std::string& password) {
@@ -41,10 +43,16 @@ std::string AuthManager::Login(const std::string& username, const std::string& p
         return "no-auth-required";
     }
 
-    // Verify credentials
-    if (username != username_ || HashPassword(password) != password_hash_) {
+    // Verify credentials (plaintext comparison for local embedded dashboard)
+    // Debug logging
+    std::cout << "[Auth] Comparing - stored user: '" << username_ << "' vs input: '" << username << "'" << std::endl;
+    std::cout << "[Auth] Comparing - stored pass length: " << password_hash_.length() << " vs input length: " << password.length() << std::endl;
+
+    if (username != username_ || password != password_hash_) {
+        std::cout << "[Auth] FAILED: user_match=" << (username == username_) << ", pass_match=" << (password == password_hash_) << std::endl;
         return "";  // Invalid credentials
     }
+    std::cout << "[Auth] SUCCESS" << std::endl;
 
     // Generate new token
     std::string token = GenerateToken();

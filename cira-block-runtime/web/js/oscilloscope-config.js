@@ -9,9 +9,9 @@ const OscilloscopeStreamConfig = {
     // Use WebSocket only (Node-RED architecture)
     mode: 'websocket',  // Force WebSocket mode - SSE is deprecated
 
-    // Ports
-    http_port: 8083,      // HTTP server port
-    websocket_port: 8084, // WebSocket server port
+    // Ports (defaults - actual ports determined dynamically from window.location)
+    http_port: 8080,      // Default HTTP server port
+    websocket_port: 8081, // WebSocket = HTTP port + 1
 
     // Performance settings
     targetFPS: 30,              // Target frame rate for rendering

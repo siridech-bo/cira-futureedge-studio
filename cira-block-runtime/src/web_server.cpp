@@ -408,12 +408,15 @@ void WebServer::HandleLogin(const httplib::Request& req, httplib::Response& res)
         std::string username = json["username"];
         std::string password = json["password"];
 
+        // Debug logging
+        AddLog("DEBUG", "Login attempt - user: '" + username + "', pass length: " + std::to_string(password.length()));
+
         std::string token = auth_manager_.Login(username, password);
 
         if (token.empty()) {
             res.status = 401;
             res.set_content("{\"error\":\"Invalid credentials\"}", "application/json");
-            AddLog("WARNING", "Failed login attempt for user: " + username);
+            AddLog("WARNING", "Failed login attempt for user: '" + username + "'");
         } else {
             nlohmann::json response;
             response["token"] = token;

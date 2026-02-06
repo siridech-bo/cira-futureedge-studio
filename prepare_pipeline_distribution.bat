@@ -87,6 +87,15 @@ if %ERRORLEVEL%==0 echo   [OK] libssl-3-x64.dll (optional)
 copy /Y "%MINGW_BIN%\zlib1.dll" "%DIST_DIR%\" >nul 2>&1
 if %ERRORLEVEL%==0 echo   [OK] zlib1.dll (optional)
 
+REM Copy sshpass for SSH password authentication
+set MSYS_USR_BIN=C:\msys64\usr\bin
+copy /Y "%MSYS_USR_BIN%\sshpass.exe" "%DIST_DIR%\" >nul 2>&1
+if %ERRORLEVEL%==0 (
+    echo   [OK] sshpass.exe (for SSH password auth)
+) else (
+    echo   [WARNING] sshpass.exe not found - install with: pacman -S sshpass
+)
+
 echo.
 
 REM Copy cira-block-runtime (CRITICAL for Setup Device and Deploy)

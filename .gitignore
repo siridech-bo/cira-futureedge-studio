@@ -72,3 +72,10 @@ htmlcov/
 *.h5
 *.hdf5
 nul
+
+# Large build outputs
+dist_new/
+build_new/
+*.exe
+*.dll
+!pipeline_builder_distribution/*.dll
